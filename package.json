@@ -1,0 +1,9 @@
+{
+  "name": "codereef-action",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The CodeReef GitHub Action. A launcher: it fetches a verified engine at run time and installs nothing.",
+  "license": "Apache-2.0",
+  "//": "This file is NOT here to be installed from -- nothing in this repository ever runs a package manager, and it deliberately has no dependencies and no lockfile. It exists for two reasons. (1) `version` is the one number that names both this action and the engine it pulls: `engine-dist/pack.mjs` refuses to pack unless `--version` matches `v${version}`, `engine.lock.json` carries it, and the launcher asks the engine endpoint for exactly it. (2) The launcher COPIES this file to the parent of the directory it unpacks the engine into, because `bundle/reef.mjs` answers `reef --version` by reading `new URL('../package.json', import.meta.url)`, and run.mjs reads the same field for the `actionVersion` on a metering receipt -- a missing copy makes both say \"unknown\", which fails nothing and makes every receipt in the fleet indistinguishable. SYNC.md makes bumping this a step of the release, before packing. The value must stay matchable by /^[A-Za-z0-9._-]{1,32}$/ and must never be a commit SHA -- the metering protocol rejects both, at the client and again at the server."
+}

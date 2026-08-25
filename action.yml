@@ -1,0 +1,394 @@
+# CodeReef as a GitHub Action: label an issue, get a reproduction report; or
+# open one, and get told what CodeReef could not use in it.
+#
+# WHY THIS FILE IS AT A REPOSITORY ROOT, AND WHY THAT IS THE WHOLE POINT.
+# GitHub lists in the Marketplace only a metadata file at the ROOT of a
+# repository, and says in as many words that files in sub-folders "will not be
+# automatically listed". The previous home of this action was
+# `codereefai/core/action/action.yml` -- a sub-folder, so unlistable -- and
+# `core` also had to stay PUBLIC, because a `uses:` reference checks out the
+# whole owning repository and the install step below used to run
+# `pnpm install --frozen-lockfile` in it. An action in a private repository is
+# shareable only within the owning organisation, and a customer is outside it.
+# So the engine could not be private and the product could not be listed, for
+# the same one reason.
+#
+# WHAT REPLACED THE INSTALL, AND THEN WHAT REPLACED THAT. The install first
+# became a committed bundle: `bundle/reef.mjs`, the CLI prebuilt as one ESM
+# file. That fixed the install but not the secrecy -- a committed bundle in a
+# public repository IS the engine in public, 27,957 unminified lines with the
+# agent prompts as plain string literals, and minifying does not remove a
+# string literal.
+#
+# So the bundle left this repository too. What is here now is a LAUNCHER:
+# `launcher/fetch-engine.mjs` mints a GitHub OIDC token, presents it to
+# CodeReef's own service, downloads the engine, verifies it against the SHA-256
+# digest pinned in `engine.lock.json` -- which is committed HERE, so the trust
+# anchor arrives with the tag the customer pinned rather than from the server --
+# and unpacks it. Only then does `run.mjs` execute anything.
+#
+# THE TWO COSTS, NEITHER OF THEM BURIED.
+#
+#   1. The calling workflow needs `id-token: write` in addition to
+#      `contents: read` and `issues: write`. The minimal permission set was
+#      advertised as a feature and this is a real regression in that story.
+#      `id-token: write` lets the job MINT a token that says which repository
+#      it is; it grants no access to anything of the customer's.
+#   2. CodeReef's infrastructure is now in front of every job. Before this,
+#      nothing we operated could stop a customer's run. Now, if our Worker or
+#      our bucket is down, the job does not start. Every refusal names its own
+#      cause so nobody debugs their own repository over our outage, and
+#      `engine-archive` below is the supported way to remove the dependency
+#      entirely.
+#
+# SYNC.md is how the engine artifact and its lockfile get regenerated -- one
+# command writes both, so they cannot be released out of step.
+#
+# TWO MODES, AND THEY ARE ONE ACTION ON PURPOSE. `mode: investigate` is a
+# label, a sandbox, a reproduction, a report. `mode: triage` is the opened
+# path: no sandbox, no repository install, no model call, no network, no API
+# key -- it reads the report and either says what CodeReef could not use in it
+# or says nothing at all.
+#
+# They are one action rather than two because everything that could go wrong is
+# shared. The issue body must reach the CLI as a file in both. The comment must
+# be posted with --body-file in both. The decision to post must be one predicate
+# computed in run.mjs and read by one step, in both -- that split is a defect
+# this action has already had and fixed once, and two actions would be two
+# places for it to come back. What differs between the modes is which CLI
+# command runs, and that is a branch in one script.
+#
+# SECURITY, STATED ONCE AND FOLLOWED EVERYWHERE. The issue title and body are
+# untrusted input. Nothing in this file interpolates
+# `github.event.issue.body` (or title) into a shell -- that is the canonical
+# Actions injection. run.mjs reads them from the event JSON with Node, writes
+# them to a file, and every consumer takes the file: the CLI as `@file`, the
+# comment as `--body-file`. Repository code executes only inside CodeReef's
+# sandbox, which on the docker plane has its network removed before anything
+# from the repository runs.
+#
+# Least privilege, and the one thing that changed about it. The calling job
+# needs exactly
+#   permissions:
+#     contents: read      # actions/checkout of the repository under test
+#     issues: write       # the report comment
+#     id-token: write     # mint an OIDC token to fetch the engine -- see above
+# and nothing else. No `pull-requests`, no `contents: write`. The third line is
+# new, it is the price of the engine being private, and it is stated here, in
+# README.md, and in the error a job gets when it is missing -- because a red job
+# is where most people will read about it for the first time.
+#
+# HONEST STATUS: this action has run against CodeReef's own repositories and
+# nowhere else. V1 is reproduce-and-report: it writes no code, opens no pull
+# request, and its report leads with what it could NOT establish.
+
+name: CodeReef
+description: >-
+  Reproduce a reported bug in a sandbox and post a report of what was
+  established, leading with what was not. Writes no code.
+
+# The Marketplace listing badge. GitHub draws it from a Feather icon and one of
+# nine named colours, and it is the only art a listing gets.
+#
+# 'repeat' because the one thing this action does is reproduce: it re-runs the
+# failure a stranger reported and says what happened. The icons that would look
+# better on a listing card -- 'crosshair', 'search', 'zap' -- each promise
+# locating the cause or acting on it, which is precisely the claim this version
+# withholds, and a badge is a claim like any other. 'blue' is the product's own
+# brand hue (brand #0657D6 light / #5490FA dark), which is the closest the nine
+# allowed names get to it.
+branding:
+  icon: repeat
+  color: blue
+
+inputs:
+  mode:
+    # 'investigate' reproduces a labelled issue in a sandbox and reports what it
+    # established. 'triage' reads a newly opened issue and posts what CodeReef
+    # could not use in it, or nothing -- which is the outcome for about half of
+    # real inbound, and is a correct one.
+    #
+    # A triage job needs `issues: [opened]` on its trigger and nothing else
+    # changed: same permissions, same token, same posting step.
+    description: "'investigate' to reproduce a labelled issue, 'triage' to read a newly opened one."
+    default: investigate
+  label:
+    description: >-
+      In investigate mode, run only when this label was added ('*' accepts any
+      label). In triage mode this label is what CodeReef stays quiet for: an
+      issue opened already carrying it is about to get a full investigation, so
+      no triage note is posted on it.
+    default: codereef
+  license:
+    # WHAT A LICENCE NOW BUYS, AND WHAT CHANGED. It buys two things, and one of
+    # them is new:
+    #
+    #   1. Running at all on a PRIVATE repository. The engine endpoint refuses
+    #      a private repository without a licence that verifies, is unexpired,
+    #      is not revoked, and is bound to that repository's owner -- and the
+    #      owner is read from the OIDC token GitHub signed, not from anything
+    #      this action sends, so it cannot be spoofed. Without a licence the job
+    #      fails at the fetch step with a message saying exactly that. This is
+    #      new: before the engine moved out of this repository, a private
+    #      repository could run everything and only lost decline replies.
+    #   2. Decline replies on a private repository, exactly as before. That
+    #      check still lives on the metering endpoint and still FAILS OPEN --
+    #      absent, unreachable or unreadable all mean "allowed", because an
+    #      outage that silently disabled something somebody pays for costs a
+    #      customer and giving away a few replies costs almost nothing.
+    #
+    # PUBLIC REPOSITORIES ARE UNCHANGED IN EVERY RESPECT. They are never asked
+    # for a licence, by either endpoint, and reproductions stay free everywhere
+    # with no signup. That is not a policy this action applies on trust: the
+    # engine endpoint reads `repository_visibility` out of a claim GitHub
+    # signed.
+    description: >-
+      Licence key. REQUIRED on a private repository, where CodeReef will not
+      start without one; never needed and never read on a public repository. It
+      also enables decline replies on a private repository. Pass a secret, never
+      a literal.
+    default: ''
+  metering-url:
+    # ON BY DEFAULT, because the licence check and the run count are what the
+    # paid plans are sold against, and a gate a customer has to switch on
+    # themselves is not a gate. Setting this to the empty string still means NO
+    # REQUEST IS MADE AT ALL -- not a shortened one, not a stripped one --
+    # and so does CODEREEF_TELEMETRY=off in the job environment.
+    #
+    # EXACTLY WHAT LEAVES THE RUNNER, so this is checkable rather than
+    # reassuring. One POST per run, at most one per job, of a JSON body under
+    # 400 bytes containing these nine fields and nothing else:
+    #
+    #   v             the protocol version, the integer 1
+    #   orgHash       HMAC-SHA256 of the owner login, hex. Hashed ON THE RUNNER.
+    #   repoHash      HMAC-SHA256 of owner/repo, hex. Hashed ON THE RUNNER.
+    #   actorHash     HMAC-SHA256 of the login that triggered the run, hex.
+    #                 Hashed ON THE RUNNER. This is the unit a seat is counted in.
+    #   outcome       one bounded uppercase token, e.g. REPRODUCED_AND_DIAGNOSED
+    #   durationMs    how long the run took, a number
+    #   actionVersion CodeReef's own release string, e.g. v1.4.0
+    #   isPrivate     true or false
+    #   licenseKey    the value of the `license` input, IN THE CLEAR over TLS,
+    #                 and ONLY on a private repository. Omitted entirely on
+    #                 every public run, and omitted when the input is empty.
+    #                 It is a bearer credential for entitlement, so the server
+    #                 has to read it; it is the only unhashed identifier sent.
+    #
+    # NEVER SENT, and there is no field that could carry it: the owner or
+    # repository name in the clear, any URL, the issue title or body, any
+    # comment or other human-written text, source code, diffs, file names or
+    # paths, command lines, stdout, stderr, stack traces, branch names, commit
+    # SHAs, pull request numbers, email addresses, actor logins, timestamps
+    # finer than the server's own UTC calendar day, or anything about model
+    # spend or token counts. `outcome` and `actionVersion` are additionally
+    # refused if they are merely SHAPED like a commit SHA, at the client and
+    # again at the server.
+    #
+    # A metering failure can never fail this job: the call is bounded by a
+    # two-second race, never retries, never throws, and every failure --
+    # unreachable, hung, malformed, 500 -- is treated as "carry on".
+    description: >-
+      Where to report one run receipt per job. Defaults to CodeReef's metering
+      endpoint. Set to '' to disable the call outright -- no request of any kind
+      is made. Sends salted HMACs of the owner, repository and triggering login
+      (hashed on this runner), an outcome token, a duration, CodeReef's version,
+      a public/private flag, and on private repositories only the `license`
+      value. Never sends names, URLs, issue text, code, paths, output, branches
+      or commit SHAs. A metering failure cannot fail your job.
+    default: https://metering.codereef.app/v1/runs
+  engine-url:
+    # Where the engine is fetched from. Present so that a self-hosted or
+    # air-gapped deployment can point at its own copy of the service, and so
+    # that CodeReef can move the endpoint without every customer re-pinning.
+    #
+    # It is NOT a way to run unverified code: whatever this returns is checked
+    # against the digest in this repository's `engine.lock.json` before a byte
+    # reaches the disk. Pointing it somewhere hostile produces a failed job,
+    # not a compromised one.
+    description: >-
+      Where to fetch the verified engine artifact. Defaults to CodeReef's engine
+      endpoint. The download is checked against the SHA-256 digest pinned in
+      this action's engine.lock.json whatever this is set to.
+    default: https://metering.codereef.app/v1/engine
+  engine-archive:
+    # THE ANSWER TO "WE CANNOT DEPEND ON YOUR UPTIME". Point this at a local or
+    # mirrored copy of the same engine.tar.gz and NO request is made to CodeReef
+    # at all -- not for the engine, not for a token. The archive goes through
+    # the identical digest check against the identical lockfile, so this removes
+    # the availability dependency and weakens nothing.
+    #
+    # The artifact for a given tag is byte-stable, so mirroring it is a copy
+    # rather than a subscription.
+    description: >-
+      Optional path on the runner to a mirrored copy of the engine archive. When
+      set, no request is made to CodeReef and no OIDC token is minted; the copy
+      is verified against the same pinned digest.
+    default: ''
+  sandbox:
+    description: >-
+      Execution plane for repository code. 'docker' is the only isolated plane
+      and the default; the runner must be Linux with Docker available
+      (ubuntu-latest is both).
+    default: docker
+  anthropic-api-key:
+    description: >-
+      Optional. Without it the deterministic heuristic provider runs, which
+      reproduces and reports but cannot reason over prose. Pass a secret, never
+      a literal.
+    default: ''
+  github-token:
+    description: Token used only to post the report comment.
+    default: ${{ github.token }}
+  comment:
+    # Three values, because "post the report" and "produce the report" stopped
+    # being the same question. 'true' posts only when the run established
+    # something about the repository: a run that established nothing still
+    # writes its full report to the job summary, because that document is about
+    # CodeReef and an issue tracker is not where it belongs. 'always' posts
+    # regardless, which is what dogfooding this Action on its own issues needs.
+    # 'false' never posts.
+    #
+    # In triage mode 'always' means 'true'. There is no "post regardless" for a
+    # comment that does not exist, and the thing that would have to be invented
+    # to give it one is the generic disclaimer this whole product refuses to
+    # post.
+    description: "'true' to comment when something was established, 'always' to comment regardless, 'false' never."
+    default: 'true'
+
+outputs:
+  engine-version:
+    description: >-
+      The engine version this run verified and executed, from engine.lock.json.
+      The same number as this action's own release.
+    value: ${{ steps.engine.outputs.engine-version }}
+  investigation-id:
+    description: Investigate mode only. The investigation id, for reef inspect / reef report.
+    value: ${{ steps.codereef.outputs.investigation-id }}
+  outcome:
+    description: Investigate mode only. Terminal outcome, e.g. REPRODUCED_AND_DIAGNOSED or NO_RUNNABLE_CHECK.
+    value: ${{ steps.codereef.outputs.outcome }}
+  should-post:
+    description: Whether a comment was posted. One predicate, computed in run.mjs, in either mode.
+    value: ${{ steps.codereef.outputs.should-post }}
+  established:
+    description: Investigate mode only. Whether the run established anything about the repository, from the CLI's own result.
+    value: ${{ steps.codereef.outputs.established }}
+  report-path:
+    description: Investigate mode only. Absolute path of the Markdown report on the runner.
+    value: ${{ steps.codereef.outputs.report-path }}
+  triage-outcome:
+    description: >-
+      Triage mode only. 'COMMENT' when CodeReef had something specific to ask
+      for, 'SILENT' when it correctly had nothing to say. Both are successes.
+    value: ${{ steps.codereef.outputs.triage-outcome }}
+  comment-path:
+    description: Triage mode only. Absolute path of the decline reply on the runner, or empty when silent.
+    value: ${{ steps.codereef.outputs.comment-path }}
+
+runs:
+  using: composite
+  steps:
+    # Only investigate mode executes anything, so only investigate mode needs a
+    # plane that can isolate it. Triage runs no repository code at all -- that
+    # is the entire reason it is cheap enough to fire on every opened issue --
+    # and failing a triage job on a Windows runner over a sandbox it will never
+    # start would be refusing a run for a reason that does not apply to it.
+    - name: Refuse a plane the runner cannot isolate
+      if: inputs.mode == 'investigate'
+      shell: bash
+      env:
+        CODEREEF_SANDBOX_INPUT: ${{ inputs.sandbox }}
+      run: |
+        if [ "$CODEREEF_SANDBOX_INPUT" = "docker" ] && [ "$RUNNER_OS" != "Linux" ]; then
+          echo "::error::The docker sandbox needs a Linux runner (ubuntu-latest). This runner is $RUNNER_OS."
+          exit 1
+        fi
+
+    # THE ONLY THING THIS ACTION INSTALLS IS A NODE RUNTIME, and on the hosted
+    # runners even that is usually already present -- setup-node is here so the
+    # version is 24 whatever the runner image ships, not because anything is
+    # fetched from a registry.
+    #
+    # NO `cache: pnpm`, AND NOW THERE IS NOTHING TO CACHE. The previous version
+    # of this action ran `corepack enable && pnpm install --frozen-lockfile`
+    # over CodeReef's whole workspace on every single job, and could not cache
+    # it: setup-node's pnpm cache shells out to `pnpm store path` before
+    # corepack has run, and its cache key is `hashFiles()` over a path GitHub
+    # documents as restricted to GITHUB_WORKSPACE -- while the lockfile that
+    # decided the install lived under _actions/, outside it. The alternative
+    # (actions/cache with a literal key) would have spent the CALLING
+    # repository's 10 GB cache quota, and evicted that repository's own entries,
+    # to speed up an action it installed. Prebuilding the engine removed the
+    # install rather than caching it, so none of that has to be traded off --
+    # and the step below fetches ONE verified artifact, not a dependency tree,
+    # so there is still nothing here worth a cache.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    # THE ENGINE. Downloaded, verified, and unpacked before anything runs.
+    #
+    # A SEPARATE STEP RATHER THAN A PROLOGUE INSIDE run.mjs, for one reason
+    # worth the extra block: when this fails, it fails on its own line with its
+    # own name, and a customer looking at a red job sees "Fetch and verify the
+    # CodeReef engine" rather than a script that also does investigations. The
+    # failure this introduces is one nobody has had before -- our infrastructure
+    # stopping their build -- so it gets its own place to fail.
+    #
+    # NOTHING HERE INTERPOLATES ANYTHING UNTRUSTED. Every value is an input or a
+    # runner-provided variable, passed through `env:` rather than into a shell
+    # expression, exactly as the step below does it.
+    - name: Fetch and verify the CodeReef engine
+      id: engine
+      shell: bash
+      env:
+        CODEREEF_ENGINE_URL: ${{ inputs.engine-url }}
+        CODEREEF_ENGINE_ARCHIVE: ${{ inputs.engine-archive }}
+        # Sent only when the repository is private, and the endpoint decides
+        # that from GitHub's own signed claim rather than from this value.
+        CODEREEF_LICENSE: ${{ inputs.license }}
+      run: node "$GITHUB_ACTION_PATH/launcher/fetch-engine.mjs"
+
+    # ONE STEP FOR BOTH MODES, and the step id says CodeReef because it is now
+    # either one. No `--import tsx`: run.mjs is plain ESM and the engine it
+    # spawns is a prebuilt bundle, so there is no loader and no TypeScript at
+    # run time. `CODEREEF_ACTION_ROOT` is the action's own directory and every
+    # path run.mjs builds is under it -- nothing in this file names
+    # `${{ github.action_path }}/..` or any other path outside this action.
+    # The script takes every path from the environment, so no working-directory
+    # is needed or set.
+    - name: Run CodeReef
+      id: codereef
+      shell: bash
+      env:
+        CODEREEF_ACTION_ROOT: ${{ github.action_path }}
+        # Where the step above unpacked the engine it verified. This step does
+        # not re-check those bytes and must not: the decision was made once, in
+        # one file, and a second copy of it is a second answer that can disagree.
+        CODEREEF_ENGINE_ROOT: ${{ steps.engine.outputs.engine-root }}
+        CODEREEF_MODE: ${{ inputs.mode }}
+        CODEREEF_LABEL: ${{ inputs.label }}
+        CODEREEF_SANDBOX: ${{ inputs.sandbox }}
+        # The step below reads `should-post` rather than re-deciding, so the
+        # value has to reach the script that computes it.
+        CODEREEF_COMMENT: ${{ inputs.comment }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        # The real endpoint by default; set the input to '' and no request is
+        # attempted at all. See the input's description for what one carries.
+        CODEREEF_METERING_URL: ${{ inputs.metering-url }}
+        CODEREEF_LICENSE: ${{ inputs.license }}
+      run: node "$GITHUB_ACTION_PATH/run.mjs"
+
+    - name: Post the comment
+      # One predicate, computed once in run.mjs, for both modes. It was split
+      # across this expression and that script, which let the job summary
+      # describe a different outcome from the one this step produced -- so the
+      # second mode reuses this gate rather than bringing a second one, and the
+      # document it posts arrives on one output name whichever mode wrote it.
+      if: steps.codereef.outputs.should-post == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        ISSUE_NUMBER: ${{ steps.codereef.outputs.issue-number }}
+        BODY_PATH: ${{ steps.codereef.outputs.body-path }}
+      run: gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_PATH"
