@@ -1,0 +1,59 @@
+# Proves the whole install path from a real GitHub Actions runner.
+#
+# The endpoint can be shown to fail closed from anywhere -- an unsigned token,
+# a junk bearer, no credentials at all. What cannot be shown from anywhere else
+# is the SUCCESS path, because it needs an OIDC token that GitHub itself signed,
+# and GitHub only signs one inside a workflow run. So this file exists to prove
+# the one claim a laptop cannot: that a real runner in a public repository is
+# served the engine, with no signup and no licence, and that the bytes it gets
+# are the bytes engine.lock.json pins.
+#
+# It runs on a public repository, where Actions minutes are free.
+name: smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  # The disclosed cost of this design. Without it GitHub mints no token and the
+  # endpoint answers 401 naming this exact line.
+  id-token: write
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Request the engine with a real OIDC token
+        run: |
+          set -euo pipefail
+          AUD='https://metering.codereef.app/v1/engine'
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUD" | node -e \
+            'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).value))')
+
+          CODE=$(curl -sS -o engine.tar.gz -w '%{http_code}' -X POST "$AUD" \
+            -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+            -d '{"version":"v0.1.0"}')
+          echo "status $CODE"
+          if [ "$CODE" != "200" ]; then cat engine.tar.gz; exit 1; fi
+
+      - name: Verify the bytes against the committed lockfile
+        run: |
+          set -euo pipefail
+          node -e '
+            const {createHash}=require("node:crypto"), fs=require("node:fs");
+            const lock=JSON.parse(fs.readFileSync("engine.lock.json","utf8"));
+            const buf=fs.readFileSync("engine.tar.gz");
+            const got=createHash("sha256").update(buf).digest("hex");
+            console.log("expected", lock.archive.sha256, lock.archive.bytes);
+            console.log("received", got, buf.length);
+            if (got!==lock.archive.sha256 || buf.length!==lock.archive.bytes) {
+              throw new Error("digest mismatch: R2 is not serving what the lockfile pins");
+            }
+            console.log("MATCH");
+          '
