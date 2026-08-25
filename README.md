@@ -6,22 +6,34 @@ What was executed, what failure was captured, what that establishes -- and,
 first and most prominently, what it does not. CodeReef writes no code, opens no
 pull request, and asks for no permission that would let it do either.
 
-**Honest status:** this action has run against CodeReef's own repositories and
-nowhere else. Treat the first run in yours as an experiment, not a service.
+**Honest status.** The install path is proven: a public repository outside our
+organisation resolved this action, minted its OIDC token, was served the engine
+with no signup and no licence, verified the digest, ran `triage` and posted its
+comment. What has *not* been proven anywhere but our own repositories is
+`investigate` -- the sandbox, the reproduction, the report. Treat the first
+investigation in your repository as an experiment, not a service.
+
+**What it costs.** Nothing on a public repository: there is no signup, no
+account, and no key to ask us for. GitHub decides whether your repository is
+public and signs that statement; we read it. A private repository needs a
+licence and is refused with a `402` at the fetch step until it has one. Your own
+Actions minutes are the other cost, and `investigate` spends more of them than
+`triage` does.
 
 ## Two modes
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
-| `triage` | an issue being opened | one Node process, seconds | a short note saying what CodeReef could not use in the report -- **or nothing** |
+| `triage` | an issue being opened | one download and one Node process, seconds | a short note saying what CodeReef could not use in the report -- **or nothing** |
 
 `triage` runs no repository code, starts no container, installs nothing from
 your repository, makes no model call and needs no API key. It reads the issue
 and renders a decline reply, and it says nothing at all unless the report
-contains something specific a reporter could add. Measured over 729 real
-inbound issues from 40 repositories, that is about a quarter of them; about half
-produce nothing worth saying and get silence.
+contains something specific a reporter could add. Measured over 729 real inbound
+issues from 40 repositories, roughly a quarter produce a specific request and
+about half contain nothing a reporter could be asked for, so **silence is the
+most common outcome** rather than the exception.
 
 **Triage never claims a bug is absent.** It executes nothing, so it establishes
 nothing, and the note it posts says so in its first sentence.
@@ -48,7 +60,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: codereefai/codereef-action@v1
+      - uses: codereefai/action@v1
         # Optional. Without it the deterministic heuristic provider runs:
         # it reproduces and reports, and cannot reason over prose.
         # with:
@@ -62,9 +74,22 @@ repository (or from anywhere, with `--repo owner/name`):
 gh label create codereef --description 'CodeReef reproduces this bug in a sandbox and comments what it established.'
 ```
 
-That is the whole install. No GitHub App, no webhook endpoint, no hosting, no
-database, and no credential beyond the job's own token unless you choose to add
-a model key.
+That is the whole install on a public repository. No GitHub App, no webhook
+endpoint, no hosting, no database, no signup, and no credential beyond the job's
+own token unless you choose to add a model key.
+
+On a **private** repository, add one more line, and without it the job fails at
+the fetch step with a `402`:
+
+```yaml
+      - uses: codereefai/action@v1
+        with:
+          license: ${{ secrets.CODEREEF_LICENSE }}
+```
+
+`runs-on: ubuntu-latest` is not decoration: `investigate` refuses to start on a
+runner where its Docker sandbox is unavailable rather than running your code on
+the host.
 
 ### Why `id-token: write`
 
@@ -117,15 +142,21 @@ When it happens the failure names itself. The step is called *Fetch and verify
 the CodeReef engine* and the message says whose problem it is:
 
 ```
-CodeReef could not reach its engine service at https://metering.codereef.app/v1/engine.
-This is an outage on our side or a network problem on the runner, not a problem
-with your repository.
+CodeReef could not reach its engine service at https://metering.codereef.app/v1/engine
+(<the network error>). This is an outage on our side or a network problem on the
+runner, not a problem with your repository.
 ```
 
-Transient failures are retried three times before the job fails. **Nothing else
-about CodeReef changed:** the metering receipt still fails open and still cannot
-redden a build (see *It cannot break your job*). Only the engine download is
-load-bearing, because it is the code itself.
+The download is attempted **three times** -- so twice more after the first
+failure, two seconds apart and then four -- before the job fails. Only timeouts,
+`408`, `429` and `5xx` are retried. A refusal is not: if the service answers
+`402` because a private repository has no licence, re-asking cannot change the
+answer, and the sentence the job prints is the one the service wrote rather than
+one this action guessed.
+
+**Nothing else about CodeReef changed:** the metering receipt still fails open
+and still cannot redden a build (see *It cannot break your job*). Only the
+engine download is load-bearing, because it is the code itself.
 
 ### Running without depending on CodeReef
 
@@ -133,10 +164,16 @@ Mirror the artifact once, and no request is made to CodeReef at all -- not for
 the engine, not for a token -- and `id-token: write` is not needed:
 
 ```yaml
-- uses: codereefai/codereef-action@v1
+- uses: codereefai/action@v1
   with:
-    engine-archive: /opt/codereef/engine-v0.1.0.tar.gz
+    engine-archive: /opt/codereef/engine-v0.1.1.tar.gz
 ```
+
+The path is read on the runner, so getting the file there is your step, not
+ours: a checkout, an `actions/cache` restore, an `aws s3 cp`, whatever you
+already use. The version in the file name has to be the one the tag you pinned
+expects -- `engine.lock.json` in this repository names it, and today it is
+`v0.1.1`.
 
 The mirrored copy is verified against the **same** digest in the same
 `engine.lock.json`, so this removes the availability dependency and weakens
@@ -193,7 +230,7 @@ jobs:
       # Optional. Without it triage still runs; with it, a refusal can say
       # "this repository holds no `repro.js`" instead of staying quiet.
       - uses: actions/checkout@v4
-      - uses: codereefai/codereef-action@v1
+      - uses: codereefai/action@v1
         with:
           mode: triage
 ```
@@ -230,13 +267,26 @@ trigger.
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
 | `github-token` | `${{ github.token }}` | Used only to post the report comment. |
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
-| `license` | `''` | Licence key for decline replies on a private repository. Pass a secret. |
+| `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://metering.codereef.app/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
+| `engine-url` | `https://metering.codereef.app/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
+| `engine-archive` | `''` | Path on the runner to a mirrored copy of the engine archive. When set, **no request is made to CodeReef and no OIDC token is minted**; the copy goes through the identical digest check. |
+
+Every input has a default and none is required on a public repository, so
+`uses:` with no `with:` block at all is a working configuration.
 
 ## Outputs
 
-`investigation-id`, `outcome`, `established`, `report-path` (investigate mode);
-`triage-outcome`, `comment-path` (triage mode); `should-post` in either.
+| Output | Mode | Value |
+| --- | --- | --- |
+| `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
+| `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. |
+| `investigation-id` | investigate | The investigation id, for `reef inspect` / `reef report`. |
+| `outcome` | investigate | Terminal outcome, e.g. `REPRODUCED_AND_DIAGNOSED` or `NO_RUNNABLE_CHECK`. |
+| `established` | investigate | Whether the run established anything about the repository. |
+| `report-path` | investigate | Absolute path of the Markdown report on the runner. |
+| `triage-outcome` | triage | `COMMENT` when CodeReef had something specific to ask for, `SILENT` when it correctly had nothing to say. Both are successes. |
+| `comment-path` | triage | Absolute path of the decline reply on the runner, or empty when silent. |
 
 ## What it needs, and what it refuses
 
@@ -270,6 +320,25 @@ trigger.
   shipped the engine in `bundle/` and fetched nothing at all -- see *How the
   engine gets here* and *What happens when CodeReef is down* above, both of
   which say what it costs.
+
+## How it fails
+
+Every failure below names its own cause on the first line of the annotation,
+because that list is what somebody reads before they open the log.
+
+| What went wrong | Step that goes red | What you do |
+| --- | --- | --- |
+| The job has no `id-token: write` | *Fetch and verify the CodeReef engine* | Add the line. The message prints the whole `permissions:` block. |
+| Private repository, no licence | *Fetch and verify the CodeReef engine* | `402`, with the sentence the service wrote and a link to the plans. Public repositories never see this. |
+| Our service or bucket is down | *Fetch and verify the CodeReef engine* | Nothing on your side. Three attempts, then the job fails saying it is our outage. Mirror the archive if you cannot tolerate it. |
+| The downloaded bytes do not match `engine.lock.json` | *Fetch and verify the CodeReef engine* | The job fails printing both digests and `NOTHING WAS EXECUTED`. Nothing was written to disk. |
+| `sandbox: docker` on a non-Linux runner | *Refuse a plane the runner cannot isolate* | Use `ubuntu-latest`. The action refuses rather than falling back to running your code on the host. |
+| The event is not the label this action runs on | *Run CodeReef* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
+| The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
+
+A run that reproduces nothing is **not** a failure: the job is green, the report
+says what it could not establish, and whether a comment is posted is the
+`comment` input's decision.
 
 ## What comes back
 
@@ -389,16 +458,21 @@ unreachable, hung, or answers something unexpected, the reply is posted anyway.
 
 ## Timing
 
-The first `investigate` run builds the sandbox image (minutes of `apt` on top of
-`node:24-bookworm-slim`); later runs on the same runner image rebuild it only
-when the shipped `bundle/Dockerfile` changes, since the tag is derived from the
-file's bytes. Budget `timeout-minutes: 30` and expect most runs to finish in a
-few minutes.
+Both modes first fetch and verify the engine: one request, an archive of about
+1.9 MB, hashed in memory. On a hosted runner that is seconds, and it is paid on
+every job -- the runner is fresh each time, so nothing about it is cached
+between runs.
 
-`triage` does none of that, and no longer pays for an install either. The
-engine starts in about a tenth of a second and the triage decision itself is
-well under a second on a real report, so a triage job is a checkout, a Node
-setup and a second or so of work.
+`investigate` then builds the sandbox image (minutes of `apt` on top of
+`node:24-bookworm-slim`). Within one job, a rebuild is triggered only by a
+change to the engine's `Dockerfile`, since the image tag is derived from that
+file's bytes; across jobs on hosted runners, expect to pay for it again. Budget
+`timeout-minutes: 30` and expect most runs to finish in a few minutes.
+
+`triage` does none of that, and pays for no install at all. The engine starts in
+about a tenth of a second and the triage decision itself is well under a second
+on a real report, so after the fetch a triage job is a checkout, a Node setup
+and a second or so of work.
 
 ## What is in this repository
 
@@ -411,7 +485,19 @@ launcher/fetch-engine.mjs  mints the token, downloads, verifies, unpacks
 launcher/integrity.mjs     the digest check: the security boundary of the
                            product, kept short and separate so it can be read
 launcher/untar.mjs         a tar reader that can only produce pinned files
+launcher/*.d.mts           types for the three files above
+package.json               not installed from, and there is no lockfile because
+                           there are no dependencies. It carries the one version
+                           string that names both this action and its engine.
+SYNC.md                    how a release is cut and verified
+.github/workflows/smoke.yml  asks the real endpoint for the real artifact with a
+                           real OIDC token and checks the bytes against the
+                           lockfile -- the one claim a laptop cannot prove
+LICENSE                    Apache-2.0
 ```
+
+That is the whole repository. There is no `node_modules`, no lockfile, no build
+step, and nothing here is compiled before it runs.
 
 **There is no engine here, and that is the point.** It used to be committed as
 `bundle/reef.mjs`, which meant the engine -- 27,957 unminified lines with the

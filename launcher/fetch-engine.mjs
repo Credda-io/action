@@ -11,7 +11,7 @@
 // keeps the program working.
 //
 // So the engine moved behind an authenticated endpoint and this repository kept
-// only the launcher. That is what makes `uses: codereefai/codereef-action@v1`
+// only the launcher. That is what makes `uses: codereefai/action@v1`
 // work for an outsider again, and what makes a Marketplace listing possible,
 // since a listing reads `action.yml` at the repository ROOT and nowhere else.
 //

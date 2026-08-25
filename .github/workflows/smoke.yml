@@ -32,13 +32,21 @@ jobs:
         run: |
           set -euo pipefail
           AUD='https://metering.codereef.app/v1/engine'
+          # The version is READ FROM THE LOCKFILE rather than written here. A
+          # literal in this file is a second place the release version lives,
+          # and it silently rots the moment a release bumps the lockfile: the
+          # endpoint happily serves the old artifact and the digest step below
+          # then reports "R2 is not serving what the lockfile pins", which is a
+          # true sentence about the wrong thing.
+          VERSION=$(node -p 'JSON.parse(require("node:fs").readFileSync("engine.lock.json","utf8")).version')
+          echo "requesting engine $VERSION"
           TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUD" | node -e \
             'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).value))')
 
           CODE=$(curl -sS -o engine.tar.gz -w '%{http_code}' -X POST "$AUD" \
             -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-            -d '{"version":"v0.1.0"}')
+            -d "{\"version\":\"$VERSION\"}")
           echo "status $CODE"
           if [ "$CODE" != "200" ]; then cat engine.tar.gz; exit 1; fi
 

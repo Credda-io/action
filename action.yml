@@ -78,7 +78,11 @@
 # README.md, and in the error a job gets when it is missing -- because a red job
 # is where most people will read about it for the first time.
 #
-# HONEST STATUS: this action has run against CodeReef's own repositories and
+# HONEST STATUS. The install path is proven from outside: a public repository
+# outside this organisation resolved the action, minted an OIDC token, was
+# served the engine with no signup and no licence, matched the pinned digest,
+# ran `reef triage` and posted its comment. `investigate` -- the sandbox, the
+# reproduction, the report -- has run against CodeReef's own repositories and
 # nowhere else. V1 is reproduce-and-report: it writes no code, opens no pull
 # request, and its report leads with what it could NOT establish.
 
