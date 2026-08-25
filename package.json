@@ -1,6 +1,6 @@
 {
   "name": "codereef-action",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "The CodeReef GitHub Action. A launcher: it fetches a verified engine at run time and installs nothing.",
