@@ -1,10 +1,18 @@
 # CodeReef
 
-**Label an issue. Get back a reproduction report.**
+**Label an issue. Get back the fix.**
 
-What was executed, what failure was captured, what that establishes -- and,
-first and most prominently, what it does not. CodeReef writes no code, opens no
-pull request, and asks for no permission that would let it do either.
+CodeReef reproduces the failure, finds what caused it, and opens a pull request
+carrying the patch and the test that proves it. You review a diff; CodeReef
+never merges.
+
+**What this launcher runs today.** The shipped composite Action performs the
+reporting half: what was executed, what failure was captured, what that
+establishes, and -- first and most prominently -- what it does not. The fix
+stage is off the main path pending a model-backed run (ADR 0018 in the engine
+repository), so this Action asks only for the permissions reporting needs. When
+the fix stage lands the workflow will ask for `contents: write` and
+`pull-requests: write`, and this file will say so before it does.
 
 **Honest status.** The install path is proven: a public repository outside our
 organisation resolved this action, minted its OIDC token, was served the engine
