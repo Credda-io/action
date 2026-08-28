@@ -13,13 +13,33 @@ is at [credda.io](https://credda.io); the developer surface, including the
 [`openapi.json`](https://api.credda.io/openapi.json) for the three metering
 routes this Action calls, is at [api.credda.io](https://api.credda.io).
 
-**What this launcher runs today.** The shipped composite Action performs the
-reporting half: what was executed, what failure was captured, what that
-establishes, and -- first and most prominently -- what it does not. The fix
-stage is off the main path pending a model-backed run (ADR 0018 in the engine
-repository), so this Action asks only for the permissions reporting needs. When
-the fix stage lands the workflow will ask for `contents: write` and
-`pull-requests: write`, and this file will say so before it does.
+**What this launcher runs today, and the promise this paragraph used to make.**
+It said: "when the fix stage lands the workflow will ask for `contents: write`
+and `pull-requests: write`, and this file will say so before it does." The fix
+stage has landed. ADR 0019 in the engine repository put the fixer and the
+verifier back on the investigation path on 2026-08-27, and on 2026-08-28 the
+engine's forge delivery path was wired to open a pull request for a run that
+reaches `READY_FOR_REVIEW` with a `VERIFIED` verdict. So, saying it before it
+does:
+
+**Opening a pull request needs `contents: write` and `pull-requests: write`.**
+Those are the two scopes, they are what the engine's own GitHub App now asks an
+operator for (`docs/setup.md` in the engine repository), and they are the ones
+this file promised to name.
+
+**This Action does not ask for them yet, and the permission block below is
+unchanged.** The launcher runs the engine's CLI on your runner and posts one
+comment; it pushes no branch and opens no pull request, so asking your workflow
+for two write scopes it would not use would be the same overclaim in the other
+direction. The pull request today comes from the engine's GitHub App delivery
+path, not from CI. When `launcher/run.mjs` proposes a change, the permission
+block in this file gains those two lines and this paragraph says so on the same
+commit.
+
+**What the write scopes never buy, here or anywhere.** Credda does not merge.
+There is no merge call in the engine and no merge method on its forge contract,
+and a test fails if one appears. `pull-requests: write` opens a proposal; a
+human decides.
 
 **Honest status.** The install path is proven: a public repository outside our
 organisation resolved this action, minted its OIDC token, was served the engine
@@ -67,6 +87,10 @@ permissions:
   contents: read   # checkout of the repository under test
   issues: write    # the one report comment
   id-token: write  # mint an OIDC token to fetch the engine -- see below
+  # Not `contents: write`, and not `pull-requests: write`. Those two are what
+  # opening a pull request needs, and this launcher opens none: it reports.
+  # See "What this launcher runs today" above for where the pull request does
+  # come from and what it asks for.
 
 jobs:
   investigate:
@@ -375,9 +399,12 @@ If you have pinned either input explicitly, nothing here affects you.
   ask for that and the check is skipped for it.
 - **Least privilege, with one addition that is called out rather than folded
   in.** `contents: read`, `issues: write`, and `id-token: write`, nothing else.
-  The third is new and is the price of the engine no longer being published in
-  this repository; it lets the job mint a token saying which repository it is
-  and grants no access to anything of yours. See *Why `id-token: write`* above,
+  Still not `contents: write` and still not `pull-requests: write`, which are
+  what opening a pull request needs and what the engine's GitHub App asks for;
+  this launcher pushes nothing, so it asks for neither. The third line is the
+  price of the engine no longer being published in this repository; it lets the
+  job mint a token saying which repository it is and grants no access to
+  anything of yours. See *Why `id-token: write`* above,
   including how to drop it entirely by mirroring the artifact. If a fork of this
   workflow asks for more than these three, that is the fork's decision and not
   this action's requirement.

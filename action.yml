@@ -73,18 +73,40 @@
 #     contents: read      # actions/checkout of the repository under test
 #     issues: write       # the report comment
 #     id-token: write     # mint an OIDC token to fetch the engine -- see above
-# and nothing else. No `pull-requests`, no `contents: write`. The third line is
-# new, it is the price of the engine being private, and it is stated here, in
-# README.md, and in the error a job gets when it is missing -- because a red job
-# is where most people will read about it for the first time.
+# and nothing else. The third line is new, it is the price of the engine being
+# private, and it is stated here, in README.md, and in the error a job gets when
+# it is missing -- because a red job is where most people will read about it for
+# the first time.
+#
+# STILL NO `contents: write` AND NO `pull-requests: write`, AND THIS IS NOW A
+# CHOICE RATHER THAN AN ABSENCE. Those two scopes are exactly what opening a
+# pull request needs, and the fix stage has landed: ADR 0019 put the fixer and
+# verifier back on the investigation path on 2026-08-27, and on 2026-08-28 the
+# engine's forge delivery path was wired to open a pull request for a run that
+# reaches READY_FOR_REVIEW with a VERIFIED verdict. The engine's own GitHub App
+# now asks an operator for both (`docs/setup.md` in the engine repository).
+#
+# This launcher is not that path. It runs the CLI on your runner and posts one
+# comment; it creates no branch, pushes no commit and opens no pull request,
+# so asking a customer's workflow for two write scopes it would not use would be
+# an overclaim in the other direction -- the same defect as the old permission
+# table that sat beside a product which did open pull requests. The day
+# `launcher/run.mjs` proposes a change, these two lines are added here and in
+# README.md on the same commit, and README.md's opening section says so.
+#
+# What those scopes never buy: a merge. There is no merge call in the engine and
+# no merge method on its forge contract, and a test fails if one appears.
 #
 # HONEST STATUS. The install path is proven from outside: a public repository
 # outside this organisation resolved the action, minted an OIDC token, was
 # served the engine with no signup and no licence, matched the pinned digest,
 # ran `credda triage` and posted its comment. `investigate` -- the sandbox, the
 # reproduction, the report -- has run against Credda's own repositories and
-# nowhere else. V1 is reproduce-and-report: it writes no code, opens no pull
-# request, and its report leads with what it could NOT establish.
+# nowhere else. What this launcher does is reproduce-and-report: it opens no
+# pull request, and its report leads with what it could NOT establish. The
+# engine can now write and verify a patch and its GitHub App delivery path can
+# propose one; how often it does is not a number anyone has measured yet, and
+# nothing in this file claims it.
 
 name: Credda
 description: >-
