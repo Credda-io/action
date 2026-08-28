@@ -90,7 +90,7 @@ import { extract } from './untar.mjs';
  * ## WHY THIS MOVED, AND WHAT WAS CHECKED BEFORE IT DID
  *
  * This value changed from `https://metering.codereef.app/v1/engine` to the
- * `api.credda.io` string below. That is the single most breakable edit in this
+ * `engine.credda.io` string below. That is the single most breakable edit in this
  * repository: if the verifier does not accept what this asks GitHub to mint,
  * every job in the fleet fails at the fetch step with `wrong-audience` -- for
  * customers who did nothing but run the workflow they already had, on a tag
@@ -100,7 +100,7 @@ import { extract } from './untar.mjs';
  * As of 2026-08-27, `core/packages/metering/src/oidc.ts` declares
  *
  *     export const ACCEPTED_ENGINE_AUDIENCES = [
- *       'https://api.credda.io/v1/engine',        // ENGINE_AUDIENCE_CREDDA
+ *       'https://engine.credda.io/v1/engine',        // ENGINE_AUDIENCE_CREDDA
  *       'https://metering.codereef.app/v1/engine' // ENGINE_AUDIENCE_LEGACY
  *     ];
  *
@@ -134,7 +134,7 @@ import { extract } from './untar.mjs';
  * constant is ever changed again, that one changes with it or the drift test
  * reddens, which is precisely what it is for.
  */
-export const ENGINE_AUDIENCE = 'https://api.credda.io/v1/engine';
+export const ENGINE_AUDIENCE = 'https://engine.credda.io/v1/engine';
 
 /**
  * Where the engine is fetched from unless `engine-url` says otherwise.
@@ -144,8 +144,8 @@ export const ENGINE_AUDIENCE = 'https://api.credda.io/v1/engine';
  *
  * The audience is a string compared against a set the verifier already accepts,
  * so moving it is safe the moment that set is deployed. This is a URL that must
- * ANSWER. Its intended home is `https://api.credda.io/v1/engine`, and while
- * `api.credda.io` does resolve today, it is AWS-hosted and serves the retired
+ * ANSWER. Its intended home is `https://engine.credda.io/v1/engine`, and while
+ * `engine.credda.io` does resolve today, it is AWS-hosted and serves the retired
  * scoring product, whereas the metering service is a Cloudflare Worker. No
  * route sends `/v1/engine` on that hostname to that Worker yet. Pointing this
  * default there would not be a rename -- it would be every install on the next
