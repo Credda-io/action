@@ -2,9 +2,16 @@
 
 **Label an issue. Get back the fix.**
 
-Credda reproduces the failure, finds what caused it, and opens a pull request
-carrying the patch and the test that proves it. You review a diff; Credda
-never merges.
+Credda finds the bugs and security vulnerabilities in a company's production and
+QA environments, reproduces the failure, diagnoses the cause, writes the patch,
+proves it with a test that fails before and passes after, and opens a pull
+request. It proposes and never merges.
+
+This repository is the GitHub Action that runs it in your own CI. The product
+is at [credda.io](https://credda.io); the developer surface, including the
+[API reference](https://api.credda.io/reference) and
+[`openapi.json`](https://api.credda.io/openapi.json) for the three metering
+routes this Action calls, is at [api.credda.io](https://api.credda.io).
 
 **What this launcher runs today.** The shipped composite Action performs the
 reporting half: what was executed, what failure was captured, what that
@@ -327,10 +334,14 @@ happened and the other has not, and they are different kinds of thing:
   moving it cannot strand a pinned workflow. (`ACCEPTED_ENGINE_AUDIENCES` in the
   engine repository is the set that does this.)
 - **`metering-url` and `engine-url` have not moved**, because they are addresses
-  that must answer. `api.credda.io` resolves today, but it is AWS-hosted and
-  currently serves Credda's retired scoring product, while the metering service
-  is a Cloudflare Worker. Nothing routes `/v1/engine` or `/v1/runs` on that
-  hostname to that Worker.
+  that must answer. `api.credda.io` resolves today and, as of 2026-08-28, serves
+  Credda's developer surface — a landing page, [the API
+  reference](https://api.credda.io/reference), and
+  [`openapi.json`](https://api.credda.io/openapi.json), which *describes*
+  `/v1/engine` and `/v1/runs`. It does not yet *serve* them: that host is
+  AWS-hosted and the metering service is a Cloudflare Worker, and both paths
+  return `404 NOT_FOUND` there on `GET` and on `POST` (checked 2026-08-28).
+  Documented is not routed.
 
 So the remaining work is a routing change somebody has to configure -- getting
 those two paths on `api.credda.io` in front of the Cloudflare Worker, and
