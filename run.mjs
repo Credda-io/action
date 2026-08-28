@@ -21,7 +21,7 @@
 // AND ONE THING CHANGED AGAIN AFTER THAT. The bundle is no longer committed in
 // the action repository. Committing it meant publishing the engine -- 27,957
 // unminified lines with the agent prompts as plain string literals -- which is
-// the thing `codereefai/core` going private was for. So the action repository
+// the thing `Credda-io/core` going private was for. So the action repository
 // now holds a launcher and no engine: `launcher/fetch-engine.mjs` runs first,
 // proves which repository is asking with a GitHub OIDC token, downloads the
 // engine, VERIFIES IT AGAINST A DIGEST COMMITTED IN THIS REPOSITORY, and

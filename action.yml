@@ -5,7 +5,7 @@
 # GitHub lists in the Marketplace only a metadata file at the ROOT of a
 # repository, and says in as many words that files in sub-folders "will not be
 # automatically listed". The previous home of this action was
-# `codereefai/core/action/action.yml` -- a sub-folder, so unlistable -- and
+# `Credda-io/core/action/action.yml` -- a sub-folder, so unlistable -- and
 # `core` also had to stay PUBLIC, because a `uses:` reference checks out the
 # whole owning repository and the install step below used to run
 # `pnpm install --frozen-lockfile` in it. An action in a private repository is
@@ -205,6 +205,12 @@ inputs:
       a public/private flag, and on private repositories only the `license`
       value. Never sends names, URLs, issue text, code, paths, output, branches
       or commit SHAs. A metering failure cannot fail your job.
+    # Still `codereef.app` after the rename, deliberately. The endpoints move
+    # to `api.credda.io`, but that hostname is AWS-hosted and serves the
+    # retired scoring product, while metering is a Cloudflare Worker; nothing
+    # routes `/v1/runs` there yet. A default that does not answer is worse than
+    # one with the old name on it. See README, "Why the defaults above still
+    # say codereef.app".
     default: https://metering.codereef.app/v1/runs
   engine-url:
     # Where the engine is fetched from. Present so that a self-hosted or
@@ -219,6 +225,12 @@ inputs:
       Where to fetch the verified engine artifact. Defaults to Credda's engine
       endpoint. The download is checked against the SHA-256 digest pinned in
       this action's engine.lock.json whatever this is set to.
+    # Not moved to `api.credda.io` for the same reason as `metering-url`, and
+    # with more at stake: this is the ONE endpoint whose failure fails a
+    # customer's job. Note that the OIDC AUDIENCE the launcher requests HAS
+    # moved to `https://api.credda.io/v1/engine` -- an audience is a string the
+    # Worker compares against a set that spans both names, not an address
+    # anything connects to. The two are no longer the same value.
     default: https://metering.codereef.app/v1/engine
   engine-archive:
     # THE ANSWER TO "WE CANNOT DEPEND ON YOUR UPTIME". Point this at a local or

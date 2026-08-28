@@ -68,7 +68,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: codereefai/action@v1
+      - uses: Credda-io/action@v1
         # Optional. Without it the deterministic heuristic provider runs:
         # it reproduces and reports, and cannot reason over prose.
         # with:
@@ -90,7 +90,7 @@ On a **private** repository, add one more line, and without it the job fails at
 the fetch step with a `402`:
 
 ```yaml
-      - uses: codereefai/action@v1
+      - uses: Credda-io/action@v1
         with:
           license: ${{ secrets.CREDDA_LICENSE }}
 ```
@@ -98,6 +98,35 @@ the fetch step with a `402`:
 `runs-on: ubuntu-latest` is not decoration: `investigate` refuses to start on a
 runner where its Docker sandbox is unavailable rather than running your code on
 the host.
+
+### If your workflow says `codereefai/action@v1`
+
+It keeps working, and you do not have to change it today.
+
+CodeReef was renamed to Credda, and this repository was **transferred** from
+`codereefai` to `Credda-io`. The transfer is the thing that matters here: GitHub
+leaves a redirect behind a transferred repository, so `uses: codereefai/action@v1`
+still resolves to this action, at the same tags, with the same digests. You can
+check that for yourself without trusting this paragraph:
+
+```
+gh api repos/codereefai/action --jq .full_name
+# Credda-io/action
+```
+
+**A transfer is what buys that, and nothing else does.** Had the new name been
+stood up as a *fresh* repository next to the old one, there would be no
+redirect: `codereefai/action@v1` would have kept resolving to whatever the old
+repository still contained, or stopped resolving at all, and every workflow
+carrying the old reference would have broken on a day its owner did not choose.
+For the same reason, publishing `Credda-io/action@v1` as the install reference
+*before* the transfer would have been a dead reference in a README.
+
+The order was: transfer first, then change the docs. `Credda-io/action@v1` is
+what the examples above show and what to use in new workflows. Update the old
+reference at your leisure -- when you next touch the file is soon enough. The
+redirect is a courtesy GitHub maintains, not a contract we control, so it is
+worth doing eventually rather than never.
 
 ### Why `id-token: write`
 
@@ -172,7 +201,7 @@ Mirror the artifact once, and no request is made to Credda at all -- not for
 the engine, not for a token -- and `id-token: write` is not needed:
 
 ```yaml
-- uses: codereefai/action@v1
+- uses: Credda-io/action@v1
   with:
     engine-archive: /opt/credda/engine-v0.1.1.tar.gz
 ```
@@ -238,7 +267,7 @@ jobs:
       # Optional. Without it triage still runs; with it, a refusal can say
       # "this repository holds no `repro.js`" instead of staying quiet.
       - uses: actions/checkout@v4
-      - uses: codereefai/action@v1
+      - uses: Credda-io/action@v1
         with:
           mode: triage
 ```
@@ -282,6 +311,35 @@ trigger.
 
 Every input has a default and none is required on a public repository, so
 `uses:` with no `with:` block at all is a working configuration.
+
+### Why the defaults above still say `codereef.app`
+
+The name is Credda; two of these URLs are not, yet. That is a deployment fact
+rather than an oversight, and it is stated here because you can read the
+defaults and would otherwise have to guess.
+
+The endpoints are moving to **`api.credda.io`**. One half of that move has
+happened and the other has not, and they are different kinds of thing:
+
+- **The OIDC audience has moved** to `https://api.credda.io/v1/engine`. An
+  audience is a string the service compares, not an address anything connects
+  to, and the metering Worker already accepts both the new and the old name, so
+  moving it cannot strand a pinned workflow. (`ACCEPTED_ENGINE_AUDIENCES` in the
+  engine repository is the set that does this.)
+- **`metering-url` and `engine-url` have not moved**, because they are addresses
+  that must answer. `api.credda.io` resolves today, but it is AWS-hosted and
+  currently serves Credda's retired scoring product, while the metering service
+  is a Cloudflare Worker. Nothing routes `/v1/engine` or `/v1/runs` on that
+  hostname to that Worker.
+
+So the remaining work is a routing change somebody has to configure -- getting
+those two paths on `api.credda.io` in front of the Cloudflare Worker, and
+keeping `metering.codereef.app` answering until no supported pin still uses it.
+**Until that is configured and observed answering, these defaults stay where
+they are.** `engine-url` is the one input that can genuinely fail your build, so
+it is the last thing that should move on optimism.
+
+If you have pinned either input explicitly, nothing here affects you.
 
 ## Outputs
 

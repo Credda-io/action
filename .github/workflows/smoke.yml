@@ -31,7 +31,17 @@ jobs:
       - name: Request the engine with a real OIDC token
         run: |
           set -euo pipefail
-          AUD='https://metering.codereef.app/v1/engine'
+          # These were ONE variable until the rename, because the audience and
+          # the endpoint were the same string. They are no longer, and merging
+          # them back would silently re-couple two things that now move on
+          # different schedules -- see the two constants in
+          # launcher/fetch-engine.mjs, which this file has to keep matching.
+          #
+          # The audience has moved to api.credda.io because the Worker's
+          # ACCEPTED_ENGINE_AUDIENCES already spans both names. The URL has NOT,
+          # because nothing routes /v1/engine on that hostname to the Worker yet.
+          AUD='https://api.credda.io/v1/engine'
+          ENDPOINT='https://metering.codereef.app/v1/engine'
           # The version is READ FROM THE LOCKFILE rather than written here. A
           # literal in this file is a second place the release version lives,
           # and it silently rots the moment a release bumps the lockfile: the

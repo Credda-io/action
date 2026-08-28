@@ -6,12 +6,12 @@
 // A public action repository must contain whatever it runs, and this one used
 // to: `bundle/reef.mjs` was the compiled engine, 27,957 lines, with every agent
 // prompt in it as a plain string literal. Shipping that is shipping the engine
-// in public, which is the decision `codereefai/core` going private reversed.
+// in public, which is the decision `Credda-io/core` going private reversed.
 // Minifying does not help -- the prompt strings survive any transform that
 // keeps the program working.
 //
 // So the engine moved behind an authenticated endpoint and this repository kept
-// only the launcher. That is what makes `uses: codereefai/action@v1`
+// only the launcher. That is what makes `uses: Credda-io/action@v1`
 // work for an outsider again, and what makes a Marketplace listing possible,
 // since a listing reads `action.yml` at the repository ROOT and nowhere else.
 //
@@ -86,10 +86,75 @@ import { extract } from './untar.mjs';
  * The audience is what stops a token this job already minted for AWS or Vault
  * from opening Credda's endpoint, and stops one minted here from opening
  * theirs.
+ *
+ * ## WHY THIS MOVED, AND WHAT WAS CHECKED BEFORE IT DID
+ *
+ * This value changed from `https://metering.codereef.app/v1/engine` to the
+ * `api.credda.io` string below. That is the single most breakable edit in this
+ * repository: if the verifier does not accept what this asks GitHub to mint,
+ * every job in the fleet fails at the fetch step with `wrong-audience` -- for
+ * customers who did nothing but run the workflow they already had, on a tag
+ * they pinned and cannot un-pin retroactively.
+ *
+ * So it was gated on reading the verifier rather than on anybody's assurance.
+ * As of 2026-08-27, `core/packages/metering/src/oidc.ts` declares
+ *
+ *     export const ACCEPTED_ENGINE_AUDIENCES = [
+ *       'https://api.credda.io/v1/engine',        // ENGINE_AUDIENCE_CREDDA
+ *       'https://metering.codereef.app/v1/engine' // ENGINE_AUDIENCE_LEGACY
+ *     ];
+ *
+ * and `verifyActionsToken` defaults its comparison to that whole set, matching
+ * a token whose `aud` equals ANY member. Both the new and the old string are
+ * accepted, so the two sides are no longer required to move in one instant.
+ * That set is what makes this edit survivable; without it this constant would
+ * have had to stay on the old value.
+ *
+ * ## THE ORDER, WHICH IS NOT SYMMETRIC
+ *
+ * THE WORKER DEPLOYS FIRST. ALWAYS. The verifier is the side that has to
+ * already accept a value before the launcher may start sending it, and a
+ * merged diff is not a deployed Worker. The dual-accept above exists in
+ * SOURCE; until it is released to the Worker that actually answers
+ * `/v1/engine`, the deployed verifier may still be the one-string version, and
+ * a tag cut from this file would fail every install against it.
+ *
+ * The sequence, therefore: (1) the dual-accept Worker is deployed; (2) that is
+ * confirmed against the running service, not the repository; (3) a tag
+ * carrying this file is published; (4) the legacy audience is retired only
+ * once no supported pin still requests it -- `oidc.ts` states the three
+ * conditions for that, and pinned older tags are the one that takes longest.
+ *
+ * One companion constant tracks this one: `ENGINE_AUDIENCE` in `oidc.ts`,
+ * documented there as "whatever the launcher requests TODAY". The drift test
+ * at the bottom of `core/packages/metering/test/engine.test.ts` asserts it
+ * equals this constant, and it has been moved to `ENGINE_AUDIENCE_CREDDA` to
+ * match. It is bookkeeping, not the verifier's rule -- `ACCEPTED_ENGINE_AUDIENCES`
+ * is -- so it records the state of the world rather than enforcing it. If this
+ * constant is ever changed again, that one changes with it or the drift test
+ * reddens, which is precisely what it is for.
  */
-export const ENGINE_AUDIENCE = 'https://metering.codereef.app/v1/engine';
+export const ENGINE_AUDIENCE = 'https://api.credda.io/v1/engine';
 
-/** Where the engine is fetched from unless `engine-url` says otherwise. */
+/**
+ * Where the engine is fetched from unless `engine-url` says otherwise.
+ *
+ * Still on `codereef.app`, and DELIBERATELY not moved with the audience above.
+ * The two look like the same rename and are not.
+ *
+ * The audience is a string compared against a set the verifier already accepts,
+ * so moving it is safe the moment that set is deployed. This is a URL that must
+ * ANSWER. Its intended home is `https://api.credda.io/v1/engine`, and while
+ * `api.credda.io` does resolve today, it is AWS-hosted and serves the retired
+ * scoring product, whereas the metering service is a Cloudflare Worker. No
+ * route sends `/v1/engine` on that hostname to that Worker yet. Pointing this
+ * default there would not be a rename -- it would be every install on the next
+ * tag getting a 404, or the wrong service's answer, at the one step that can
+ * genuinely stop a customer's build.
+ *
+ * This moves when that routing exists and has been observed answering, and not
+ * before. Nothing about the audience change above depends on it.
+ */
 export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
 
 /** Largest archive accepted, in bytes. The real one is about a megabyte. */
