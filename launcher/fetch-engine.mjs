@@ -6,12 +6,12 @@
 // A public action repository must contain whatever it runs, and this one used
 // to: `bundle/reef.mjs` was the compiled engine, 27,957 lines, with every agent
 // prompt in it as a plain string literal. Shipping that is shipping the engine
-// in public, which is the decision `codereefai/core` going private reversed.
+// in public, which is the decision `Credda-io/core` going private reversed.
 // Minifying does not help -- the prompt strings survive any transform that
 // keeps the program working.
 //
 // So the engine moved behind an authenticated endpoint and this repository kept
-// only the launcher. That is what makes `uses: codereefai/action@v1`
+// only the launcher. That is what makes `uses: Credda-io/action@v1`
 // work for an outsider again, and what makes a Marketplace listing possible,
 // since a listing reads `action.yml` at the repository ROOT and nowhere else.
 //
@@ -19,7 +19,7 @@
 //
 // GitHub Actions OIDC. A job with `id-token: write` asks GitHub for a
 // short-lived JWT whose claims GitHub signs: which repository is running, who
-// owns it, whether it is public or private. CodeReef's Worker checks that
+// owns it, whether it is public or private. Credda's Worker checks that
 // signature against GitHub's published keys and reads the claims.
 //
 // The alternatives were considered and are worse. A shared download token
@@ -41,12 +41,12 @@
 //
 // `id-token: write` grants the job the ability to MINT a token that identifies
 // it. It grants no access to anything of the customer's; it is not a write
-// permission on any repository content, and a token minted for CodeReef's
+// permission on any repository content, and a token minted for Credda's
 // audience is useless anywhere else.
 //
-// ## WHAT BREAKS WHEN CODEREEF IS DOWN
+// ## WHAT BREAKS WHEN CREDDA IS DOWN
 //
-// The job does not start. Before this change nothing CodeReef operated could
+// The job does not start. Before this change nothing Credda operated could
 // stop a customer's run; now our Worker, our bucket and GitHub's OIDC provider
 // are all in front of every job. That was accepted deliberately as the price of
 // making the engine private, and the only thing that makes it survivable in
@@ -79,17 +79,82 @@ import { extract } from './untar.mjs';
  * requires.
  *
  * A copy rather than an import, and that is not laziness: this file runs before
- * any CodeReef code exists on the machine, so there is nothing to import it
- * from. A test in `@codereef/metering` asserts the two are identical, which is
+ * any Credda code exists on the machine, so there is nothing to import it
+ * from. A test in `@credda/metering` asserts the two are identical, which is
  * how a copy stays honest.
  *
  * The audience is what stops a token this job already minted for AWS or Vault
- * from opening CodeReef's endpoint, and stops one minted here from opening
+ * from opening Credda's endpoint, and stops one minted here from opening
  * theirs.
+ *
+ * ## WHY THIS MOVED, AND WHAT WAS CHECKED BEFORE IT DID
+ *
+ * This value changed from `https://metering.codereef.app/v1/engine` to the
+ * `api.credda.io` string below. That is the single most breakable edit in this
+ * repository: if the verifier does not accept what this asks GitHub to mint,
+ * every job in the fleet fails at the fetch step with `wrong-audience` -- for
+ * customers who did nothing but run the workflow they already had, on a tag
+ * they pinned and cannot un-pin retroactively.
+ *
+ * So it was gated on reading the verifier rather than on anybody's assurance.
+ * As of 2026-08-27, `core/packages/metering/src/oidc.ts` declares
+ *
+ *     export const ACCEPTED_ENGINE_AUDIENCES = [
+ *       'https://api.credda.io/v1/engine',        // ENGINE_AUDIENCE_CREDDA
+ *       'https://metering.codereef.app/v1/engine' // ENGINE_AUDIENCE_LEGACY
+ *     ];
+ *
+ * and `verifyActionsToken` defaults its comparison to that whole set, matching
+ * a token whose `aud` equals ANY member. Both the new and the old string are
+ * accepted, so the two sides are no longer required to move in one instant.
+ * That set is what makes this edit survivable; without it this constant would
+ * have had to stay on the old value.
+ *
+ * ## THE ORDER, WHICH IS NOT SYMMETRIC
+ *
+ * THE WORKER DEPLOYS FIRST. ALWAYS. The verifier is the side that has to
+ * already accept a value before the launcher may start sending it, and a
+ * merged diff is not a deployed Worker. The dual-accept above exists in
+ * SOURCE; until it is released to the Worker that actually answers
+ * `/v1/engine`, the deployed verifier may still be the one-string version, and
+ * a tag cut from this file would fail every install against it.
+ *
+ * The sequence, therefore: (1) the dual-accept Worker is deployed; (2) that is
+ * confirmed against the running service, not the repository; (3) a tag
+ * carrying this file is published; (4) the legacy audience is retired only
+ * once no supported pin still requests it -- `oidc.ts` states the three
+ * conditions for that, and pinned older tags are the one that takes longest.
+ *
+ * One companion constant tracks this one: `ENGINE_AUDIENCE` in `oidc.ts`,
+ * documented there as "whatever the launcher requests TODAY". The drift test
+ * at the bottom of `core/packages/metering/test/engine.test.ts` asserts it
+ * equals this constant, and it has been moved to `ENGINE_AUDIENCE_CREDDA` to
+ * match. It is bookkeeping, not the verifier's rule -- `ACCEPTED_ENGINE_AUDIENCES`
+ * is -- so it records the state of the world rather than enforcing it. If this
+ * constant is ever changed again, that one changes with it or the drift test
+ * reddens, which is precisely what it is for.
  */
-export const ENGINE_AUDIENCE = 'https://metering.codereef.app/v1/engine';
+export const ENGINE_AUDIENCE = 'https://api.credda.io/v1/engine';
 
-/** Where the engine is fetched from unless `engine-url` says otherwise. */
+/**
+ * Where the engine is fetched from unless `engine-url` says otherwise.
+ *
+ * Still on `codereef.app`, and DELIBERATELY not moved with the audience above.
+ * The two look like the same rename and are not.
+ *
+ * The audience is a string compared against a set the verifier already accepts,
+ * so moving it is safe the moment that set is deployed. This is a URL that must
+ * ANSWER. Its intended home is `https://api.credda.io/v1/engine`, and while
+ * `api.credda.io` does resolve today, it is AWS-hosted and serves the retired
+ * scoring product, whereas the metering service is a Cloudflare Worker. No
+ * route sends `/v1/engine` on that hostname to that Worker yet. Pointing this
+ * default there would not be a rename -- it would be every install on the next
+ * tag getting a 404, or the wrong service's answer, at the one step that can
+ * genuinely stop a customer's build.
+ *
+ * This moves when that routing exists and has been observed answering, and not
+ * before. Nothing about the audience change above depends on it.
+ */
 export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
 
 /** Largest archive accepted, in bytes. The real one is about a megabyte. */
@@ -111,8 +176,8 @@ const actionRoot = resolve(here, '..');
  * difference is not stylistic. `process.exit()` tears the process down while
  * the HTTP client still holds open handles, which on Windows trips an assertion
  * inside libuv -- so the job would fail (correctly, fail-closed) but report the
- * crash code 0xC0000409 instead of 1, and "CodeReef crashed" is a different and
- * much worse thing to read in a log than "CodeReef refused". Setting the code
+ * crash code 0xC0000409 instead of 1, and "Credda crashed" is a different and
+ * much worse thing to read in a log than "Credda refused". Setting the code
  * and unwinding lets the runtime close its own handles and exit 1.
  *
  * Everything a caller needs is on the FIRST line, because `::error::` takes one
@@ -131,7 +196,7 @@ function fail(message) {
 /* ------------------------------ the OIDC token ----------------------------- */
 
 /**
- * Mints a GitHub Actions OIDC token for CodeReef's audience.
+ * Mints a GitHub Actions OIDC token for Credda's audience.
  *
  * The two environment variables are injected by the runner ONLY when the job
  * declares `id-token: write`, so their absence has exactly one cause and the
@@ -146,14 +211,14 @@ export async function mintIdToken(env = process.env, fetchImpl = fetch) {
   const runnerToken = env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
   if (!url || !runnerToken) {
     throw new Error(
-      'CodeReef could not mint a GitHub OIDC token, because this job was not granted permission to.\n' +
+      'Credda could not mint a GitHub OIDC token, because this job was not granted permission to.\n' +
         'Add `id-token: write` to the workflow job:\n\n' +
         '    permissions:\n' +
         '      contents: read\n' +
         '      issues: write\n' +
         '      id-token: write\n\n' +
-        'CodeReef needs it to prove to its own service which repository is asking for the engine. ' +
-        'It grants the job no access to anything of yours. See the CodeReef README, "Why id-token: write".',
+        'Credda needs it to prove to its own service which repository is asking for the engine. ' +
+        'It grants the job no access to anything of yours. See the Credda README, "Why id-token: write".',
     );
   }
 
@@ -166,7 +231,7 @@ export async function mintIdToken(env = process.env, fetchImpl = fetch) {
   });
   if (!response.ok) {
     throw new Error(
-      `GitHub's OIDC provider answered ${response.status} when CodeReef asked it for a token. ` +
+      `GitHub's OIDC provider answered ${response.status} when Credda asked it for a token. ` +
         'This is between the runner and GitHub; it is not a problem with your repository. Re-running the job usually clears it.',
     );
   }
@@ -217,7 +282,7 @@ export async function download({ endpoint, version, licenseKey, token, fetchImpl
       });
     } catch (error) {
       lastTransient =
-        `CodeReef could not reach its engine service at ${endpoint} (${error.message}). ` +
+        `Credda could not reach its engine service at ${endpoint} (${error.message}). ` +
         'This is an outage on our side or a network problem on the runner, not a problem with your repository.';
       if (attempt < ATTEMPTS) {
         await wait(attempt * 2000);
@@ -228,10 +293,10 @@ export async function download({ endpoint, version, licenseKey, token, fetchImpl
 
     if (response.ok) {
       const bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.length === 0) throw new Error('CodeReef received an empty engine archive.');
+      if (bytes.length === 0) throw new Error('Credda received an empty engine archive.');
       if (bytes.length > MAX_ARCHIVE_BYTES) {
         throw new Error(
-          `CodeReef received an engine archive of ${bytes.length} bytes, past the ${MAX_ARCHIVE_BYTES} byte ceiling this launcher accepts.`,
+          `Credda received an engine archive of ${bytes.length} bytes, past the ${MAX_ARCHIVE_BYTES} byte ceiling this launcher accepts.`,
         );
       }
       return bytes;
@@ -258,13 +323,13 @@ export async function download({ endpoint, version, licenseKey, token, fetchImpl
 
     throw new Error(
       served !== ''
-        ? `CodeReef could not start: ${served}`
-        : `CodeReef's engine service answered ${response.status} and said nothing readable. ` +
+        ? `Credda could not start: ${served}`
+        : `Credda's engine service answered ${response.status} and said nothing readable. ` +
           'This is an outage on our side, not a problem with your repository.',
     );
   }
 
-  throw new Error(lastTransient ?? 'CodeReef could not download its engine.');
+  throw new Error(lastTransient ?? 'Credda could not download its engine.');
 }
 
 /* ------------------------------ the integrity ----------------------------- */
@@ -293,12 +358,12 @@ export async function download({ endpoint, version, licenseKey, token, fetchImpl
  * never verified together.
  */
 export function materialise(archive, lock, targetDir) {
-  verifyDigest('the CodeReef engine archive', archive, lock.archiveDigest);
+  verifyDigest('the Credda engine archive', archive, lock.archiveDigest);
 
   const members = extract(archive, new Set(Object.keys(lock.files)));
 
   for (const [name, bytes] of members) {
-    verifyDigest(`the CodeReef engine file '${name}'`, bytes, lock.files[name]);
+    verifyDigest(`the Credda engine file '${name}'`, bytes, lock.files[name]);
   }
 
   const root = resolve(targetDir);
@@ -342,10 +407,10 @@ async function main() {
    *   <engineRoot>/package.json     copied from this repository
    *   <engineRoot>/bundle/reef.mjs  the engine, plus its Dockerfile and sql/
    *
-   * `reef.mjs` answers `reef --version` by reading
+   * `reef.mjs` answers `credda --version` by reading
    * `new URL('../package.json', import.meta.url)`, and it locates the sandbox
    * Dockerfile and the migrations by probing its own directory. Unpacking the
-   * members straight into a flat directory would have made `reef --version`
+   * members straight into a flat directory would have made `credda --version`
    * print "unknown" -- which is also the value that goes onto every metering
    * receipt as `actionVersion`, so the whole fleet's receipts would have become
    * indistinguishable from each other, silently, with nothing failing.
@@ -356,13 +421,13 @@ async function main() {
    * artifact would mean the version string a receipt reports came from the
    * server instead of from the customer's own checkout of the action.
    */
-  const engineRoot = join(process.env['RUNNER_TEMP'] ?? actionRoot, 'codereef-engine', lock.version);
+  const engineRoot = join(process.env['RUNNER_TEMP'] ?? actionRoot, 'credda-engine', lock.version);
   const engineDir = join(engineRoot, 'bundle');
 
   /*
    * The mirror. A customer who cannot accept a hard runtime dependency on our
    * infrastructure points `engine-archive` at a copy of the same `.tar.gz` on
-   * storage they control, and no request is made to CodeReef at all.
+   * storage they control, and no request is made to Credda at all.
    *
    * This weakens NOTHING, which is the only reason it exists: a mirrored
    * archive goes through the identical digest check against the identical
@@ -370,23 +435,23 @@ async function main() {
    * an availability escape hatch, not an integrity one, and there is no
    * integrity one.
    */
-  const mirror = (process.env['CODEREEF_ENGINE_ARCHIVE'] ?? '').trim();
+  const mirror = (process.env['CREDDA_ENGINE_ARCHIVE'] ?? '').trim();
   let archive;
   if (mirror !== '') {
-    console.log(`Reading the CodeReef engine ${lock.version} from ${mirror} (no request to CodeReef).`);
+    console.log(`Reading the Credda engine ${lock.version} from ${mirror} (no request to Credda).`);
     try {
       archive = readFileSync(mirror);
     } catch (error) {
       fail(
-        `CodeReef could not read the mirrored engine archive at ${mirror}: ${error.message}\n` +
+        `Credda could not read the mirrored engine archive at ${mirror}: ${error.message}\n` +
           'engine-archive is set, so no download was attempted.',
       );
     }
   } else {
-    const endpoint = (process.env['CODEREEF_ENGINE_URL'] ?? DEFAULT_ENGINE_URL).trim();
+    const endpoint = (process.env['CREDDA_ENGINE_URL'] ?? DEFAULT_ENGINE_URL).trim();
     if (endpoint === '') {
       fail(
-        'engine-url is empty and engine-archive is not set, so CodeReef has no way to obtain its engine.',
+        'engine-url is empty and engine-archive is not set, so Credda has no way to obtain its engine.',
       );
     }
 
@@ -397,12 +462,12 @@ async function main() {
       fail(error.message);
     }
 
-    console.log(`Fetching the CodeReef engine ${lock.version} from ${endpoint}.`);
+    console.log(`Fetching the Credda engine ${lock.version} from ${endpoint}.`);
     try {
       archive = await download({
         endpoint,
         version: lock.version,
-        licenseKey: (process.env['CODEREEF_LICENSE'] ?? '').trim(),
+        licenseKey: (process.env['CREDDA_LICENSE'] ?? '').trim(),
         token,
       });
     } catch (error) {
@@ -441,7 +506,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
     // which is that a launcher that did not finish leaves no engine directory
     // behind for the next step to find.
     if (!(error instanceof LauncherFailure)) {
-      console.log(`::error::CodeReef's launcher failed unexpectedly: ${error.message}`);
+      console.log(`::error::Credda's launcher failed unexpectedly: ${error.message}`);
       console.error(error);
       process.exitCode = 1;
     }

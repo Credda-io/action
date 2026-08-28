@@ -81,10 +81,10 @@ export function extract(gz, allowed) {
   try {
     tar = gunzipSync(gz);
   } catch (error) {
-    throw new Error(`The CodeReef engine archive is not valid gzip: ${error.message}`);
+    throw new Error(`The Credda engine archive is not valid gzip: ${error.message}`);
   }
   if (tar.length % BLOCK !== 0) {
-    throw new Error('The CodeReef engine archive is not a whole number of tar blocks.');
+    throw new Error('The Credda engine archive is not a whole number of tar blocks.');
   }
 
   const files = new Map();
@@ -97,14 +97,14 @@ export function extract(gz, allowed) {
     // the packer writes the pair, and anything after them is not ours.
     if (header.every((byte) => byte === 0)) break;
     if (!checksumOk(header)) {
-      throw new Error(`The CodeReef engine archive has a corrupt tar header at byte ${offset}.`);
+      throw new Error(`The Credda engine archive has a corrupt tar header at byte ${offset}.`);
     }
 
     const name = field(header, 0, 100);
     const type = String.fromCharCode(header[156] === 0 ? 0x30 : header[156]);
     const size = octal(header, 124, 12);
     if (size === null) {
-      throw new Error(`The CodeReef engine archive states an unreadable size for '${name}'.`);
+      throw new Error(`The Credda engine archive states an unreadable size for '${name}'.`);
     }
 
     offset += BLOCK;
@@ -118,7 +118,7 @@ export function extract(gz, allowed) {
     }
     if (type !== '0') {
       throw new Error(
-        `The CodeReef engine archive contains '${name}' as tar type '${type}'. ` +
+        `The Credda engine archive contains '${name}' as tar type '${type}'. ` +
           'Only regular files are accepted; symlinks, hardlinks, devices and extension headers are refused. ' +
           'Nothing was extracted.',
       );
@@ -130,18 +130,18 @@ export function extract(gz, allowed) {
     // lockfile does not get written, whatever it looks like.
     if (!allowed.has(name)) {
       throw new Error(
-        `The CodeReef engine archive contains '${name}', which this release does not pin in ` +
+        `The Credda engine archive contains '${name}', which this release does not pin in ` +
           'engine.lock.json. Nothing was extracted.',
       );
     }
     if (files.has(name)) {
       throw new Error(
-        `The CodeReef engine archive contains '${name}' twice. Nothing was extracted. ` +
+        `The Credda engine archive contains '${name}' twice. Nothing was extracted. ` +
           'A duplicate member is how an extractor is made to write one file and verify another.',
       );
     }
     if (offset + size > tar.length) {
-      throw new Error(`The CodeReef engine archive is truncated inside '${name}'.`);
+      throw new Error(`The Credda engine archive is truncated inside '${name}'.`);
     }
 
     files.set(name, Buffer.from(tar.subarray(offset, offset + size)));
@@ -151,7 +151,7 @@ export function extract(gz, allowed) {
   for (const name of allowed) {
     if (!files.has(name)) {
       throw new Error(
-        `The CodeReef engine archive is missing '${name}', which this release pins in ` +
+        `The Credda engine archive is missing '${name}', which this release pins in ` +
           'engine.lock.json. Nothing was extracted.',
       );
     }

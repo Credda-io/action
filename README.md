@@ -1,9 +1,9 @@
-# CodeReef
+# Credda
 
 **Label an issue. Get back the fix.**
 
-CodeReef reproduces the failure, finds what caused it, and opens a pull request
-carrying the patch and the test that proves it. You review a diff; CodeReef
+Credda reproduces the failure, finds what caused it, and opens a pull request
+carrying the patch and the test that proves it. You review a diff; Credda
 never merges.
 
 **What this launcher runs today.** The shipped composite Action performs the
@@ -33,7 +33,7 @@ Actions minutes are the other cost, and `investigate` spends more of them than
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
-| `triage` | an issue being opened | one download and one Node process, seconds | a short note saying what CodeReef could not use in the report -- **or nothing** |
+| `triage` | an issue being opened | one download and one Node process, seconds | a short note saying what Credda could not use in the report -- **or nothing** |
 
 `triage` runs no repository code, starts no container, installs nothing from
 your repository, makes no model call and needs no API key. It reads the issue
@@ -49,8 +49,8 @@ nothing, and the note it posts says so in its first sentence.
 ## Setup
 
 ```yaml
-# .github/workflows/codereef.yml
-name: CodeReef on labeled issues
+# .github/workflows/credda.yml
+name: Credda on labeled issues
 
 on:
   issues:
@@ -63,12 +63,12 @@ permissions:
 
 jobs:
   investigate:
-    if: github.event.label.name == 'codereef'
+    if: github.event.label.name == 'credda'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: codereefai/action@v1
+      - uses: Credda-io/action@v1
         # Optional. Without it the deterministic heuristic provider runs:
         # it reproduces and reports, and cannot reason over prose.
         # with:
@@ -79,7 +79,7 @@ Then create the label the workflow triggers on, once, from a clone of the
 repository (or from anywhere, with `--repo owner/name`):
 
 ```
-gh label create codereef --description 'CodeReef reproduces this bug in a sandbox and comments what it established.'
+gh label create credda --description 'Credda reproduces this bug in a sandbox and comments what it established.'
 ```
 
 That is the whole install on a public repository. No GitHub App, no webhook
@@ -90,30 +90,59 @@ On a **private** repository, add one more line, and without it the job fails at
 the fetch step with a `402`:
 
 ```yaml
-      - uses: codereefai/action@v1
+      - uses: Credda-io/action@v1
         with:
-          license: ${{ secrets.CODEREEF_LICENSE }}
+          license: ${{ secrets.CREDDA_LICENSE }}
 ```
 
 `runs-on: ubuntu-latest` is not decoration: `investigate` refuses to start on a
 runner where its Docker sandbox is unavailable rather than running your code on
 the host.
 
+### If your workflow says `codereefai/action@v1`
+
+It keeps working, and you do not have to change it today.
+
+CodeReef was renamed to Credda, and this repository was **transferred** from
+`codereefai` to `Credda-io`. The transfer is the thing that matters here: GitHub
+leaves a redirect behind a transferred repository, so `uses: codereefai/action@v1`
+still resolves to this action, at the same tags, with the same digests. You can
+check that for yourself without trusting this paragraph:
+
+```
+gh api repos/codereefai/action --jq .full_name
+# Credda-io/action
+```
+
+**A transfer is what buys that, and nothing else does.** Had the new name been
+stood up as a *fresh* repository next to the old one, there would be no
+redirect: `codereefai/action@v1` would have kept resolving to whatever the old
+repository still contained, or stopped resolving at all, and every workflow
+carrying the old reference would have broken on a day its owner did not choose.
+For the same reason, publishing `Credda-io/action@v1` as the install reference
+*before* the transfer would have been a dead reference in a README.
+
+The order was: transfer first, then change the docs. `Credda-io/action@v1` is
+what the examples above show and what to use in new workflows. Update the old
+reference at your leisure -- when you next touch the file is soon enough. The
+redirect is a courtesy GitHub maintains, not a contract we control, so it is
+worth doing eventually rather than never.
+
 ### Why `id-token: write`
 
-**This is a third permission, and it is new.** CodeReef used to need exactly
+**This is a third permission, and it is new.** Credda used to need exactly
 `contents: read` and `issues: write`, and the short permission list was
 advertised as a feature. It is three lines now rather than two, and that is a
 real regression in that story rather than a detail to skip past.
 
-The CodeReef engine is not in this repository. This repository is a *launcher*:
-it downloads the engine at run time from CodeReef's own service, checks it
+The Credda engine is not in this repository. This repository is a *launcher*:
+it downloads the engine at run time from Credda's own service, checks it
 against a digest committed here, and runs it. The service has to decide whether
 the job asking is entitled -- free on a public repository, licensed on a private
 one -- and the way it decides is a **GitHub Actions OIDC token**. With
 `id-token: write`, the job can ask GitHub for a short-lived token stating which
 repository is running, who owns it, and whether it is public or private. GitHub
-signs those statements; CodeReef checks the signature.
+signs those statements; Credda checks the signature.
 
 What `id-token: write` grants:
 
@@ -123,9 +152,9 @@ What `id-token: write` grants:
 What it does not grant:
 
 - no read or write access to your code, issues, packages or secrets;
-- no access for CodeReef to your repository -- the token travels from your
+- no access for Credda to your repository -- the token travels from your
   runner to our service and proves your identity to us, never ours to you;
-- no use anywhere else: it is minted for CodeReef's audience and is rejected by
+- no use anywhere else: it is minted for Credda's audience and is rejected by
   any other service, and a token you already mint for AWS or Vault is rejected
   by ours.
 
@@ -137,20 +166,20 @@ access does not scale past a handful of customers. OIDC distributes nothing, so
 there is nothing to leak.
 
 **If you would rather not grant it**, see *Running without depending on
-CodeReef* below -- mirroring the artifact removes the OIDC step entirely.
+Credda* below -- mirroring the artifact removes the OIDC step entirely.
 
-### What happens when CodeReef is down
+### What happens when Credda is down
 
 **Your job does not start.** That is the second cost of the same change and it
 deserves to be blunt: before the engine moved out of this repository, nothing
-CodeReef operated could stop your build. Now our service is in front of every
+Credda operated could stop your build. Now our service is in front of every
 run.
 
 When it happens the failure names itself. The step is called *Fetch and verify
-the CodeReef engine* and the message says whose problem it is:
+the Credda engine* and the message says whose problem it is:
 
 ```
-CodeReef could not reach its engine service at https://metering.codereef.app/v1/engine
+Credda could not reach its engine service at https://metering.codereef.app/v1/engine
 (<the network error>). This is an outage on our side or a network problem on the
 runner, not a problem with your repository.
 ```
@@ -162,19 +191,19 @@ failure, two seconds apart and then four -- before the job fails. Only timeouts,
 answer, and the sentence the job prints is the one the service wrote rather than
 one this action guessed.
 
-**Nothing else about CodeReef changed:** the metering receipt still fails open
+**Nothing else about Credda changed:** the metering receipt still fails open
 and still cannot redden a build (see *It cannot break your job*). Only the
 engine download is load-bearing, because it is the code itself.
 
-### Running without depending on CodeReef
+### Running without depending on Credda
 
-Mirror the artifact once, and no request is made to CodeReef at all -- not for
+Mirror the artifact once, and no request is made to Credda at all -- not for
 the engine, not for a token -- and `id-token: write` is not needed:
 
 ```yaml
-- uses: codereefai/action@v1
+- uses: Credda-io/action@v1
   with:
-    engine-archive: /opt/codereef/engine-v0.1.1.tar.gz
+    engine-archive: /opt/credda/engine-v0.1.1.tar.gz
 ```
 
 The path is read on the runner, so getting the file there is your step, not
@@ -232,13 +261,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
-      group: codereef-issue-${{ github.event.issue.number }}
+      group: credda-issue-${{ github.event.issue.number }}
       cancel-in-progress: false
     steps:
       # Optional. Without it triage still runs; with it, a refusal can say
       # "this repository holds no `repro.js`" instead of staying quiet.
       - uses: actions/checkout@v4
-      - uses: codereefai/action@v1
+      - uses: Credda-io/action@v1
         with:
           mode: triage
 ```
@@ -258,7 +287,7 @@ investigation, so the report that arrives later is the follow-up it pointed at.
 Creating a label needs only the `issues: write` this workflow already has, so
 the permission is not what stops it. The timing is. This workflow runs *because*
 a label was applied, so a step that created the label would run strictly after
-the one moment it was needed -- the first person to reach for `codereef` still
+the one moment it was needed -- the first person to reach for `credda` still
 has to type it into an empty label picker. Anything that fixes that has to fire
 on an earlier event, such as a small `ensure-label` job on `workflow_dispatch`
 and on pushes that touch the workflow file. The one-line `gh` command above buys
@@ -270,7 +299,7 @@ trigger.
 | Input | Default | What it does |
 | --- | --- | --- |
 | `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one. |
-| `label` | `codereef` | The label that triggers an investigation (`*` accepts any). In triage mode, the label CodeReef stays quiet for. |
+| `label` | `credda` | The label that triggers an investigation (`*` accepts any). In triage mode, the label Credda stays quiet for. |
 | `sandbox` | `docker` | Execution plane for repository code. `docker` is the only isolated plane, and needs a Linux runner. |
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
 | `github-token` | `${{ github.token }}` | Used only to post the report comment. |
@@ -278,10 +307,39 @@ trigger.
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://metering.codereef.app/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
 | `engine-url` | `https://metering.codereef.app/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
-| `engine-archive` | `''` | Path on the runner to a mirrored copy of the engine archive. When set, **no request is made to CodeReef and no OIDC token is minted**; the copy goes through the identical digest check. |
+| `engine-archive` | `''` | Path on the runner to a mirrored copy of the engine archive. When set, **no request is made to Credda and no OIDC token is minted**; the copy goes through the identical digest check. |
 
 Every input has a default and none is required on a public repository, so
 `uses:` with no `with:` block at all is a working configuration.
+
+### Why the defaults above still say `codereef.app`
+
+The name is Credda; two of these URLs are not, yet. That is a deployment fact
+rather than an oversight, and it is stated here because you can read the
+defaults and would otherwise have to guess.
+
+The endpoints are moving to **`api.credda.io`**. One half of that move has
+happened and the other has not, and they are different kinds of thing:
+
+- **The OIDC audience has moved** to `https://api.credda.io/v1/engine`. An
+  audience is a string the service compares, not an address anything connects
+  to, and the metering Worker already accepts both the new and the old name, so
+  moving it cannot strand a pinned workflow. (`ACCEPTED_ENGINE_AUDIENCES` in the
+  engine repository is the set that does this.)
+- **`metering-url` and `engine-url` have not moved**, because they are addresses
+  that must answer. `api.credda.io` resolves today, but it is AWS-hosted and
+  currently serves Credda's retired scoring product, while the metering service
+  is a Cloudflare Worker. Nothing routes `/v1/engine` or `/v1/runs` on that
+  hostname to that Worker.
+
+So the remaining work is a routing change somebody has to configure -- getting
+those two paths on `api.credda.io` in front of the Cloudflare Worker, and
+keeping `metering.codereef.app` answering until no supported pin still uses it.
+**Until that is configured and observed answering, these defaults stay where
+they are.** `engine-url` is the one input that can genuinely fail your build, so
+it is the last thing that should move on optimism.
+
+If you have pinned either input explicitly, nothing here affects you.
 
 ## Outputs
 
@@ -289,17 +347,17 @@ Every input has a default and none is required on a public repository, so
 | --- | --- | --- |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. |
-| `investigation-id` | investigate | The investigation id, for `reef inspect` / `reef report`. |
+| `investigation-id` | investigate | The investigation id, for `credda inspect` / `credda report`. |
 | `outcome` | investigate | Terminal outcome, e.g. `REPRODUCED_AND_DIAGNOSED` or `NO_RUNNABLE_CHECK`. |
 | `established` | investigate | Whether the run established anything about the repository. |
 | `report-path` | investigate | Absolute path of the Markdown report on the runner. |
-| `triage-outcome` | triage | `COMMENT` when CodeReef had something specific to ask for, `SILENT` when it correctly had nothing to say. Both are successes. |
+| `triage-outcome` | triage | `COMMENT` when Credda had something specific to ask for, `SILENT` when it correctly had nothing to say. Both are successes. |
 | `comment-path` | triage | Absolute path of the decline reply on the runner, or empty when silent. |
 
 ## What it needs, and what it refuses
 
 - **A Linux runner with Docker** (`ubuntu-latest` is both), in `investigate`
-  mode. Repository code executes only inside CodeReef's sandbox, which has its
+  mode. Repository code executes only inside Credda's sandbox, which has its
   network removed before anything from the repository runs. The action refuses
   the docker plane on a runner that cannot provide it rather than degrading to
   host execution. `triage` mode runs no repository code at all, so it does not
@@ -322,11 +380,11 @@ Every input has a default and none is required on a public repository, so
   fetches nothing from any registry. The only thing it sets up is a Node 24
   runtime, which the hosted runners largely have already.
 
-  It does make exactly one network fetch of code: the engine, from CodeReef's
+  It does make exactly one network fetch of code: the engine, from Credda's
   own service, checked against a SHA-256 digest committed in this repository
   before a byte reaches the disk. That is a real change from the version that
   shipped the engine in `bundle/` and fetched nothing at all -- see *How the
-  engine gets here* and *What happens when CodeReef is down* above, both of
+  engine gets here* and *What happens when Credda is down* above, both of
   which say what it costs.
 
 ## How it fails
@@ -336,12 +394,12 @@ because that list is what somebody reads before they open the log.
 
 | What went wrong | Step that goes red | What you do |
 | --- | --- | --- |
-| The job has no `id-token: write` | *Fetch and verify the CodeReef engine* | Add the line. The message prints the whole `permissions:` block. |
-| Private repository, no licence | *Fetch and verify the CodeReef engine* | `402`, with the sentence the service wrote and a link to the plans. Public repositories never see this. |
-| Our service or bucket is down | *Fetch and verify the CodeReef engine* | Nothing on your side. Three attempts, then the job fails saying it is our outage. Mirror the archive if you cannot tolerate it. |
-| The downloaded bytes do not match `engine.lock.json` | *Fetch and verify the CodeReef engine* | The job fails printing both digests and `NOTHING WAS EXECUTED`. Nothing was written to disk. |
+| The job has no `id-token: write` | *Fetch and verify the Credda engine* | Add the line. The message prints the whole `permissions:` block. |
+| Private repository, no licence | *Fetch and verify the Credda engine* | `402`, with the sentence the service wrote and a link to the plans. Public repositories never see this. |
+| Our service or bucket is down | *Fetch and verify the Credda engine* | Nothing on your side. Three attempts, then the job fails saying it is our outage. Mirror the archive if you cannot tolerate it. |
+| The downloaded bytes do not match `engine.lock.json` | *Fetch and verify the Credda engine* | The job fails printing both digests and `NOTHING WAS EXECUTED`. Nothing was written to disk. |
 | `sandbox: docker` on a non-Linux runner | *Refuse a plane the runner cannot isolate* | Use `ubuntu-latest`. The action refuses rather than falling back to running your code on the host. |
-| The event is not the label this action runs on | *Run CodeReef* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
+| The event is not the label this action runs on | *Run Credda* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
 | The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
 
 A run that reproduces nothing is **not** a failure: the job is green, the report
@@ -350,7 +408,7 @@ says what it could not establish, and whether a comment is posted is the
 
 ## What comes back
 
-The same document `reef report <id> --markdown` emits: a lead sentence stating
+The same document `credda report <id> --markdown` emits: a lead sentence stating
 the strongest claim the evidence supports, the captured failure signature, the
 evidence ledger, a **Root Cause** section, a **What was not done** section, and
 an ordinal confidence class with the list of what this record does not
@@ -375,7 +433,7 @@ add your licence:
 
 ```yaml
 with:
-  license: ${{ secrets.CODEREEF_LICENSE }}   # private repositories only
+  license: ${{ secrets.CREDDA_LICENSE }}   # private repositories only
 ```
 
 **What a licence now buys, and what changed about it.** Two things:
@@ -408,7 +466,7 @@ fields and there are no others:
 | `actorHash` | the login that triggered the run | **HMAC-SHA256, hashed on your runner** |
 | `outcome` | one bounded uppercase token, e.g. `REPRODUCED_AND_DIAGNOSED` | plaintext |
 | `durationMs` | how long the run took | a number |
-| `actionVersion` | CodeReef's own release, e.g. `v1.4.0` | plaintext |
+| `actionVersion` | Credda's own release, e.g. `v1.4.0` | plaintext |
 | `isPrivate` | whether the repository is private | `true` / `false` |
 | `licenseKey` | the `license` input | **plaintext, over TLS, private repositories only** |
 
@@ -445,7 +503,7 @@ with:
 
 ```yaml
 env:
-  CODEREEF_TELEMETRY: off # in the job environment
+  CREDDA_TELEMETRY: off # in the job environment
 ```
 
 Both are read before anything is imported or hashed. Neither disables anything

@@ -1,11 +1,11 @@
-# CodeReef as a GitHub Action: label an issue, get a reproduction report; or
-# open one, and get told what CodeReef could not use in it.
+# Credda as a GitHub Action: label an issue, get a reproduction report; or
+# open one, and get told what Credda could not use in it.
 #
 # WHY THIS FILE IS AT A REPOSITORY ROOT, AND WHY THAT IS THE WHOLE POINT.
 # GitHub lists in the Marketplace only a metadata file at the ROOT of a
 # repository, and says in as many words that files in sub-folders "will not be
 # automatically listed". The previous home of this action was
-# `codereefai/core/action/action.yml` -- a sub-folder, so unlistable -- and
+# `Credda-io/core/action/action.yml` -- a sub-folder, so unlistable -- and
 # `core` also had to stay PUBLIC, because a `uses:` reference checks out the
 # whole owning repository and the install step below used to run
 # `pnpm install --frozen-lockfile` in it. An action in a private repository is
@@ -22,7 +22,7 @@
 #
 # So the bundle left this repository too. What is here now is a LAUNCHER:
 # `launcher/fetch-engine.mjs` mints a GitHub OIDC token, presents it to
-# CodeReef's own service, downloads the engine, verifies it against the SHA-256
+# Credda's own service, downloads the engine, verifies it against the SHA-256
 # digest pinned in `engine.lock.json` -- which is committed HERE, so the trust
 # anchor arrives with the tag the customer pinned rather than from the server --
 # and unpacks it. Only then does `run.mjs` execute anything.
@@ -34,7 +34,7 @@
 #      advertised as a feature and this is a real regression in that story.
 #      `id-token: write` lets the job MINT a token that says which repository
 #      it is; it grants no access to anything of the customer's.
-#   2. CodeReef's infrastructure is now in front of every job. Before this,
+#   2. Credda's infrastructure is now in front of every job. Before this,
 #      nothing we operated could stop a customer's run. Now, if our Worker or
 #      our bucket is down, the job does not start. Every refusal names its own
 #      cause so nobody debugs their own repository over our outage, and
@@ -47,7 +47,7 @@
 # TWO MODES, AND THEY ARE ONE ACTION ON PURPOSE. `mode: investigate` is a
 # label, a sandbox, a reproduction, a report. `mode: triage` is the opened
 # path: no sandbox, no repository install, no model call, no network, no API
-# key -- it reads the report and either says what CodeReef could not use in it
+# key -- it reads the report and either says what Credda could not use in it
 # or says nothing at all.
 #
 # They are one action rather than two because everything that could go wrong is
@@ -63,7 +63,7 @@
 # `github.event.issue.body` (or title) into a shell -- that is the canonical
 # Actions injection. run.mjs reads them from the event JSON with Node, writes
 # them to a file, and every consumer takes the file: the CLI as `@file`, the
-# comment as `--body-file`. Repository code executes only inside CodeReef's
+# comment as `--body-file`. Repository code executes only inside Credda's
 # sandbox, which on the docker plane has its network removed before anything
 # from the repository runs.
 #
@@ -81,12 +81,12 @@
 # HONEST STATUS. The install path is proven from outside: a public repository
 # outside this organisation resolved the action, minted an OIDC token, was
 # served the engine with no signup and no licence, matched the pinned digest,
-# ran `reef triage` and posted its comment. `investigate` -- the sandbox, the
-# reproduction, the report -- has run against CodeReef's own repositories and
+# ran `credda triage` and posted its comment. `investigate` -- the sandbox, the
+# reproduction, the report -- has run against Credda's own repositories and
 # nowhere else. V1 is reproduce-and-report: it writes no code, opens no pull
 # request, and its report leads with what it could NOT establish.
 
-name: CodeReef
+name: Credda
 description: >-
   Reproduce a reported bug in a sandbox and post a report of what was
   established, leading with what was not. Writes no code.
@@ -108,7 +108,7 @@ branding:
 inputs:
   mode:
     # 'investigate' reproduces a labelled issue in a sandbox and reports what it
-    # established. 'triage' reads a newly opened issue and posts what CodeReef
+    # established. 'triage' reads a newly opened issue and posts what Credda
     # could not use in it, or nothing -- which is the outcome for about half of
     # real inbound, and is a correct one.
     #
@@ -118,11 +118,17 @@ inputs:
     default: investigate
   label:
     description: >-
-      In investigate mode, run only when this label was added ('*' accepts any
-      label). In triage mode this label is what CodeReef stays quiet for: an
-      issue opened already carrying it is about to get a full investigation, so
-      no triage note is posted on it.
-    default: codereef
+      In investigate mode, run only when one of these labels was added ('*'
+      accepts any label). In triage mode these are what Credda stays quiet for:
+      an issue opened already carrying one is about to get a full investigation,
+      so no triage note is posted on it.
+
+      A comma-separated list. The default carries BOTH names through the
+      CodeReef -> Credda rename, so a repository already using the old default
+      keeps working; the first entry is the one Credda names when it invites a
+      maintainer to apply a label. `codereef` will be dropped from this default
+      when the deprecation window closes.
+    default: credda,codereef
   license:
     # WHAT A LICENCE NOW BUYS, AND WHAT CHANGED. It buys two things, and one of
     # them is new:
@@ -147,7 +153,7 @@ inputs:
     # engine endpoint reads `repository_visibility` out of a claim GitHub
     # signed.
     description: >-
-      Licence key. REQUIRED on a private repository, where CodeReef will not
+      Licence key. REQUIRED on a private repository, where Credda will not
       start without one; never needed and never read on a public repository. It
       also enables decline replies on a private repository. Pass a secret, never
       a literal.
@@ -157,7 +163,7 @@ inputs:
     # paid plans are sold against, and a gate a customer has to switch on
     # themselves is not a gate. Setting this to the empty string still means NO
     # REQUEST IS MADE AT ALL -- not a shortened one, not a stripped one --
-    # and so does CODEREEF_TELEMETRY=off in the job environment.
+    # and so does CREDDA_TELEMETRY=off in the job environment.
     #
     # EXACTLY WHAT LEAVES THE RUNNER, so this is checkable rather than
     # reassuring. One POST per run, at most one per job, of a JSON body under
@@ -170,7 +176,7 @@ inputs:
     #                 Hashed ON THE RUNNER. This is the unit a seat is counted in.
     #   outcome       one bounded uppercase token, e.g. REPRODUCED_AND_DIAGNOSED
     #   durationMs    how long the run took, a number
-    #   actionVersion CodeReef's own release string, e.g. v1.4.0
+    #   actionVersion Credda's own release string, e.g. v1.4.0
     #   isPrivate     true or false
     #   licenseKey    the value of the `license` input, IN THE CLEAR over TLS,
     #                 and ONLY on a private repository. Omitted entirely on
@@ -192,31 +198,43 @@ inputs:
     # two-second race, never retries, never throws, and every failure --
     # unreachable, hung, malformed, 500 -- is treated as "carry on".
     description: >-
-      Where to report one run receipt per job. Defaults to CodeReef's metering
+      Where to report one run receipt per job. Defaults to Credda's metering
       endpoint. Set to '' to disable the call outright -- no request of any kind
       is made. Sends salted HMACs of the owner, repository and triggering login
-      (hashed on this runner), an outcome token, a duration, CodeReef's version,
+      (hashed on this runner), an outcome token, a duration, Credda's version,
       a public/private flag, and on private repositories only the `license`
       value. Never sends names, URLs, issue text, code, paths, output, branches
       or commit SHAs. A metering failure cannot fail your job.
+    # Still `codereef.app` after the rename, deliberately. The endpoints move
+    # to `api.credda.io`, but that hostname is AWS-hosted and serves the
+    # retired scoring product, while metering is a Cloudflare Worker; nothing
+    # routes `/v1/runs` there yet. A default that does not answer is worse than
+    # one with the old name on it. See README, "Why the defaults above still
+    # say codereef.app".
     default: https://metering.codereef.app/v1/runs
   engine-url:
     # Where the engine is fetched from. Present so that a self-hosted or
     # air-gapped deployment can point at its own copy of the service, and so
-    # that CodeReef can move the endpoint without every customer re-pinning.
+    # that Credda can move the endpoint without every customer re-pinning.
     #
     # It is NOT a way to run unverified code: whatever this returns is checked
     # against the digest in this repository's `engine.lock.json` before a byte
     # reaches the disk. Pointing it somewhere hostile produces a failed job,
     # not a compromised one.
     description: >-
-      Where to fetch the verified engine artifact. Defaults to CodeReef's engine
+      Where to fetch the verified engine artifact. Defaults to Credda's engine
       endpoint. The download is checked against the SHA-256 digest pinned in
       this action's engine.lock.json whatever this is set to.
+    # Not moved to `api.credda.io` for the same reason as `metering-url`, and
+    # with more at stake: this is the ONE endpoint whose failure fails a
+    # customer's job. Note that the OIDC AUDIENCE the launcher requests HAS
+    # moved to `https://api.credda.io/v1/engine` -- an audience is a string the
+    # Worker compares against a set that spans both names, not an address
+    # anything connects to. The two are no longer the same value.
     default: https://metering.codereef.app/v1/engine
   engine-archive:
     # THE ANSWER TO "WE CANNOT DEPEND ON YOUR UPTIME". Point this at a local or
-    # mirrored copy of the same engine.tar.gz and NO request is made to CodeReef
+    # mirrored copy of the same engine.tar.gz and NO request is made to Credda
     # at all -- not for the engine, not for a token. The archive goes through
     # the identical digest check against the identical lockfile, so this removes
     # the availability dependency and weakens nothing.
@@ -225,7 +243,7 @@ inputs:
     # rather than a subscription.
     description: >-
       Optional path on the runner to a mirrored copy of the engine archive. When
-      set, no request is made to CodeReef and no OIDC token is minted; the copy
+      set, no request is made to Credda and no OIDC token is minted; the copy
       is verified against the same pinned digest.
     default: ''
   sandbox:
@@ -248,7 +266,7 @@ inputs:
     # being the same question. 'true' posts only when the run established
     # something about the repository: a run that established nothing still
     # writes its full report to the job summary, because that document is about
-    # CodeReef and an issue tracker is not where it belongs. 'always' posts
+    # Credda and an issue tracker is not where it belongs. 'always' posts
     # regardless, which is what dogfooding this Action on its own issues needs.
     # 'false' never posts.
     #
@@ -266,28 +284,28 @@ outputs:
       The same number as this action's own release.
     value: ${{ steps.engine.outputs.engine-version }}
   investigation-id:
-    description: Investigate mode only. The investigation id, for reef inspect / reef report.
-    value: ${{ steps.codereef.outputs.investigation-id }}
+    description: Investigate mode only. The investigation id, for credda inspect / credda report.
+    value: ${{ steps.credda.outputs.investigation-id }}
   outcome:
     description: Investigate mode only. Terminal outcome, e.g. REPRODUCED_AND_DIAGNOSED or NO_RUNNABLE_CHECK.
-    value: ${{ steps.codereef.outputs.outcome }}
+    value: ${{ steps.credda.outputs.outcome }}
   should-post:
     description: Whether a comment was posted. One predicate, computed in run.mjs, in either mode.
-    value: ${{ steps.codereef.outputs.should-post }}
+    value: ${{ steps.credda.outputs.should-post }}
   established:
     description: Investigate mode only. Whether the run established anything about the repository, from the CLI's own result.
-    value: ${{ steps.codereef.outputs.established }}
+    value: ${{ steps.credda.outputs.established }}
   report-path:
     description: Investigate mode only. Absolute path of the Markdown report on the runner.
-    value: ${{ steps.codereef.outputs.report-path }}
+    value: ${{ steps.credda.outputs.report-path }}
   triage-outcome:
     description: >-
-      Triage mode only. 'COMMENT' when CodeReef had something specific to ask
+      Triage mode only. 'COMMENT' when Credda had something specific to ask
       for, 'SILENT' when it correctly had nothing to say. Both are successes.
-    value: ${{ steps.codereef.outputs.triage-outcome }}
+    value: ${{ steps.credda.outputs.triage-outcome }}
   comment-path:
     description: Triage mode only. Absolute path of the decline reply on the runner, or empty when silent.
-    value: ${{ steps.codereef.outputs.comment-path }}
+    value: ${{ steps.credda.outputs.comment-path }}
 
 runs:
   using: composite
@@ -301,9 +319,9 @@ runs:
       if: inputs.mode == 'investigate'
       shell: bash
       env:
-        CODEREEF_SANDBOX_INPUT: ${{ inputs.sandbox }}
+        CREDDA_SANDBOX_INPUT: ${{ inputs.sandbox }}
       run: |
-        if [ "$CODEREEF_SANDBOX_INPUT" = "docker" ] && [ "$RUNNER_OS" != "Linux" ]; then
+        if [ "$CREDDA_SANDBOX_INPUT" = "docker" ] && [ "$RUNNER_OS" != "Linux" ]; then
           echo "::error::The docker sandbox needs a Linux runner (ubuntu-latest). This runner is $RUNNER_OS."
           exit 1
         fi
@@ -315,7 +333,7 @@ runs:
     #
     # NO `cache: pnpm`, AND NOW THERE IS NOTHING TO CACHE. The previous version
     # of this action ran `corepack enable && pnpm install --frozen-lockfile`
-    # over CodeReef's whole workspace on every single job, and could not cache
+    # over Credda's whole workspace on every single job, and could not cache
     # it: setup-node's pnpm cache shells out to `pnpm store path` before
     # corepack has run, and its cache key is `hashFiles()` over a path GitHub
     # documents as restricted to GITHUB_WORKSPACE -- while the lockfile that
@@ -335,52 +353,52 @@ runs:
     # A SEPARATE STEP RATHER THAN A PROLOGUE INSIDE run.mjs, for one reason
     # worth the extra block: when this fails, it fails on its own line with its
     # own name, and a customer looking at a red job sees "Fetch and verify the
-    # CodeReef engine" rather than a script that also does investigations. The
+    # Credda engine" rather than a script that also does investigations. The
     # failure this introduces is one nobody has had before -- our infrastructure
     # stopping their build -- so it gets its own place to fail.
     #
     # NOTHING HERE INTERPOLATES ANYTHING UNTRUSTED. Every value is an input or a
     # runner-provided variable, passed through `env:` rather than into a shell
     # expression, exactly as the step below does it.
-    - name: Fetch and verify the CodeReef engine
+    - name: Fetch and verify the Credda engine
       id: engine
       shell: bash
       env:
-        CODEREEF_ENGINE_URL: ${{ inputs.engine-url }}
-        CODEREEF_ENGINE_ARCHIVE: ${{ inputs.engine-archive }}
+        CREDDA_ENGINE_URL: ${{ inputs.engine-url }}
+        CREDDA_ENGINE_ARCHIVE: ${{ inputs.engine-archive }}
         # Sent only when the repository is private, and the endpoint decides
         # that from GitHub's own signed claim rather than from this value.
-        CODEREEF_LICENSE: ${{ inputs.license }}
+        CREDDA_LICENSE: ${{ inputs.license }}
       run: node "$GITHUB_ACTION_PATH/launcher/fetch-engine.mjs"
 
-    # ONE STEP FOR BOTH MODES, and the step id says CodeReef because it is now
+    # ONE STEP FOR BOTH MODES, and the step id says Credda because it is now
     # either one. No `--import tsx`: run.mjs is plain ESM and the engine it
     # spawns is a prebuilt bundle, so there is no loader and no TypeScript at
-    # run time. `CODEREEF_ACTION_ROOT` is the action's own directory and every
+    # run time. `CREDDA_ACTION_ROOT` is the action's own directory and every
     # path run.mjs builds is under it -- nothing in this file names
     # `${{ github.action_path }}/..` or any other path outside this action.
     # The script takes every path from the environment, so no working-directory
     # is needed or set.
-    - name: Run CodeReef
-      id: codereef
+    - name: Run Credda
+      id: credda
       shell: bash
       env:
-        CODEREEF_ACTION_ROOT: ${{ github.action_path }}
+        CREDDA_ACTION_ROOT: ${{ github.action_path }}
         # Where the step above unpacked the engine it verified. This step does
         # not re-check those bytes and must not: the decision was made once, in
         # one file, and a second copy of it is a second answer that can disagree.
-        CODEREEF_ENGINE_ROOT: ${{ steps.engine.outputs.engine-root }}
-        CODEREEF_MODE: ${{ inputs.mode }}
-        CODEREEF_LABEL: ${{ inputs.label }}
-        CODEREEF_SANDBOX: ${{ inputs.sandbox }}
+        CREDDA_ENGINE_ROOT: ${{ steps.engine.outputs.engine-root }}
+        CREDDA_MODE: ${{ inputs.mode }}
+        CREDDA_LABEL: ${{ inputs.label }}
+        CREDDA_SANDBOX: ${{ inputs.sandbox }}
         # The step below reads `should-post` rather than re-deciding, so the
         # value has to reach the script that computes it.
-        CODEREEF_COMMENT: ${{ inputs.comment }}
+        CREDDA_COMMENT: ${{ inputs.comment }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         # The real endpoint by default; set the input to '' and no request is
         # attempted at all. See the input's description for what one carries.
-        CODEREEF_METERING_URL: ${{ inputs.metering-url }}
-        CODEREEF_LICENSE: ${{ inputs.license }}
+        CREDDA_METERING_URL: ${{ inputs.metering-url }}
+        CREDDA_LICENSE: ${{ inputs.license }}
       run: node "$GITHUB_ACTION_PATH/run.mjs"
 
     - name: Post the comment
@@ -389,10 +407,10 @@ runs:
       # describe a different outcome from the one this step produced -- so the
       # second mode reuses this gate rather than bringing a second one, and the
       # document it posts arrives on one output name whichever mode wrote it.
-      if: steps.codereef.outputs.should-post == 'true'
+      if: steps.credda.outputs.should-post == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-        ISSUE_NUMBER: ${{ steps.codereef.outputs.issue-number }}
-        BODY_PATH: ${{ steps.codereef.outputs.body-path }}
+        ISSUE_NUMBER: ${{ steps.credda.outputs.issue-number }}
+        BODY_PATH: ${{ steps.credda.outputs.body-path }}
       run: gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_PATH"
