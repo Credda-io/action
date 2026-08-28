@@ -2,7 +2,7 @@
 
 import type { Lockfile } from './integrity.mjs';
 
-/** The OIDC audience the launcher mints for. A test in @codereef/metering asserts it matches the Worker's. */
+/** The OIDC audience the launcher mints for. A test in @credda/metering asserts it matches the Worker's. */
 export const ENGINE_AUDIENCE: string;
 export const DEFAULT_ENGINE_URL: string;
 

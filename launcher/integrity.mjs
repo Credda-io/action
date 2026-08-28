@@ -3,7 +3,7 @@
 //
 // WHY THIS IS ITS OWN FILE. Everything else in this launcher is plumbing --
 // read an environment variable, make a request, write a directory. This file is
-// the security boundary of the entire product: CodeReef downloads code over the
+// the security boundary of the entire product: Credda downloads code over the
 // network and executes it inside a customer's repository checkout, in a job
 // that holds their GITHUB_TOKEN. If an attacker can substitute those bytes,
 // they have arbitrary code execution in every repository that installed us,
@@ -54,8 +54,8 @@ const HEX_64 = /^[0-9a-f]{64}$/;
 export function verifyDigest(what, bytes, expected) {
   if (typeof expected !== 'string' || !HEX_64.test(expected)) {
     throw new Error(
-      `CodeReef cannot verify ${what}: engine.lock.json does not carry a SHA-256 digest for it. ` +
-        'This is a broken CodeReef release, not a problem with your repository. Nothing was executed.',
+      `Credda cannot verify ${what}: engine.lock.json does not carry a SHA-256 digest for it. ` +
+        'This is a broken Credda release, not a problem with your repository. Nothing was executed.',
     );
   }
 
@@ -69,7 +69,7 @@ export function verifyDigest(what, bytes, expected) {
 
   if (!equal) {
     throw new Error(
-      `CodeReef refused to run: ${what} does not match the digest pinned in this action's ` +
+      `Credda refused to run: ${what} does not match the digest pinned in this action's ` +
         `engine.lock.json.\n  expected sha256 ${expected}\n  received sha256 ${actual}\n` +
         'The download was discarded and NOTHING WAS EXECUTED. This means the bytes served did not ' +
         'match the bytes this release of the action was built against -- either a corrupted ' +
