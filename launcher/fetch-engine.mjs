@@ -148,17 +148,45 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
  *
  * Its home is `https://backend.credda.io/v1/engine`. The metering service has
  * been ported out of the Cloudflare Worker and into the Express backend that
- * already serves that hostname, so the code exists -- but it is not deployed,
- * and nginx does not yet pass `/v1/*` to it. Measured rather than assumed:
- * `POST https://backend.credda.io/v1/engine` answers 404 today.
+ * already serves that hostname.
  *
- * Pointing this default there now would not be a rename. It would be every
- * install on the next tag getting a 404, at the one step that can genuinely
- * stop a customer's build.
+ * THE PRECONDITION THIS PARAGRAPH SET HAS NOW BEEN MET, AND THE OLD
+ * MEASUREMENT IS SUPERSEDED. It read: "it is not deployed, and nginx does not
+ * yet pass `/v1/*` to it. Measured rather than assumed: `POST
+ * https://backend.credda.io/v1/engine` answers 404 today." That was true when
+ * written and is not true now. Re-measured 2026-08-28:
  *
- * This moves when that route exists and has been OBSERVED answering -- a 400
- * to an empty body proves the handler was reached; a 404 proves it was not --
- * and not before. Nothing about the audience change above depends on it.
+ *     POST https://backend.credda.io/v1/engine   (content-type json, body {})
+ *       -> 401, Server: nginx, and the METERING HANDLER'S OWN BODY:
+ *          {"ok":false,"error":"engine_unavailable","reason":"missing",
+ *           "message":"No GitHub OIDC token was presented. ... see the Credda README."}
+ *
+ *     POST https://backend.credda.io/v1/definitely-not-a-route
+ *       -> 404
+ *
+ * The control is what makes this evidence rather than a hopeful reading: a 404
+ * on a neighbouring path on the same host proves the 401 is a handler
+ * answering, not a catch-all. nginx passes `/v1/*` and the Express port is
+ * live. The test this paragraph named -- reached versus not reached -- is
+ * satisfied, and satisfied more strongly than the 400 it asked for.
+ *
+ * THE CONSTANT STILL DOES NOT MOVE IN THIS COMMIT, AND THE REASON IS NO LONGER
+ * THE ENDPOINT. Moving it means cutting a tag, and the deploy order below is
+ * not symmetric. What is unverified is the other half: the published `v1` tag
+ * requests the LEGACY audience (`metering.codereef.app/v1/engine`) and fetches
+ * from the legacy host, so the fleet is self-consistent and working today. The
+ * audience move above exists only on this branch, unreleased. Before any tag
+ * carrying it is published, the DEPLOYED verifier on whichever host the fetch
+ * targets must be confirmed to accept `https://backend.credda.io/v1/engine` --
+ * against the running service, not the repository. That cannot be checked
+ * without minting a GitHub OIDC token, so it is a release step and not a
+ * reading exercise.
+ *
+ * The standing risk while this stays on the legacy value: every install in the
+ * fleet fetches its engine from a Cloudflare Worker that the port exists to
+ * retire. Turning that Worker off breaks every install at the one step that
+ * genuinely stops a customer's build. This is now a sequencing decision rather
+ * than a blocked one.
  */
 export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
 
