@@ -336,7 +336,7 @@ trigger.
 | Input | Default | What it does |
 | --- | --- | --- |
 | `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one. |
-| `label` | `credda` | The label that triggers an investigation (`*` accepts any). In triage mode, the label Credda stays quiet for. |
+| `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
 | `sandbox` | `docker` | Execution plane for repository code. `docker` is the only isolated plane, and needs a Linux runner. |
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
 | `github-token` | `${{ github.token }}` | Used only to post the report comment. |
@@ -359,7 +359,10 @@ defaults and would otherwise have to guess.
 The endpoints are moving to **`api.credda.io`**. One half of that move has
 happened and the other has not, and they are different kinds of thing:
 
-- **The OIDC audience has moved** to `https://api.credda.io/v1/engine`. An
+- **The OIDC audience has moved** to `https://backend.credda.io/v1/engine` --
+  the value of `ENGINE_AUDIENCE` in `launcher/fetch-engine.mjs`, and *not*
+  `api.credda.io`, which serves the developer website and routes no `/v1/*`
+  path at all. An
   audience is a string the service compares, not an address anything connects
   to, and the metering Worker already accepts both the new and the old name, so
   moving it cannot strand a pinned workflow. (`ACCEPTED_ENGINE_AUDIENCES` in the
