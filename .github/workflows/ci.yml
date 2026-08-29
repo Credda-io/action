@@ -1,0 +1,47 @@
+# What can be proved about this repository without the engine, a network or a
+# customer.
+#
+# WHY IT WAS MISSING AND WHY IT IS HERE. `smoke.yml` proves the one thing only a
+# real runner can -- that a GitHub-signed OIDC token is served the engine -- and
+# it runs AFTER a push to `main`. Nothing ran on a pull request, so an edit to
+# `run.mjs`, `action.yml` or the launcher reached `main` unexamined, and the
+# tests that hold those files to their meanings live in the private engine
+# checkout and read this repository as a sibling, where a contributor here
+# cannot run them.
+#
+# So this job does not check meanings. It checks the thing those private tests
+# structurally cannot, because they read a developer's working tree rather than
+# the tree a customer fetches: that the shipped tree is COMPLETE. See
+# `.github/check-shipped.mjs` for what that means and which past defect each
+# assertion is.
+#
+# NOT CHECKED HERE, and named rather than left to be assumed: that `action.yml`
+# is well-formed YAML. GitHub parses it before running a step, so an error there
+# is found by whoever installs the action next -- but proving it needs either a
+# YAML parser this repository refuses to depend on (see the `//` note in
+# package.json) or a run of the composite, which reaches the engine on its
+# second step and so cannot be exercised on a pull request. It is a real gap and
+# it is written down instead of covered by a step nobody verified.
+#
+# NO PACKAGE MANAGER RUNS HERE, and that is not an oversight either. This
+# repository has no dependencies and no lockfile on purpose, and a CI that ran
+# `npm ci` would be the only thing in the system that needed one.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shipped-tree:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history is not needed; the tracked file list at this commit is.
+      - uses: actions/checkout@v4
+      - name: the shipped tree is complete
+        run: node .github/check-shipped.mjs
