@@ -197,8 +197,25 @@ function credda(args, stdio) {
   });
 }
 
+/**
+ * Ends the job without running anything, and says so where a person will look.
+ *
+ * The reason used to go to `console.log` only. Every other route through this
+ * file writes to the job summary -- a run that established nothing, a decline
+ * reply that was produced and withheld, a triage that correctly had nothing to
+ * ask for -- and these four were the exception: a green job whose summary panel
+ * was empty, which is indistinguishable from Credda having done nothing at all.
+ * A maintainer who labelled an issue and got a green tick with no summary has
+ * no way to tell a deliberate skip from a broken install.
+ *
+ * The reasons themselves are already written for a reader, so they are used as
+ * they are rather than restated. The leading sentence names what did not
+ * happen, because the reason is a subordinate clause and a summary that opens
+ * mid-explanation reads as a fragment.
+ */
 function skip(reason) {
   console.log(`Skipping: ${reason}`);
+  writeSummary(`Credda did not run on this event: ${reason}\n`);
   output('skipped', 'true');
   process.exit(0);
 }
