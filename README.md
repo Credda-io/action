@@ -335,6 +335,7 @@ trigger.
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
 | `github-token` | `${{ github.token }}` | Used only to post the report comment. |
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
+| `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://metering.codereef.app/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
 | `engine-url` | `https://metering.codereef.app/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
@@ -386,6 +387,7 @@ If you have pinned either input explicitly, nothing here affects you.
 | `outcome` | investigate | Terminal outcome, e.g. `REPRODUCED_AND_DIAGNOSED` or `NO_RUNNABLE_CHECK`. |
 | `established` | investigate | Whether the run established anything about the repository. |
 | `report-path` | investigate | Absolute path of the Markdown report on the runner. |
+| `pull-request-opened` | investigate | Whether this run delivered its fix as a pull request. `false` whenever `open-pull-request` is off, and `false` when it is on and the run did not produce a verified fix. Both are correct outcomes. |
 | `triage-outcome` | triage | `COMMENT` when Credda had something specific to ask for, `SILENT` when it correctly had nothing to say. Both are successes. |
 | `comment-path` | triage | Absolute path of the decline reply on the runner, or empty when silent. |
 
@@ -399,9 +401,12 @@ If you have pinned either input explicitly, nothing here affects you.
   ask for that and the check is skipped for it.
 - **Least privilege, with one addition that is called out rather than folded
   in.** `contents: read`, `issues: write`, and `id-token: write`, nothing else.
-  Still not `contents: write` and still not `pull-requests: write`, which are
-  what opening a pull request needs and what the engine's GitHub App asks for;
-  this launcher pushes nothing, so it asks for neither. The third line is the
+  Not `contents: write` and not `pull-requests: write`: on a default install
+  this launcher creates no branch, pushes no commit and opens no pull request,
+  so it asks for neither, and the token it holds cannot write to your
+  repository whatever happens inside the engine. Those two scopes are needed
+  only by the opt-in `open-pull-request` feature, which is off unless you turn
+  it on and which is documented in *Opening a pull request* below. The third line is the
   price of the engine no longer being published in this repository; it lets the
   job mint a token saying which repository it is and grants no access to
   anything of yours. See *Why `id-token: write`* above,
@@ -425,6 +430,69 @@ If you have pinned either input explicitly, nothing here affects you.
   engine gets here* and *What happens when Credda is down* above, both of
   which say what it costs.
 
+### Opening a pull request
+
+**Off by default.** Everything above ends with a report: Credda reproduces the
+reported failure, diagnoses it, and -- with a model-backed provider -- writes a
+patch and proves it with a regression test that fails on the unpatched tree and
+passes after. Until you turn this on, that patch reaches you as text inside an
+issue comment and goes no further.
+
+Turning it on has Credda commit the patch and the regression test to a new
+branch and open a pull request whose body is the same report. It is one input:
+
+```yaml
+permissions:
+  contents: write        # replaces `contents: read`: push the branch
+  issues: write          # the report comment
+  id-token: write        # mint an OIDC token to fetch the engine
+  pull-requests: write   # open the proposal
+
+# ...
+      - uses: Credda-io/action@v1
+        with:
+          open-pull-request: 'true'
+```
+
+**Those two write scopes are on your own `GITHUB_TOKEN`, granted by you, in
+your own workflow file.** There is no OAuth app in this path, no GitHub App, no
+credential of Credda's, and no copy of your code on Credda's side. The push and
+the pull request are made by your job, on your runner, with a token GitHub
+minted for that job and destroyed when it ends. Nothing you grant here reaches
+us.
+
+**It never merges.** There is no merge call anywhere on this path: no
+auto-merge, no review approval, no branch-protection bypass. A pull request is
+a claim made to a human, and the human decides. A test fails if a merge verb
+appears.
+
+**It refuses to propose an unproven fix, even when it is on.** The gate is the
+engine's own record of what was *executed*: the run must have reached
+`READY_FOR_REVIEW`, a patch row must have survived it, a verification must have
+run, and the regression test must have **failed before the change and passed
+after**. A run that reproduced your bug and stopped there pushes nothing and
+says so on the job summary. That decision is made once, in the engine, and the
+launcher reads the answer -- it has no opinion of its own about what counts as
+proven.
+
+**It will not clobber a branch.** The branch name is `credda/fix-issue-<n>`, so
+a re-run on the same issue meets the branch its previous run pushed. If a pull
+request is still open from it, the job says so and stops. If the branch exists
+with no open pull request -- somebody closed it, or committed to it -- the job
+refuses and names the branch. There is no force-push on any path.
+
+**What it does when your admin has said no.** If the organisation has *Allow
+GitHub Actions to create and approve pull requests* turned off, the branch is
+pushed and `gh` refuses the proposal; the job fails naming that setting and its
+location in Settings, and telling you the branch is there to open by hand. A
+missing write scope, a branch protection rule and a patch that no longer
+applies each get their own named message rather than the API's.
+
+**What has not been proven about this feature.** It has not been run against a
+real repository from this checkout. The gate, the branch naming and the refusal
+messages are covered by tests; the push, the `gh pr create` call and the
+permission errors they produce are not, and cannot be from here.
+
 ## How it fails
 
 Every failure below names its own cause on the first line of the annotation,
@@ -439,6 +507,9 @@ because that list is what somebody reads before they open the log.
 | `sandbox: docker` on a non-Linux runner | *Refuse a plane the runner cannot isolate* | Use `ubuntu-latest`. The action refuses rather than falling back to running your code on the host. |
 | The event is not the label this action runs on | *Run Credda* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
 | The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
+| `open-pull-request: 'true'`, and the org forbids Actions opening pull requests | *Open a pull request with the verified fix* | An admin turns on *Allow GitHub Actions to create and approve pull requests* under Settings -> Actions -> General. The branch was pushed; anyone can open the proposal by hand meanwhile. |
+| `open-pull-request: 'true'` without `contents: write` / `pull-requests: write` | *Open a pull request with the verified fix* | Add both to your workflow's `permissions:` block. The message names them. The report comment is already posted by then. |
+| `open-pull-request: 'true'` and the run proved no fix | none | Nothing. No pull request is opened, the job stays green, and the job summary says which of the conditions was not met. |
 
 A run that reproduces nothing is **not** a failure: the job is green, the report
 says what it could not establish, and whether a comment is posted is the

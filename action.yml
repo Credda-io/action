@@ -78,21 +78,40 @@
 # it is missing -- because a red job is where most people will read about it for
 # the first time.
 #
-# STILL NO `contents: write` AND NO `pull-requests: write`, AND THIS IS NOW A
-# CHOICE RATHER THAN AN ABSENCE. Those two scopes are exactly what opening a
+# NO `contents: write` AND NO `pull-requests: write` ON A DEFAULT INSTALL, AND
+# THIS IS A CHOICE RATHER THAN AN ABSENCE. Those two scopes are exactly what opening a
 # pull request needs, and the fix stage has landed: ADR 0019 put the fixer and
 # verifier back on the investigation path on 2026-08-27, and on 2026-08-28 the
 # engine's forge delivery path was wired to open a pull request for a run that
 # reaches READY_FOR_REVIEW with a VERIFIED verdict. The engine's own GitHub App
 # now asks an operator for both (`docs/setup.md` in the engine repository).
 #
-# This launcher is not that path. It runs the CLI on your runner and posts one
-# comment; it creates no branch, pushes no commit and opens no pull request,
-# so asking a customer's workflow for two write scopes it would not use would be
-# an overclaim in the other direction -- the same defect as the old permission
-# table that sat beside a product which did open pull requests. The day
-# `launcher/run.mjs` proposes a change, these two lines are added here and in
-# README.md on the same commit, and README.md's opening section says so.
+# UPDATED 2026-08-29: THIS LAUNCHER CAN NOW PROPOSE, AND THE DEFAULT STILL
+# CANNOT WRITE. `open-pull-request` below is off unless a caller turns it on. On
+# a default install nothing changed at all: no branch, no commit, no pull
+# request, and a token that cannot write whatever a bug in the engine does.
+#
+# A caller who turns it on grants the two write scopes in THEIR OWN workflow
+# file, on THEIR OWN `GITHUB_TOKEN`. There is no OAuth app in this path, no
+# GitHub App, no credential of Credda's, and no copy of the repository on
+# Credda's side -- the push and the proposal happen on the customer's runner
+# with a token GitHub minted for that job.
+#
+# WHY THE OPT-IN SCOPES ARE NOT LISTED IN THE "Least privilege" BLOCK ABOVE, AND
+# THIS IS DELIBERATE RATHER THAN AN OVERSIGHT. That block is read by a machine:
+# `web/tools/check-install.mjs` parses the permission lines out of it and asserts
+# that the workflow published on credda.io grants EXACTLY that set -- no more and
+# no less -- because a page that tells a stranger to grant access the product
+# does not use is the one thing the install page exists not to do. The two
+# scopes an opt-in feature needs are not part of what a default install uses, so
+# they do not belong in the set every default install is held to. They are
+# documented in the `open-pull-request` description below and in README.md
+# instead, where the reader is somebody who has already decided to turn it on.
+#
+# The day the DEFAULT proposes a change -- which is not a day anyone has planned
+# -- those two lines are added to the block above, to README.md and to the
+# published workflow in the same commit, and the checker will fail until all
+# three agree.
 #
 # What those scopes never buy: a merge. There is no merge call in the engine and
 # no merge method on its forge contract, and a test fails if one appears.
@@ -306,6 +325,52 @@ inputs:
     # post.
     description: "'true' to comment when something was established, 'always' to comment regardless, 'false' never."
     default: 'true'
+  open-pull-request:
+    # OFF BY DEFAULT, AND THAT IS NOT A TUNING CHOICE.
+    #
+    # "The default install cannot write to your repository" is the sentence that
+    # lets a stranger paste the published workflow without reading it, and a
+    # default of `true` would make it false for everyone who never opened this
+    # file. So the default install is byte-for-byte what it was: reproduce,
+    # report, post one comment, and hold a token that cannot push.
+    #
+    # WHAT TURNING IT ON REQUIRES OF YOU, AND OF NOBODY ELSE. Two more lines in
+    # YOUR workflow's own `permissions:` block, granting Contents write and Pull
+    # requests write on YOUR `GITHUB_TOKEN`:
+    #
+    #     permissions:
+    #       contents: write        # replaces `contents: read`; push the branch
+    #       issues: write
+    #       id-token: write
+    #       pull-requests: write   # open the proposal
+    #
+    # (Those four are written here as an indented YAML sample rather than as the
+    # documented minimum, because the "Least privilege" header at the top of this
+    # file is parsed by `web/tools/check-install.mjs` as the exact set a DEFAULT
+    # install must grant, and this feature is not part of a default install.)
+    #
+    # Credda supplies no credential to any of it. There is no OAuth app, no
+    # GitHub App and no access to your code on Credda's side; the push and the
+    # pull request are made by your own job with the token GitHub minted for it.
+    #
+    # WHAT IT WILL NOT DO, EVER. Merge. There is no merge call, no auto-merge, no
+    # approval and no branch-protection bypass anywhere on this path, and a test
+    # fails if one appears. A pull request is a claim made to a human.
+    #
+    # AND WHAT IT REFUSES TO DO EVEN WHEN IT IS ON. Open a pull request for a run
+    # that did not PROVE a fix. The gate is the engine's own `carriesVerifiedChange`
+    # over the executed record -- a terminal READY_FOR_REVIEW, a patch row that
+    # survived the run, a verification verdict, and a regression test that FAILED
+    # on the unpatched tree and PASSED after. A run that reproduced a bug and
+    # stopped there pushes nothing and says why on the job summary.
+    description: >-
+      Opt-in. 'true' commits the verified patch and its regression test to a new
+      branch and opens a pull request carrying the report. Off by default: the
+      default install holds a token that cannot write to your repository. Turning
+      it on requires you to grant Contents write and Pull requests write on your
+      own GITHUB_TOKEN, in your own workflow file. A run that did not produce a
+      verified fix opens nothing, whatever this is set to. Credda never merges.
+    default: 'false'
 
 outputs:
   engine-version:
@@ -328,6 +393,12 @@ outputs:
   report-path:
     description: Investigate mode only. Absolute path of the Markdown report on the runner.
     value: ${{ steps.credda.outputs.report-path }}
+  pull-request-opened:
+    description: >-
+      Whether this run delivered its fix as a pull request. 'false' whenever
+      open-pull-request is off, and 'false' when it is on and the run did not
+      produce a verified fix -- both of which are correct outcomes, not failures.
+    value: ${{ steps.credda.outputs.deliver }}
   triage-outcome:
     description: >-
       Triage mode only. 'COMMENT' when Credda had something specific to ask
@@ -424,6 +495,12 @@ runs:
         # The step below reads `should-post` rather than re-deciding, so the
         # value has to reach the script that computes it.
         CREDDA_COMMENT: ${{ inputs.comment }}
+        # Read by run.mjs, which decides ONCE whether a pull request is owed --
+        # this input AND the engine's own verdict on whether the run proved a
+        # change -- and writes the answer to the `deliver` output the step below
+        # reads. The step re-derives no part of it, for the same reason the
+        # posting step does not.
+        CREDDA_OPEN_PULL_REQUEST: ${{ inputs.open-pull-request }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         # The real endpoint by default; set the input to '' and no request is
         # attempted at all. See the input's description for what one carries.
@@ -444,3 +521,26 @@ runs:
         ISSUE_NUMBER: ${{ steps.credda.outputs.issue-number }}
         BODY_PATH: ${{ steps.credda.outputs.body-path }}
       run: gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_PATH"
+
+    # THE LAST STEP OF THE PRODUCT, AND THE ONE THAT IS OFF UNLESS YOU ASK.
+    #
+    # Everything above proves a fix and hands it to you as text. This commits it.
+    # It runs only when `open-pull-request` is on AND the run reached a verified
+    # change -- one predicate, computed in run.mjs from the engine's own record,
+    # and read here rather than re-decided, exactly as the posting step reads
+    # `should-post`.
+    #
+    # It is deliberately AFTER the comment step: the report reaching the issue is
+    # the thing this product owes, and it must not be lost because a push was
+    # refused. A missing permission fails this step and leaves the comment posted.
+    - name: Open a pull request with the verified fix
+      if: steps.credda.outputs.deliver == 'true'
+      shell: bash
+      env:
+        # The customer's own token, with whatever their workflow granted it.
+        # Nothing of Credda's is used or needed here.
+        GH_TOKEN: ${{ inputs.github-token }}
+        CREDDA_PATCH_PATH: ${{ steps.credda.outputs.patch-path }}
+        CREDDA_BODY_PATH: ${{ steps.credda.outputs.body-path }}
+        CREDDA_ISSUE_NUMBER: ${{ steps.credda.outputs.issue-number }}
+      run: node "$GITHUB_ACTION_PATH/deliver-pr.mjs"

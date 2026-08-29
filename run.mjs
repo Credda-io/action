@@ -96,6 +96,8 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { decideDelivery } from './delivery.mjs';
+
 function env(name, fallback = null) {
   const value = process.env[name];
   if (value !== undefined && value !== '') return value;
@@ -461,12 +463,60 @@ async function investigate() {
 ${readFileSync(reportFile, 'utf8')}
 `);
 
+  /*
+   * ---------------------------- the delivery gate ---------------------------
+   *
+   * Whether this run's patch is pushed to a branch and offered as a pull
+   * request. OFF unless the calling workflow asked for it, and off whatever the
+   * workflow asked unless the run PROVED a change.
+   *
+   * The proof is not judged here. `result.delivery.deliverable` is computed by
+   * the engine on the executed record -- the terminal state, the patch row that
+   * survived, the verification verdict, and the regression test's FAIL-then-PASS
+   * pair -- by the same predicate the GitHub App's delivery uses. This script
+   * reads it, exactly as it reads `establishedSomething` rather than keeping a
+   * list of outcomes. A pull request is the loudest claim this product makes,
+   * and it must not be reachable from an opinion formed in the launcher.
+   *
+   * `decideDelivery` lives in `delivery.mjs` because it is a pure function of
+   * two values and therefore the one part of this that a test can hold.
+   */
+  const openPullRequest = env('CREDDA_OPEN_PULL_REQUEST', 'false').trim() === 'true';
+  const decision = decideDelivery({ enabled: openPullRequest, result });
+
+  let patchFile = '';
+  let deliveryNote = decision.reason;
+
+  if (decision.deliver) {
+    // Emitted by the engine, byte-exact, straight to a file. Not routed through
+    // a shell and not reassembled from the result file: whitespace is the whole
+    // of a diff.
+    const patch = credda(['report', result.investigationId, '--patch'], ['ignore', 'pipe', 'inherit']);
+    if (patch.status !== 0 || patch.stdout === null || String(patch.stdout).trim() === '') {
+      // The engine said this run carries a verified change and then could not
+      // produce it. That is an inconsistency in Credda, so nothing is pushed and
+      // the refusal says whose fault it is.
+      deliveryNote =
+        'Credda recorded a verified change for this run and then could not emit the diff for it ' +
+        `(credda report --patch exited ${String(patch.status ?? 'null')}). Nothing was pushed. ` +
+        'This is a Credda failure, not a finding about the repository.';
+      decision.deliver = false;
+    } else {
+      patchFile = join(work, 'verified.patch');
+      writeFileSync(patchFile, String(patch.stdout), 'utf8');
+    }
+  }
+
+  writeSummary(`\n${deliveryNote}\n`);
+
   output('issue-number', String(issue.number));
   output('investigation-id', result.investigationId);
   output('outcome', result.outcome);
   output('established', established ? 'true' : 'false');
   output('should-post', willComment ? 'true' : 'false');
   output('report-path', reportFile);
+  output('deliver', decision.deliver ? 'true' : 'false');
+  output('patch-path', patchFile);
   // The two names are not a duplicate. `report-path` is part of this action's
   // published interface and means the report; `body-path` is what the single
   // posting step reads, and both modes write it, so there is one posting step
@@ -588,6 +638,11 @@ ${spoke ? readFileSync(commentFile, 'utf8') : ''}
 `);
 
   output('issue-number', String(issue.number));
+  // Triage runs nothing and produces no patch, so it can never deliver one. The
+  // output is written rather than left unset so the delivery step reads one
+  // answer whichever mode ran, exactly as the posting step does.
+  output('deliver', 'false');
+  output('patch-path', '');
   output('triage-outcome', spoke ? 'COMMENT' : 'SILENT');
   output('should-post', willComment ? 'true' : 'false');
   output('comment-path', commentFile);
