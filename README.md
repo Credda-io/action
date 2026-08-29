@@ -2,10 +2,16 @@
 
 **Label an issue. Get back the fix.**
 
-Credda finds the bugs and security vulnerabilities in a company's production and
-QA environments, reproduces the failure, diagnoses the cause, writes the patch,
-proves it with a test that fails before and passes after, and opens a pull
-request. It proposes and never merges.
+You label a bug report or a security vulnerability. Credda reproduces the
+failure, diagnoses the cause, writes the patch, proves it with a test that fails
+before and passes after, and hands back a diff. Opening a pull request is
+`open-pull-request` below: opt-in, off by default. It proposes and never merges.
+
+That first sentence used to read "Credda finds the bugs and security
+vulnerabilities in a company's production and QA environments". Nothing in this
+Action goes looking: the workflow below is triggered by a label, and the
+`issue-body` it passes is the human description everything downstream depends
+on. ADR 0024 in the engine repository amends the sentence at its source.
 
 This repository is the GitHub Action that runs it in your own CI. The product
 is at [credda.io](https://credda.io); the developer surface, including the
