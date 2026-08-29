@@ -322,7 +322,31 @@ inputs:
       a literal.
     default: ''
   github-token:
-    description: Token used only to post the report comment.
+    # CORRECTED 2026-08-29. This said "Token used only to post the report
+    # comment", and that stopped being true the day the pull request step
+    # landed in this same file: the step below passes this value as `GH_TOKEN`
+    # and `gh` reads it for every call it makes -- listing an open proposal,
+    # reading the default branch, and creating the pull request. A description
+    # that undersells what a token is handed to is the same defect as one that
+    # oversells it, and this is a token input, where a reader deciding what to
+    # pass has nothing else to go on.
+    #
+    # WHAT IT IS STILL NOT USED FOR, AND THIS MATTERS TO ANYONE PASSING THEIR
+    # OWN. The `git push` is not made with this value. Git uses the credential
+    # `actions/checkout` persisted on the remote, which carries the calling
+    # job's own `GITHUB_TOKEN` and the scopes that workflow granted it. So
+    # passing an app token or a PAT here changes who OPENS the pull request and
+    # not who PUSHES the branch, and a checkout run with
+    # `persist-credentials: false` leaves nothing to push with at all -- which
+    # is a named refusal rather than a raw git error, because it is somebody
+    # else's setting and not a Credda failure.
+    #
+    # On a default install none of that is reachable: `open-pull-request` is
+    # off, nothing pushes, and this token posts one comment.
+    description: >-
+      Token for the report comment, and -- only when open-pull-request is on --
+      for the gh calls that open the proposal. The branch itself is pushed with
+      the credential actions/checkout persisted, not with this value.
     default: ${{ github.token }}
   comment:
     # Three values, because "post the report" and "produce the report" stopped
@@ -408,10 +432,21 @@ outputs:
     description: Investigate mode only. Absolute path of the Markdown report on the runner.
     value: ${{ steps.credda.outputs.report-path }}
   pull-request-opened:
+    # SAID MORE THAN IT KNOWS, until 2026-08-29. This value is written by
+    # run.mjs, which finishes BEFORE the step that pushes anything begins, so it
+    # cannot report what that step did -- it reports that the run proved a fix
+    # and that delivery was reached. On a green job the two agree, because every
+    # way the delivery step can decline reddens the job except one, and that one
+    # is a pull request from an earlier run still being open. On a job read with
+    # `if: always()` after a failed push they do not agree, and a consumer
+    # gating a notification on this would have announced a proposal that does
+    # not exist. The value is unchanged; what it claims is now what it knows.
     description: >-
-      Whether this run delivered its fix as a pull request. 'false' whenever
-      open-pull-request is off, and 'false' when it is on and the run did not
-      produce a verified fix -- both of which are correct outcomes, not failures.
+      Whether this run had a verified fix to deliver and went on to deliver it.
+      'false' whenever open-pull-request is off, and 'false' when it is on and
+      the run produced no verified fix -- both correct outcomes, not failures.
+      Written before the push, so on a job that did not succeed read the step
+      itself rather than this.
     value: ${{ steps.credda.outputs.deliver }}
   triage-outcome:
     description: >-
@@ -421,6 +456,18 @@ outputs:
   comment-path:
     description: Triage mode only. Absolute path of the decline reply on the runner, or empty when silent.
     value: ${{ steps.credda.outputs.comment-path }}
+  skipped:
+    # run.mjs has always written this and nothing published it, so the one
+    # outcome a caller most needs to tell apart -- a green job that deliberately
+    # ran nothing -- was the one outcome no `steps.<id>.outputs` could name. A
+    # skip is not a failure and does not redden anything, which is exactly why
+    # it needs saying: without this, "Credda ran and established nothing" and
+    # "Credda never started" are the same green tick to whatever comes next.
+    description: >-
+      'true' when this event was not one Credda acts on -- the wrong label, the
+      wrong issue action, or an issue opened already labelled -- and 'false'
+      when it ran. A skip is a success; the reason is on the job summary.
+    value: ${{ steps.credda.outputs.skipped }}
 
 runs:
   using: composite

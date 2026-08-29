@@ -110,6 +110,14 @@ jobs:
     if: github.event.label.name == 'credda'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # One Credda run per issue at a time. Removing and re-applying the label
+    # fires this workflow again, and two runs on one issue race to comment --
+    # and, with `open-pull-request` on, race to push the same branch, since the
+    # branch name is derived from the issue number. `cancel-in-progress: false`
+    # queues the second rather than killing a reproduction halfway through.
+    concurrency:
+      group: credda-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: Credda-io/action@v1
@@ -290,9 +298,11 @@ it.
 ### Adding the triage job
 
 A second job in the same workflow, on the same trigger block. Both jobs want the
-same permissions and the same token, and sharing a `concurrency` group keyed on
-the issue number is what stops a triage run and an investigation racing to
-comment on one issue.
+same permissions and the same token, and both carry the **same** `concurrency`
+group -- the one already on the investigate job above, keyed on the issue
+number. That is what stops a triage run and an investigation racing to comment
+on one issue, and it only does it if both jobs name the same group: a group on
+one job alone serialises that job against itself and nothing else.
 
 ```yaml
 on:
@@ -346,7 +356,7 @@ trigger.
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
 | `sandbox` | `docker` | Execution plane for repository code. `docker` is the only isolated plane, and needs a Linux runner. |
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
-| `github-token` | `${{ github.token }}` | Used only to post the report comment. |
+| `github-token` | `${{ github.token }}` | Posts the report comment, and -- only when `open-pull-request` is on -- makes the `gh` calls that open the proposal. The branch itself is pushed with the credential `actions/checkout` persisted, not with this value, so passing your own token here changes who opens the pull request and not who pushes the branch. |
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
 | `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
@@ -403,9 +413,10 @@ If you have pinned either input explicitly, nothing here affects you.
 | `outcome` | investigate | Terminal outcome, e.g. `REPRODUCED_AND_DIAGNOSED` or `NO_RUNNABLE_CHECK`. |
 | `established` | investigate | Whether the run established anything about the repository. |
 | `report-path` | investigate | Absolute path of the Markdown report on the runner. |
-| `pull-request-opened` | investigate | Whether this run delivered its fix as a pull request. `false` whenever `open-pull-request` is off, and `false` when it is on and the run did not produce a verified fix. Both are correct outcomes. |
+| `pull-request-opened` | investigate | Whether this run had a verified fix to deliver and went on to deliver it. `false` whenever `open-pull-request` is off, and `false` when it is on and the run produced no verified fix. Both are correct outcomes. It is written *before* the push, so on a job that did not succeed, read the step rather than this. |
 | `triage-outcome` | triage | `COMMENT` when Credda had something specific to ask for, `SILENT` when it correctly had nothing to say. Both are successes. |
 | `comment-path` | triage | Absolute path of the decline reply on the runner, or empty when silent. |
+| `skipped` | either | `true` when this event was not one Credda acts on -- the wrong label, the wrong issue action, or an issue opened already labelled -- and `false` when it ran. A skip is a success, and it is the one outcome that otherwise looks identical to a run that never started. The reason is on the job summary. |
 
 ## What it needs, and what it refuses
 
@@ -477,6 +488,13 @@ the pull request are made by your job, on your runner, with a token GitHub
 minted for that job and destroyed when it ends. Nothing you grant here reaches
 us.
 
+Which is also the one thing to check if your checkout is hardened: the branch is
+pushed with the credential `actions/checkout` persisted on `origin`, so
+`persist-credentials: false` on that step leaves nothing to push with. Credda
+has no credential of its own to fall back on -- that is the property, not a gap
+-- so it names that setting and stops. The `github-token` input is read by `gh`
+for the proposal itself and is not what git pushes with.
+
 **It never merges.** There is no merge call anywhere on this path: no
 auto-merge, no review approval, no branch-protection bypass. A pull request is
 a claim made to a human, and the human decides. A test fails if a merge verb
@@ -525,6 +543,7 @@ because that list is what somebody reads before they open the log.
 | The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
 | `open-pull-request: 'true'`, and the org forbids Actions opening pull requests | *Open a pull request with the verified fix* | An admin turns on *Allow GitHub Actions to create and approve pull requests* under Settings -> Actions -> General. The branch was pushed; anyone can open the proposal by hand meanwhile. |
 | `open-pull-request: 'true'` without `contents: write` / `pull-requests: write` | *Open a pull request with the verified fix* | Add both to your workflow's `permissions:` block. The message names them. The report comment is already posted by then. |
+| `open-pull-request: 'true'`, and your checkout ran with `persist-credentials: false` | *Open a pull request with the verified fix* | Drop that setting on this workflow's `actions/checkout` step, or configure a credential for `origin` yourself. It removes the token git pushes with, and Credda has none of its own to fall back on. Adding scopes will not fix it, so the message says that rather than quoting git. |
 | `open-pull-request: 'true'` and the run proved no fix | none | Nothing. No pull request is opened, the job stays green, and the job summary says which of the conditions was not met. |
 
 A run that reproduces nothing is **not** a failure: the job is green, the report

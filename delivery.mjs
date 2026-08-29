@@ -176,6 +176,17 @@ export function explainForgeRefusal(text) {
     );
   }
 
+  if (/could not read Username|terminal prompts disabled|Authentication failed|Invalid username or password|no anonymous write access/i.test(said)) {
+    return (
+      'Git had no credential it could use for this repository, so nothing was pushed. This is not ' +
+      'a missing permission and adding scopes will not fix it: Credda pushes with whatever ' +
+      "credential `actions/checkout` left on `origin`, and has none of its own to fall back on. " +
+      'The usual cause is that checkout step having been run with `persist-credentials: false`, ' +
+      'which removes the token git would have used. Drop that setting on the checkout in this ' +
+      'workflow, or configure a credential for `origin` yourself before Credda runs.'
+    );
+  }
+
   if (/403|Permission to .* denied|not authorized|Resource not accessible by integration/i.test(said)) {
     return (
       'GitHub returned a permission error. Opening a pull request needs BOTH `contents: write` ' +

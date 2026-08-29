@@ -526,6 +526,10 @@ ${readFileSync(reportFile, 'utf8')}
 
   writeSummary(`\n${deliveryNote}\n`);
 
+  // Written on every path that ran, not only on the path that did not. An
+  // output that appears only when it is 'true' is one a caller has to test for
+  // emptiness, and emptiness is what a broken step also produces.
+  output('skipped', 'false');
   output('issue-number', String(issue.number));
   output('investigation-id', result.investigationId);
   output('outcome', result.outcome);
@@ -654,6 +658,7 @@ async function triage() {
 ${spoke ? readFileSync(commentFile, 'utf8') : ''}
 `);
 
+  output('skipped', 'false');
   output('issue-number', String(issue.number));
   // Triage runs nothing and produces no patch, so it can never deliver one. The
   // output is written rather than left unset so the delivery step reads one
