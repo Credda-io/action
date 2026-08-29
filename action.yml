@@ -83,8 +83,11 @@
 # pull request needs, and the fix stage has landed: ADR 0019 put the fixer and
 # verifier back on the investigation path on 2026-08-27, and on 2026-08-28 the
 # engine's forge delivery path was wired to open a pull request for a run that
-# reaches READY_FOR_REVIEW with a VERIFIED verdict. The engine's own GitHub App
-# now asks an operator for both (`docs/setup.md` in the engine repository).
+# reaches READY_FOR_REVIEW still carrying a patch, on either of two verdicts: a
+# VERIFIED one, or -- since 2026-08-29 -- a PARTIALLY_VERIFIED one whose recorded
+# signals prove the reported failure changed shape rather than survived. The
+# engine's own GitHub App now asks an operator for both (`docs/setup.md` in the
+# engine repository).
 #
 # UPDATED 2026-08-29: THIS LAUNCHER CAN NOW PROPOSE, AND THE DEFAULT STILL
 # CANNOT WRITE. `open-pull-request` below is off unless a caller turns it on. On
