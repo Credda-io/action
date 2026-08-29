@@ -33,14 +33,21 @@ Those are the two scopes, they are what the engine's own GitHub App now asks an
 operator for (`docs/setup.md` in the engine repository), and they are the ones
 this file promised to name.
 
-**This Action does not ask for them yet, and the permission block below is
-unchanged.** The launcher runs the engine's CLI on your runner and posts one
-comment; it pushes no branch and opens no pull request, so asking your workflow
-for two write scopes it would not use would be the same overclaim in the other
-direction. The pull request today comes from the engine's GitHub App delivery
-path, not from CI. When `launcher/run.mjs` proposes a change, the permission
-block in this file gains those two lines and this paragraph says so on the same
-commit.
+**This Action now opens pull requests, and the default install still asks for
+neither scope.** This paragraph used to say the launcher "pushes no branch and
+opens no pull request", that the proposal came from the engine's GitHub App
+rather than from CI, and that the permission block would gain the two lines on
+the same commit as the code. The code landed on 2026-08-29 -- `deliver-pr.mjs`,
+run from this Action, on your runner, with your own `GITHUB_TOKEN` -- and this
+paragraph was not corrected with it. It is corrected here, which is a day late:
+a README that denies a feature the same file documents two sections down leaves
+a reader to guess which half is current.
+
+What is unchanged, and is the reason the permission block below still grants no
+write scope: `open-pull-request` defaults to `'false'`. A default install pushes
+no branch and opens no proposal, and its token could not if it tried. The two
+scopes are yours to grant, in your own workflow, on the run you decide should
+propose -- see *Opening a pull request* below.
 
 **What the write scopes never buy, here or anywhere.** Credda does not merge.
 There is no merge call in the engine and no merge method on its forge contract,
@@ -94,9 +101,9 @@ permissions:
   issues: write    # the one report comment
   id-token: write  # mint an OIDC token to fetch the engine -- see below
   # Not `contents: write`, and not `pull-requests: write`. Those two are what
-  # opening a pull request needs, and this launcher opens none: it reports.
-  # See "What this launcher runs today" above for where the pull request does
-  # come from and what it asks for.
+  # opening a pull request needs, and this install opens none: `open-pull-request`
+  # is off by default, so it reports and stops. See "Opening a pull request"
+  # below for what turning it on costs.
 
 jobs:
   investigate:

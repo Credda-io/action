@@ -121,16 +121,30 @@
 # served the engine with no signup and no licence, matched the pinned digest,
 # ran `credda triage` and posted its comment. `investigate` -- the sandbox, the
 # reproduction, the report -- has run against Credda's own repositories and
-# nowhere else. What this launcher does is reproduce-and-report: it opens no
-# pull request, and its report leads with what it could NOT establish. The
-# engine can now write and verify a patch and its GitHub App delivery path can
-# propose one; how often it does is not a number anyone has measured yet, and
-# nothing in this file claims it.
+# nowhere else.
+#
+# CORRECTED 2026-08-29. This paragraph said "what this launcher does is
+# reproduce-and-report: it opens no pull request", and that the engine's GitHub
+# App delivery path was the only thing that could propose one. Both were true
+# until the `open-pull-request` step landed in this same file, and neither was
+# swept when it did. THIS LAUNCHER OPENS PULL REQUESTS: the last step below
+# runs on the customer's runner, pushes a branch and calls `gh pr create`, with
+# no GitHub App involved. What is still true is the sentence that actually carries
+# the promise -- a DEFAULT install opens none, because `open-pull-request`
+# defaults to 'false' and the default permission set cannot write. A status
+# note that understates what the code does is the same defect as one that
+# overstates it, and this one sat directly beneath the block describing the
+# feature it denied.
+#
+# What has not been measured, and is claimed nowhere: how often a run reaches a
+# verified change at all. The report still leads with what it could NOT
+# establish, and a run that proves nothing proposes nothing.
 
 name: Credda
 description: >-
   Reproduce a reported bug in a sandbox and post a report of what was
-  established, leading with what was not. Writes no code.
+  established, leading with what was not. Opens a pull request with a verified
+  fix only if you ask it to, and never merges one.
 
 # The Marketplace listing badge. GitHub draws it from a Feather icon and one of
 # nine named colours, and it is the only art a listing gets.
