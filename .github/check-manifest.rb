@@ -217,6 +217,99 @@ step_refs.each do |(id, output_name), refs|
   note.("  that step runs never writes. The runner supplies '' for it and nothing fails.")
 end
 
+# 7. Every environment variable a step READS is one that step SETS.
+#
+#    This is the same defect one level down, and it is the level every check
+#    above is blind to. `${{ inputs.open-pull-request }}` is spelt correctly
+#    and reaches the runner as `CREDDA_OPEN_PULL_REQUEST`; `run.mjs` then asks
+#    for that name with a fallback of `'false'`. Rename or drop the `env:` key
+#    on either side and the expression is still valid, the input is still
+#    declared, assertions 1-6 are all still green -- and the feature is off for
+#    everyone, for ever, with nothing red anywhere. The fallback that makes a
+#    script runnable is exactly what makes the drift silent; a name read
+#    WITHOUT a fallback exits loudly and needs no check.
+#
+#    A composite step's `run` does see the job's environment as well, so in
+#    principle a caller could supply one of these. That is not a defence:
+#    nothing in a customer's workflow sets `CREDDA_MODE`, and the point of the
+#    `env:` block is that this action does not depend on what a caller happens
+#    to have exported.
+#
+#    Names the RUNNER provides are excluded, because the runner is what
+#    guarantees them: `GITHUB_*`, `RUNNER_*`, `ACTIONS_*`, and bare `CI`.
+#    Everything else has to come from the step.
+#
+#    Reads are found in the script the step runs, in every module that script
+#    imports relatively -- `delivery.mjs` is reached only that way -- and in
+#    the shell of the `run:` itself, which is where `$CREDDA_SANDBOX_INPUT`
+#    lives. All four routes were watched failing on a mutated copy: an `env:`
+#    key renamed, a read renamed in `run.mjs`, a read added to `delivery.mjs`,
+#    and the shell variable misspelt. So was the empty-subject guard below.
+RUNNER_PROVIDED = /\A(?:GITHUB_|RUNNER_|ACTIONS_|CI\z)/.freeze
+
+# Reads of the form `env('NAME'`, `process.env['NAME']` and `process.env.NAME`.
+ENV_READ = /
+  \benv\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]
+  |\bprocess\.env\s*\[\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]\s*\]
+  |\bprocess\.env\.([A-Za-z_][A-Za-z0-9_]*)
+/x.freeze
+
+# `import ... from './x.mjs'`, `import('./x.mjs')`, and a bare `import './x'`.
+RELATIVE_IMPORT = /
+  (?:^|[\s(])(?:import|export)[^'"]*?from\s*(['"])(\.[^'"]*)\1
+  |(?:^|[\s(])import\s*\(\s*(['"])(\.[^'"]*)\3
+  |^\s*import\s*(['"])(\.[^'"]*)\5
+/xm.freeze
+
+# The names a module reads, following its relative imports. An import that does
+# not resolve is `check-shipped.mjs`'s assertion, not this one; here it is
+# simply not followed.
+def env_names_read(path, seen = {})
+  return [] if seen.key?(path) || !File.file?(path)
+
+  seen[path] = true
+  source = File.read(path)
+  names = source.scan(ENV_READ).map { |match| match.compact.first }
+
+  source.scan(RELATIVE_IMPORT) do |match|
+    target = File.expand_path(match.compact[1], File.dirname(path))
+    names.concat(env_names_read(target.sub(%r{\A#{Regexp.escape(Dir.pwd)}/}, ''), seen))
+  end
+
+  names
+end
+
+env_names_seen = 0
+
+steps.each_with_index do |step, index|
+  next unless step.is_a?(Hash) && step['run'].is_a?(String)
+
+  where = step['name'] ? "step '#{step['name']}'" : "step ##{index + 1}"
+  declared = step['env'].is_a?(Hash) ? step['env'].keys.map(&:to_s) : []
+
+  read = []
+  step['run'].scan(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/) { |match| read << match[0] }
+  script = step['run'][%r{(?:\$GITHUB_ACTION_PATH|\$\{\{\s*github\.action_path\s*\}\})/([A-Za-z0-9_./-]+\.mjs)}, 1]
+  read.concat(env_names_read(script)) unless script.nil?
+
+  read = read.uniq.reject { |name| RUNNER_PROVIDED.match?(name) }
+  env_names_seen += read.length
+
+  (read - declared).each do |name|
+    note.("#{MANIFEST}: #{where} reads `#{name}`, which its own `env:` block does not set.")
+    note.('  An unset variable is not an error on a runner; it is the empty string, so the script')
+    note.('  falls back to its default and the behaviour that name controls is silently never on.')
+  end
+end
+
+# A check whose subject can be empty is the shape this file exists for, so this
+# one states its subject and refuses to be green without one.
+if env_names_seen.zero?
+  note.("#{MANIFEST}: no step was found to read an environment variable of its own.")
+  note.('  Either the scripts stopped taking their configuration from the environment, or the')
+  note.('  patterns above stopped matching how they do. Assertion 7 checked nothing.')
+end
+
 if problems.any?
   warn "#{MANIFEST} would not install as written:\n\n"
   problems.each { |line| warn "  #{line}" }
@@ -225,4 +318,5 @@ end
 
 puts "#{MANIFEST} is valid YAML and installs: #{steps.length} step(s), " \
      "#{inputs.length} declared input(s), #{outputs.length} output(s); every `inputs.` and " \
-     '`steps..outputs.` expression names something that exists and is written.'
+     '`steps..outputs.` expression names something that exists and is written; and every one ' \
+     "of #{env_names_seen} environment name(s) a step reads is set by the step that reads it."
