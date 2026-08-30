@@ -144,7 +144,9 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
  *
  * The audience is a string compared against a set the verifier already accepts,
  * so moving it is safe the moment that set is deployed. This is a URL that must
- * ANSWER, and today it does not.
+ * ANSWER -- a different and stricter test, which is why the two do not move
+ * together. It DOES answer; the measurement is below, and the sentence that
+ * used to stand here saying it did not was left behind by its own update.
  *
  * Its home is `https://backend.credda.io/v1/engine`. The metering service has
  * been ported out of the Cloudflare Worker and into the Express backend that
@@ -166,7 +168,9 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
  *
  * The control is what makes this evidence rather than a hopeful reading: a 404
  * on a neighbouring path on the same host proves the 401 is a handler
- * answering, not a catch-all. nginx passes `/v1/*` and the Express port is
+ * answering, not a catch-all. Re-measured again 2026-08-30: both
+ * `backend.credda.io/v1/engine` and the legacy `metering.codereef.app/v1/engine`
+ * still answer that same 401, each naming its own README. nginx passes `/v1/*` and the Express port is
  * live. The test this paragraph named -- reached versus not reached -- is
  * satisfied, and satisfied more strongly than the 400 it asked for.
  *
