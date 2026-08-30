@@ -729,6 +729,12 @@ and a second or so of work.
 ```
 action.yml                 the action metadata (root, so it can be listed)
 run.mjs                    the runner: event in, report out
+delivery.mjs               the single predicate that decides whether a run has a
+                           verified fix to deliver. Imported by run.mjs and by
+                           deliver-pr.mjs; never executed as a step of its own
+deliver-pr.mjs             commits the patch, pushes the branch and opens the
+                           pull request. Reached only when open-pull-request is
+                           on AND the run produced a verified fix. It never merges
 engine.lock.json           the SHA-256 of the engine archive and of every file
                            in it -- the trust anchor. Generated; never edited.
 launcher/fetch-engine.mjs  mints the token, downloads, verifies, unpacks
@@ -739,15 +745,32 @@ launcher/*.d.mts           types for the three files above
 package.json               not installed from, and there is no lockfile because
                            there are no dependencies. It carries the one version
                            string that names both this action and its engine.
+README.md                  this file
 SYNC.md                    how a release is cut and verified
+LICENSE                    Apache-2.0
+.gitignore                 one line: `node_modules/`, which nothing here creates
+.github/workflows/ci.yml   the two jobs below, on every pull request: what can be
+                           proved with no engine, no network and no customer
 .github/workflows/smoke.yml  asks the real endpoint for the real artifact with a
                            real OIDC token and checks the bytes against the
                            lockfile -- the one claim a laptop cannot prove
-LICENSE                    Apache-2.0
+.github/check-shipped.mjs  proves the tree a customer fetches is complete: every
+                           module parses, every import and every path action.yml
+                           runs is TRACKED, and both files name one version
+.github/check-manifest.rb  proves action.yml is valid YAML and would install, and
+                           that every name its expressions, and its steps'
+                           scripts, reach for is one that exists
+.github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
+                           and a run whose report was wrong
+.github/PULL_REQUEST_TEMPLATE.md
+.github/SECURITY.md        where to send a vulnerability, and what to expect back
 ```
 
-That is the whole repository. There is no `node_modules`, no lockfile, no build
-step, and nothing here is compiled before it runs.
+That is the whole repository, and it is checked rather than asserted:
+`.github/check-shipped.mjs` compares that listing against `git ls-files` in both
+directions, so a file added here without a line above, or a line above naming a
+path that no longer exists, fails CI. There is no `node_modules`, no lockfile,
+no build step, and nothing here is compiled before it runs.
 
 **There is no engine here, and that is the point.** It used to be committed as
 `bundle/reef.mjs`, which meant the engine -- 27,957 unminified lines with the

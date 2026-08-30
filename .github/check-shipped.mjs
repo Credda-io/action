@@ -125,6 +125,69 @@ if (lock.version !== `v${String(version)}`) {
   note('  package.json reports the other, so a run fetches one release and names another.');
 }
 
+/* 6. The README's inventory of this repository is the repository.
+ *
+ * "That is the whole repository" is a sentence about a list, and a list is the
+ * one kind of documentation that rots without reading wrong: every line in it
+ * stayed true while `delivery.mjs`, `deliver-pr.mjs`, both CI checks and this
+ * file were added around it, and the paragraph under it still said `whole`.
+ * A reader deciding whether to trust an action reads that block to find out
+ * what runs on their runner, and it was missing the two files that push a
+ * branch and open a pull request.
+ *
+ * BOTH DIRECTIONS, because only one of them is the defect that already
+ * happened and the other is the one that happens next: a tracked file with no
+ * line describing it, and a line naming a path that has since moved.
+ *
+ * A trailing `/` means a directory and matches everything under it; a `*`
+ * matches within one path segment. Anything else is a literal path. */
+const readme = readFileSync('README.md', 'utf8');
+const inventory = /## What is in this repository\s*\n+```\n([\s\S]*?)\n```/.exec(readme);
+
+if (inventory === null) {
+  note('README.md has no fenced inventory under "## What is in this repository".');
+  note('  That block is checked against the tracked tree; without it this assertion covers nothing.');
+} else {
+  /* Continuation lines are indented; an entry starts at column zero. */
+  const entries = inventory[1]
+    .split('\n')
+    .filter((line) => /^\S/.test(line))
+    .map((line) => line.split(/\s+/)[0]);
+
+  if (entries.length === 0) {
+    note('README.md\'s inventory block lists no paths at all, so it describes nothing.');
+  }
+
+  const matcher = (entry) => {
+    if (entry.endsWith('/')) return (f) => f.startsWith(entry);
+    if (entry.includes('*')) {
+      const pattern = new RegExp(
+        `^${entry.split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')}$`,
+      );
+      return (f) => pattern.test(f);
+    }
+    return (f) => f === entry;
+  };
+
+  const files = [...tracked];
+  const described = new Set();
+
+  for (const entry of entries) {
+    const hits = files.filter(matcher(entry));
+    if (hits.length === 0) {
+      note(`README.md's inventory lists '${entry}', which matches no tracked file.`);
+      note('  The listing is what a reader uses to decide what runs on their runner.');
+    }
+    for (const hit of hits) described.add(hit);
+  }
+
+  for (const file of files) {
+    if (described.has(file)) continue;
+    note(`${file} is tracked and the README's inventory does not mention it.`);
+    note('  That block ends "That is the whole repository", which is then not true.');
+  }
+}
+
 if (problems.length > 0) {
   console.error('The shipped tree is not complete:\n');
   for (const line of problems) console.error(`  ${line}`);
@@ -133,5 +196,6 @@ if (problems.length > 0) {
 
 console.log(
   `Shipped tree is complete: ${String(shipped.length)} module(s) parse, every relative import and ` +
-    `every path action.yml runs is tracked, and both files name ${String(version)}.`,
+    `every path action.yml runs is tracked, both files name ${String(version)}, and the README's ` +
+    `inventory and the ${String(tracked.size)} tracked files describe each other exactly.`,
 );
