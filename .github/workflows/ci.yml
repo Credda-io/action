@@ -15,13 +15,21 @@
 # `.github/check-shipped.mjs` for what that means and which past defect each
 # assertion is.
 #
-# NOT CHECKED HERE, and named rather than left to be assumed: that `action.yml`
-# is well-formed YAML. GitHub parses it before running a step, so an error there
-# is found by whoever installs the action next -- but proving it needs either a
-# YAML parser this repository refuses to depend on (see the `//` note in
-# package.json) or a run of the composite, which reaches the engine on its
-# second step and so cannot be exercised on a pull request. It is a real gap and
-# it is written down instead of covered by a step nobody verified.
+# THAT GAP IS NOW CLOSED, and how it was closed is the point. It read: "NOT
+# CHECKED HERE ... that `action.yml` is well-formed YAML", because proving it
+# needed a YAML parser this repository will not depend on, and the `python3`
+# /PyYAML step first written for it could not be run on the maintainer's machine
+# -- PyYAML is not in the standard library and is not installed there -- so it
+# was deleted rather than shipped unverified. Ruby's Psych IS standard library,
+# is on the hosted runners and on that machine, and needs nothing installed, so
+# `.github/check-manifest.rb` could be verified before it was committed: every
+# assertion in it was watched failing on a mutated copy of this repository.
+# It fails loudly if Ruby is ever absent rather than skipping.
+#
+# STILL NOT CHECKED HERE: that the composite RUNS. Its second step reaches the
+# engine, so it cannot be exercised on a pull request, and `smoke.yml` after a
+# push to `main` remains the only thing that proves a GitHub-signed OIDC token
+# is served an engine.
 #
 # NO PACKAGE MANAGER RUNS HERE, and that is not an oversight either. This
 # repository has no dependencies and no lockfile on purpose, and a CI that ran
@@ -45,3 +53,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: the shipped tree is complete
         run: node .github/check-shipped.mjs
+
+  manifest:
+    # `action.yml` is the whole install: GitHub parses it before it runs a step,
+    # so a fault here is not one customer's bad run, it is every install at once.
+    # Its own job, so that a failure names the manifest rather than the tree.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Named rather than assumed: this check needs Ruby, which the runner image
+      # provides. If it ever stops providing it, this line is where that is
+      # visible and the job goes red -- it does not quietly check nothing.
+      - name: the parser this check needs
+        run: ruby --version
+      - name: action.yml would install
+        run: ruby .github/check-manifest.rb

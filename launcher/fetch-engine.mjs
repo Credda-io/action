@@ -425,9 +425,29 @@ export function materialise(archive, lock, targetDir) {
 
 /* --------------------------------- the job -------------------------------- */
 
+/**
+ * Writes a step output, or refuses.
+ *
+ * IT USED TO SKIP WHEN `GITHUB_OUTPUT` WAS ABSENT, and that was the one place
+ * in this file where something failing turned into something that reads like
+ * success. `engine-root` is how the next step is told where the verified engine
+ * is; unwritten, it is the empty string, and the log still ends with "Engine
+ * v0.1.1 verified ... and unpacked to /...". The job then dies in run.mjs
+ * saying the action manifest must be broken -- which would be a wrong answer to
+ * a customer, about a file that is fine, on a run whose real fault was here.
+ *
+ * So it fails, and `run.mjs` has always failed on the same missing variable.
+ * Two scripts in one job now hold one policy rather than opposite ones.
+ */
 function output(name, value) {
   const file = process.env['GITHUB_OUTPUT'];
-  if (file) appendFileSync(file, `${name}=${value}\n`, 'utf8');
+  if (!file) {
+    fail(
+      `GITHUB_OUTPUT is not set, so Credda cannot tell the next step where it put the verified engine (${name}). ` +
+        'This script only runs inside a GitHub Actions job.',
+    );
+  }
+  appendFileSync(file, `${name}=${value}\n`, 'utf8');
 }
 
 async function main() {
