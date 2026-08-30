@@ -55,12 +55,29 @@ for (const file of shipped) {
 }
 
 /* 2. Every relative import resolves to a TRACKED file. This is a65ab94's
- * defect, stated as an assertion. */
-const importFrom = /(?:^|[\s(])(?:import|export)[^'"]*?from\s*'(\.[^']*)'|(?:^|[\s(])import\s*\(\s*'(\.[^']*)'/gm;
+ * defect, stated as an assertion.
+ *
+ * THREE FORMS, AND THE THIRD WAS MISSING. `import x from './y.mjs'` and
+ * `import('./y.mjs')` were matched; a bare side-effect `import './y.mjs';` has
+ * no `from` and no parenthesis, so it matched nothing -- and this checker still
+ * printed "every relative import ... is tracked". An untracked module imported
+ * that way passed here and is absent from every checkout of the tag, which is
+ * precisely the defect this assertion exists for.
+ *
+ * BOTH QUOTE STYLES, for the same reason. Every module here is single-quoted
+ * today and the pattern was written to that, so a double-quoted specifier --
+ * which a maintainer editing on github.com is one autoformat away from -- was
+ * invisible in all three forms. The quote is captured and back-referenced
+ * rather than alternated, so `'x"` cannot match.
+ *
+ * Each of the three forms was verified by adding one to a shipped module and
+ * watching this go from green to red. */
+const importFrom =
+  /(?:^|[\s(])(?:import|export)[^'"]*?from\s*(['"])(\.[^'"]*)\1|(?:^|[\s(])import\s*\(\s*(['"])(\.[^'"]*)\3|^\s*import\s*(['"])(\.[^'"]*)\5/gm;
 for (const file of shipped) {
   const source = readFileSync(file, 'utf8');
   for (const match of source.matchAll(importFrom)) {
-    const specifier = match[1] ?? match[2];
+    const specifier = match[2] ?? match[4] ?? match[6];
     const target = normalize(join(dirname(file), specifier));
     if (!tracked.has(target)) {
       note(`${file} imports '${specifier}', which is not a tracked file (${target}).`);

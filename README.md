@@ -90,6 +90,41 @@ nothing, and the note it posts says so in its first sentence.
 
 ## Setup
 
+> ### Read this before you copy the workflow below: `@v1` still wants the `codereef` label
+>
+> **Checked 2026-08-30.** The published `v1` tag is **8 commits behind `main`**,
+> and one of those commits is the label rename. At `v1` the `label` input
+> defaults to **`codereef` alone**; on `main` it defaults to `credda,codereef`
+> and accepts either.
+>
+> The example below tells you to create a label called `credda`. Copy it as
+> written against `@v1` and every part of it works except the part that
+> matters: the workflow triggers, the job starts, the action resolves, the
+> engine is fetched — and then the run **skips**, because the label it was
+> given is not the label that tag runs on. A skip is exit 0. **You get a green
+> check and no report, and nothing anywhere says why.** That is the worst
+> failure mode this repository has, because it is indistinguishable from
+> success.
+>
+> Until the tag is moved — a release decision, not a documentation one — pick
+> one of these, both of which work on `@v1` today:
+>
+> ```yaml
+>       - uses: Credda-io/action@v1
+>         with:
+>           label: credda        # name the label explicitly; do not rely on the default
+> ```
+>
+> or pin the branch instead of the tag, which is the tree this README describes:
+>
+> ```yaml
+>       - uses: Credda-io/action@main
+> ```
+>
+> Pinning `@main` is not the recommendation for an install you leave alone —
+> it moves under you — but it is what matches this file. Everything below
+> describes `main`.
+
 ```yaml
 # .github/workflows/credda.yml
 name: Credda on labeled issues
