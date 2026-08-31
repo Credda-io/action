@@ -34,14 +34,23 @@ jobs:
           # These were ONE variable until the rename, because the audience and
           # the endpoint were the same string. They are no longer, and merging
           # them back would silently re-couple two things that now move on
-          # different schedules -- see the two constants in
-          # launcher/fetch-engine.mjs, which this file has to keep matching.
+          # different schedules.
           #
-          # The audience has moved to api.credda.io because the Worker's
-          # ACCEPTED_ENGINE_AUDIENCES already spans both names. The URL has NOT,
-          # because nothing routes /v1/engine on that hostname to the Worker yet.
-          AUD='https://api.credda.io/v1/engine'
-          ENDPOINT='https://metering.codereef.app/v1/engine'
+          # Both are READ FROM THE LAUNCHER, for the same reason VERSION is read
+          # from the lockfile below: a literal here is a second place a
+          # release-critical string lives, and it rots without anything going
+          # red. It already had. This file asked GitHub to mint an audience of
+          # `https://api.credda.io/v1/engine`, which
+          # `ACCEPTED_ENGINE_AUDIENCES` in core has never contained -- it spans
+          # `backend.credda.io` and `metering.codereef.app` -- and then POSTed
+          # to that same string instead of to ENDPOINT, which it left unused. So
+          # the one check that proves the success path could not pass, and the
+          # only thing it could ever have reported was a failure of its own
+          # making.
+          AUD=$(node --input-type=module -e 'import {ENGINE_AUDIENCE} from "./launcher/fetch-engine.mjs"; process.stdout.write(ENGINE_AUDIENCE)')
+          ENDPOINT=$(node --input-type=module -e 'import {DEFAULT_ENGINE_URL} from "./launcher/fetch-engine.mjs"; process.stdout.write(DEFAULT_ENGINE_URL)')
+          echo "audience $AUD"
+          echo "endpoint $ENDPOINT"
           # The version is READ FROM THE LOCKFILE rather than written here. A
           # literal in this file is a second place the release version lives,
           # and it silently rots the moment a release bumps the lockfile: the
@@ -54,7 +63,7 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUD" | node -e \
             'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).value))')
 
-          CODE=$(curl -sS -o engine.tar.gz -w '%{http_code}' -X POST "$AUD" \
+          CODE=$(curl -sS -o engine.tar.gz -w '%{http_code}' -X POST "$ENDPOINT" \
             -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
             -d "{\"version\":\"$VERSION\"}")
           echo "status $CODE"

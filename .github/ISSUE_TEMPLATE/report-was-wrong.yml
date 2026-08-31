@@ -1,0 +1,118 @@
+name: The report was wrong
+description: It ran, and what it established about your repository was not right.
+labels: [report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Read this part first. It is not boilerplate.
+
+        **Credda is handed a bug report. Almost everything it can establish is
+        decided by what that report contains**, and the most common reason a run
+        comes back with nothing useful is that the report it was given had no
+        readable claim in it.
+
+        That is measured rather than asserted. Across **11,532** real issues from
+        131 public repositories that had a maintainer-bound fix commit — issues
+        somebody demonstrably fixed — only **1,555** stated a claim any parser
+        could read. Of the remainder, **95.1% contain no expression-and-value
+        pair in any form**: prose with no code, code with no annotation, an
+        annotation that is itself prose, a REPL transcript with no literal
+        output. Not a wrong claim. No claim.
+
+        So before filing here, **read the issue body Credda was given** and ask
+        whether it contains a thing to run and a value that thing produced. If it
+        does not, this is not a defect in the action, and the fix is upstream of
+        it. `npx repro-check` will tell you the same thing in a second, and it
+        needs no account, no network and no model.
+
+        None of which is a reason not to file. A run that established the wrong
+        thing from a report that *did* carry a claim is exactly what we want.
+  - type: dropdown
+    id: what
+    attributes:
+      label: What went wrong
+      options:
+        - It said it established something, and that something is false
+        - It reproduced the wrong failure
+        - It established nothing from a report that does carry a claim
+        - It named the wrong cause for a failure it did reproduce
+        - It posted a comment when it should have stayed quiet, or the reverse
+    validations:
+      required: true
+  - type: textarea
+    id: issue-body
+    attributes:
+      label: The issue body it was given
+      description: >
+        The whole thing, verbatim, as it was when the label was added. This is
+        the single most important field in this form: it is the input, and
+        without it nothing below can be checked. Redact what you must and say
+        that you did.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: The claim in that report — the expression, and the value it produced
+      description: >
+        Pull it out of the body above and write it here on its own, so there is
+        no argument about what was being claimed. **An expression and a literal
+        value.** Three shapes read cleanly and they are the ones the parser
+        knows: the expression and `//=>` and the value on one line; the
+        expression on one line and `//=>` and the value on the next; or a REPL
+        transcript, `>` before the expression and the value on the line after.
+
+
+        If you cannot fill this in from the report, that is the answer to your
+        issue and it is worth knowing before you wait on a reply.
+      render: js
+      placeholder: |
+        camelCase('-');
+        //=> '-'
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: What Credda reported
+      description: >
+        The comment it posted, or the job summary if it posted nothing. The
+        summary is written on every run, including runs that established
+        nothing, so there is always one.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: truth
+    attributes:
+      label: What was actually true
+      description: >
+        The cause, if you know it — and the commit that fixed it, if there is
+        one. A fix commit turns this from an opinion into something that can be
+        checked by execution, which is how the benchmark corpus is built and it
+        is the most useful thing you can attach.
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: The workflow step that invoked the action
+      description: The `uses:` line, its `with:` block, and your `permissions:` block.
+      render: yaml
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Was a model provider configured?
+      description: >
+        Without `anthropic-api-key` the deterministic heuristic provider runs. It
+        reproduces and reports and **cannot reason over prose**, so a prose-heavy
+        report coming back thin is that provider working as documented.
+      options:
+        - 'No key — the heuristic provider ran'
+        - 'A key was set'
+    validations:
+      required: true

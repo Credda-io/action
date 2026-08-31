@@ -1,0 +1,70 @@
+# What can be proved about this repository without the engine, a network or a
+# customer.
+#
+# WHY IT WAS MISSING AND WHY IT IS HERE. `smoke.yml` proves the one thing only a
+# real runner can -- that a GitHub-signed OIDC token is served the engine -- and
+# it runs AFTER a push to `main`. Nothing ran on a pull request, so an edit to
+# `run.mjs`, `action.yml` or the launcher reached `main` unexamined, and the
+# tests that hold those files to their meanings live in the private engine
+# checkout and read this repository as a sibling, where a contributor here
+# cannot run them.
+#
+# So this job does not check meanings. It checks the thing those private tests
+# structurally cannot, because they read a developer's working tree rather than
+# the tree a customer fetches: that the shipped tree is COMPLETE. See
+# `.github/check-shipped.mjs` for what that means and which past defect each
+# assertion is.
+#
+# THAT GAP IS NOW CLOSED, and how it was closed is the point. It read: "NOT
+# CHECKED HERE ... that `action.yml` is well-formed YAML", because proving it
+# needed a YAML parser this repository will not depend on, and the `python3`
+# /PyYAML step first written for it could not be run on the maintainer's machine
+# -- PyYAML is not in the standard library and is not installed there -- so it
+# was deleted rather than shipped unverified. Ruby's Psych IS standard library,
+# is on the hosted runners and on that machine, and needs nothing installed, so
+# `.github/check-manifest.rb` could be verified before it was committed: every
+# assertion in it was watched failing on a mutated copy of this repository.
+# It fails loudly if Ruby is ever absent rather than skipping.
+#
+# STILL NOT CHECKED HERE: that the composite RUNS. Its second step reaches the
+# engine, so it cannot be exercised on a pull request, and `smoke.yml` after a
+# push to `main` remains the only thing that proves a GitHub-signed OIDC token
+# is served an engine.
+#
+# NO PACKAGE MANAGER RUNS HERE, and that is not an oversight either. This
+# repository has no dependencies and no lockfile on purpose, and a CI that ran
+# `npm ci` would be the only thing in the system that needed one.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shipped-tree:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history is not needed; the tracked file list at this commit is.
+      - uses: actions/checkout@v4
+      - name: the shipped tree is complete
+        run: node .github/check-shipped.mjs
+
+  manifest:
+    # `action.yml` is the whole install: GitHub parses it before it runs a step,
+    # so a fault here is not one customer's bad run, it is every install at once.
+    # Its own job, so that a failure names the manifest rather than the tree.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Named rather than assumed: this check needs Ruby, which the runner image
+      # provides. If it ever stops providing it, this line is where that is
+      # visible and the job goes red -- it does not quietly check nothing.
+      - name: the parser this check needs
+        run: ruby --version
+      - name: action.yml would install
+        run: ruby .github/check-manifest.rb
