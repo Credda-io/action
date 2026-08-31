@@ -139,8 +139,10 @@ nothing, and the note it posts says so in its first sentence.
 > same reason, and a caller reading either of them gets `''` rather than a
 > failure.
 >
-> So: **`open-pull-request` needs `@main` today.** There is no spelling of it
-> that works on `@v1`, which is the difference between this and the label —
+> So: **`open-pull-request` needs `@main`, once this branch has merged there.**
+> It is on no published ref yet -- not `@v1` and not `@main` -- so a caller
+> pointing at either before that merge meets the same silent exit-0 this note is
+> about. There is no spelling of it that works on `@v1`, which is the difference between this and the label —
 > that one had a workaround and this one does not. Everything the section
 > *Opening a pull request* describes is `main`.
 
