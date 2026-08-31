@@ -81,7 +81,8 @@
 // through the metering client, which is documented to fail open inside a
 // bounded race and never to throw. The receipt goes to the endpoint the action
 // defaults to; a caller who sets `metering-url` to the empty string gets no
-// request of any kind, and so does `CREDDA_TELEMETRY=off`. What one receipt
+// request of any kind. That is the ONLY switch, and it is an input rather than
+// an environment variable on purpose -- see `meter()` below. What one receipt
 // contains is written out in the `metering-url` input description in action.yml
 // and in README.md, in the fields it actually sends.
 //
@@ -334,6 +335,20 @@ function creddaVersion() {
  * default, because that keeps one switch: whatever `metering-url` resolves to
  * is what is dialled, and setting it to the empty string disables the call
  * outright here, before the client is even imported.
+ *
+ * THERE IS NO ENVIRONMENT-VARIABLE OPT-OUT, and this is the second time that
+ * has had to be written down. README.md and the `metering-url` description both
+ * used to offer `CREDDA_TELEMETRY=off` in the job environment; no file in this
+ * repository ever read that name, so it was an opt-out that metered you. It is
+ * not simply added here because `.github/check-manifest.rb` assertion 7 requires
+ * every name a step reads to be set by that step's own `env:` block, and its
+ * rationale rejects "the caller's job environment supplies it" by name -- an
+ * `env:` key is what makes this action independent of what a caller happens to
+ * have exported. Honouring a job-environment variable therefore needs either a
+ * new input (which `metering-url: ''` already is) or an exemption in that gate.
+ * Neither was worth a second switch, so the promise was removed instead of the
+ * gate being weakened. If a `telemetry` input is ever wanted, it goes in
+ * `action.yml`, into that step's `env:`, and is read HERE, above the import.
  *
  * The `try` around everything is the second guard. `reportRun` is built never
  * to throw, but this function also imports a module, reads an environment and

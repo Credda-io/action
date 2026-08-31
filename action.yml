@@ -220,8 +220,11 @@ inputs:
     # ON BY DEFAULT, because the licence check and the run count are what the
     # paid plans are sold against, and a gate a customer has to switch on
     # themselves is not a gate. Setting this to the empty string still means NO
-    # REQUEST IS MADE AT ALL -- not a shortened one, not a stripped one --
-    # and so does CREDDA_TELEMETRY=off in the job environment.
+    # REQUEST IS MADE AT ALL -- not a shortened one, not a stripped one. It is
+    # the ONLY switch: this description used to also offer CREDDA_TELEMETRY=off
+    # in the job environment, and nothing in this repository has ever read that
+    # name. See the note on `meter()` in run.mjs for why an environment opt-out
+    # is not simply added.
     #
     # EXACTLY WHAT LEAVES THE RUNNER, so this is checkable rather than
     # reassuring. One POST per run, at most one per job, of a JSON body under

@@ -115,15 +115,19 @@ nothing, and the note it posts says so in its first sentence.
 >           label: credda        # name the label explicitly; do not rely on the default
 > ```
 >
-> or pin the branch instead of the tag, which is the tree this README describes:
+> or pin the branch instead of the tag:
 >
 > ```yaml
 >       - uses: Credda-io/action@main
 > ```
 >
 > Pinning `@main` is not the recommendation for an install you leave alone —
-> it moves under you — but it is what matches this file. Everything below
-> describes `main`.
+> it moves under you — but it is the ref where the label default is the one
+> this page tells you to create.
+>
+> **`@main` is not this page, either.** This README is written against an
+> unmerged branch, and it is one feature ahead of every published ref: read
+> the next paragraph before you assume a section applies to the ref you pinned.
 >
 > **The label is not the only thing that tag is missing, and the second one is
 > the promise.** `open-pull-request` **is not an input at `v1` at all.** It was
@@ -144,7 +148,10 @@ nothing, and the note it posts says so in its first sentence.
 > pointing at either before that merge meets the same silent exit-0 this note is
 > about. There is no spelling of it that works on `@v1`, which is the difference between this and the label —
 > that one had a workaround and this one does not. Everything the section
-> *Opening a pull request* describes is `main`.
+> *Opening a pull request* describes arrives on `@main` when this branch merges
+> there, and on `@v1` when the tag is moved after that — both release decisions,
+> neither of them made yet. Every other section of this page describes `@main`
+> today.
 
 ```yaml
 # .github/workflows/credda.yml
@@ -703,22 +710,25 @@ timestamp. `outcome` and `actionVersion` are additionally refused if they merely
 
 ### Turning it off
 
-Either of these makes **no request of any kind** -- not a shortened one, not a
-stripped one:
+There is **one** switch, and it makes **no request of any kind** -- not a
+shortened one, not a stripped one:
 
 ```yaml
 with:
   metering-url: ''        # in the workflow
 ```
 
-```yaml
-env:
-  CREDDA_TELEMETRY: off # in the job environment
-```
+It is read before the metering client is imported and before anything is
+hashed: `run.mjs` trims the value, and an empty one returns before the `import`.
+Turning it off disables nothing you are paying for -- with metering off, a
+decline reply on a private repository is still posted.
 
-Both are read before anything is imported or hashed. Neither disables anything
-you are paying for: with metering off, a decline reply on a private repository
-is still posted.
+There is no environment-variable equivalent. Earlier revisions of this page
+offered `CREDDA_TELEMETRY: off` in the job environment; **nothing in this
+repository ever read that name**, so setting it did nothing and the receipt was
+sent anyway. It is documented here rather than quietly deleted because a
+workflow may still be carrying it: if yours sets `CREDDA_TELEMETRY`, that
+workflow is metering, and `metering-url: ''` is what actually stops it.
 
 ### It cannot break your job
 
