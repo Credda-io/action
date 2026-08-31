@@ -106,7 +106,19 @@ if (diff.trim() === '') {
   );
 }
 
-const branch = branchNameFor(issueNumber);
+// Through `refuse` rather than as a throw. `branchNameFor` is strict about the
+// issue number on purpose and throws a sentence written for a customer, and an
+// uncaught throw here prints it as a stack trace with no annotation and nothing
+// on the job summary -- which is the one shape this file's own `refuse` exists
+// to avoid. Unreachable in practice, since the number comes from the event
+// payload; the handling is here because "unreachable" is what every other
+// stack trace in a red job was too.
+let branch;
+try {
+  branch = branchNameFor(issueNumber);
+} catch (error) {
+  refuse('Credda could not name a branch for this proposal, so nothing was pushed.', error.message);
+}
 
 /*
  * The commit this branch starts from.

@@ -198,6 +198,29 @@ function credda(args, stdio) {
 }
 
 /**
+ * Ends the job red, and says so on the first line of the annotation list and on
+ * the job summary.
+ *
+ * The three places this is called used to `console.error` and `process.exit(1)`.
+ * The job did go red, so none of them was a silent failure -- but a bare
+ * `console.error` is a log line and nothing else: it produces no annotation, so
+ * the failure had no entry in the list a person reads before opening the log,
+ * and it wrote nothing to the summary panel, where `skip()` above and
+ * `deliver-pr.mjs` and the launcher all write theirs. Every other refusal in
+ * this action already had this shape; these were the exception, and README.md's
+ * "How it fails" opens by asserting that every failure names its own cause on
+ * the first line of the annotation.
+ *
+ * The first line goes to `::error::` because that is all an annotation takes.
+ */
+function die(message) {
+  console.log(`::error::${message.split('\n')[0]}`);
+  console.error(message);
+  writeSummary(`### Credda did not finish\n\n${message}\n`);
+  process.exit(1);
+}
+
+/**
  * Ends the job without running anything, and says so where a person will look.
  *
  * The reason used to go to `console.log` only. Every other route through this
@@ -418,11 +441,10 @@ async function investigate() {
   try {
     result = JSON.parse(readFileSync(resultFile, 'utf8'));
   } catch {
-    console.error(
+    die(
       `Credda did not record a result (investigate exited ${run.status ?? 'null'}). ` +
         'This is a Credda failure, not a finding about the repository, and nothing will be posted.',
     );
-    process.exit(1);
   }
 
   console.log(`Investigation ${result.investigationId} reached ${result.outcome}`);
@@ -456,8 +478,11 @@ async function investigate() {
 
   const report = credda(['report', result.investigationId, '--markdown'], ['ignore', 'pipe', 'inherit']);
   if (report.status !== 0 || report.stdout === null || report.stdout.length === 0) {
-    console.error(`credda report exited ${report.status ?? 'null'} with no document; not posting.`);
-    process.exit(1);
+    die(
+      `Credda reached ${result.outcome} and then could not render the report for it ` +
+        `(credda report exited ${report.status ?? 'null'} with no document). This is a Credda ` +
+        'failure, not a finding about the repository, and nothing will be posted.',
+    );
   }
 
   const reportFile = join(work, 'report.md');
@@ -513,6 +538,21 @@ ${readFileSync(reportFile, 'utf8')}
       // The engine said this run carries a verified change and then could not
       // produce it. That is an inconsistency in Credda, so nothing is pushed and
       // the refusal says whose fault it is.
+      //
+      // ANNOTATED RATHER THAN ONLY NOTED, AND DELIBERATELY NOT FATAL. The
+      // customer asked for a pull request, the run proved a fix, and Credda
+      // broke -- which `deliver-pr.mjs` treats as a red job in as many words
+      // ("a green job would be this action denying something it failed to
+      // do"). This one cannot exit: the posting step runs after this script,
+      // so failing here would take the report comment down with it, and
+      // action.yml puts the comment first precisely so a delivery problem
+      // cannot cost the customer the report. So the job stays green and the
+      // failure is raised to the annotation list instead of living only in a
+      // summary paragraph a green job invites nobody to read.
+      console.log(
+        '::error::Credda recorded a verified change for this run and then could not emit the diff ' +
+          'for it. Nothing was pushed. This is a Credda failure, not a finding about the repository.',
+      );
       deliveryNote =
         'Credda recorded a verified change for this run and then could not emit the diff for it ' +
         `(credda report --patch exited ${String(patch.status ?? 'null')}). Nothing was pushed. ` +
@@ -620,11 +660,10 @@ async function triage() {
    */
   const status = run.status;
   if (status !== 0 && status !== 6) {
-    console.error(
+    die(
       `credda triage exited ${status ?? 'null'}, which is neither a comment (6) nor silence (0). ` +
         'This is a Credda failure, not a finding about the report, and nothing will be posted.',
     );
-    process.exit(1);
   }
 
   const comment = status === 6 ? String(run.stdout ?? '').trimEnd() : '';

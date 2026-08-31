@@ -66,7 +66,7 @@
 // disk, and again per-file after unpacking. There is no flag that skips it. See
 // integrity.mjs, which is deliberately a separate, short, directly tested file.
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { appendFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -553,7 +553,30 @@ async function main() {
 
 // Run only when executed, so the tests can import `materialise` and `download`
 // without the file trying to mint a token.
-if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+//
+// COMPARED BY REAL PATH, AND THAT IS THE WHOLE OF THIS FUNCTION. Node resolves
+// the main module through its symlinks before it sets `import.meta.url`, and
+// does not resolve `process.argv[1]`. So on any runner where the path
+// `action.yml` interpolates -- `$GITHUB_ACTION_PATH` -- passes through a
+// symlink, the two strings differ, this condition is false, and NOTHING RUNS:
+// no download, no verification, no output, no message, and the step exits 0.
+// The job then dies in `run.mjs` blaming the action manifest, which is a wrong
+// answer to a customer about a file that is fine. Measured: invoking this file
+// through a symlinked directory exited 0 having done nothing. Resolving both
+// sides the same way is what makes "did not run" impossible to confuse with
+// "ran and succeeded".
+function isMainModule() {
+  const real = (path) => {
+    try {
+      return realpathSync(path);
+    } catch {
+      return resolve(path);
+    }
+  };
+  return real(process.argv[1]) === real(fileURLToPath(import.meta.url));
+}
+
+if (process.argv[1] && isMainModule()) {
   try {
     await main();
   } catch (error) {

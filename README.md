@@ -534,9 +534,10 @@ permissions:
   pull-requests: write   # open the proposal
 
 # ...
-      # `@main`, not `@v1`: this input does not exist at the published tag, and
-      # an undeclared input is '' on the runner, which is 'off'. See the note
-      # at the top of this file.
+      # NOT `@v1`, AND NOT `@main` EITHER, YET. This input exists on no
+      # published ref: an undeclared input is '' on the runner, which is
+      # 'off', so this block is green and silent on both. It works once this
+      # feature merges to `main`. See the note at the top of this file.
       - uses: Credda-io/action@main
         with:
           open-pull-request: 'true'
@@ -605,7 +606,7 @@ because that list is what somebody reads before they open the log.
 | `sandbox: docker` on a non-Linux runner | *Refuse a plane the runner cannot isolate* | Use `ubuntu-latest`. The action refuses rather than falling back to running your code on the host. |
 | The event is not the label this action runs on | *Run Credda* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
 | The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
-| `open-pull-request: 'true'` on `@v1` | none | Nothing, and that is the problem: the input does not exist at that tag, so it evaluates to `''` and the feature is off. The job is green and the report is posted. Use `@main` until the tag moves. |
+| `open-pull-request: 'true'` on any published ref | none | Nothing, and that is the problem: the input exists at neither `@v1` nor `@main` yet, so it evaluates to `''`, the feature is off, the job is green and the report is posted with nothing anywhere saying why no pull request appeared. There is no ref to move to today; it works from `@main` once this feature merges there. |
 | `open-pull-request: 'true'`, and the org forbids Actions opening pull requests | *Open a pull request with the verified fix* | An admin turns on *Allow GitHub Actions to create and approve pull requests* under Settings -> Actions -> General. The branch was pushed; anyone can open the proposal by hand meanwhile. |
 | `open-pull-request: 'true'` without `contents: write` / `pull-requests: write` | *Open a pull request with the verified fix* | Add both to your workflow's `permissions:` block. The message names them. The report comment is already posted by then. |
 | `open-pull-request: 'true'`, and your checkout ran with `persist-credentials: false` | *Open a pull request with the verified fix* | Drop that setting on this workflow's `actions/checkout` step, or configure a credential for `origin` yourself. It removes the token git pushes with, and Credda has none of its own to fall back on. Adding scopes will not fix it, so the message says that rather than quoting git. |
