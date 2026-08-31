@@ -190,6 +190,48 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
  */
 export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
 
+/**
+ * Why `engine-url` is checked BEFORE a token is minted, and not after.
+ *
+ * `mintIdToken` produces a GitHub-signed OIDC assertion scoped to the calling
+ * repository, and `download` sends it to whatever `engine-url` names. Until
+ * this existed the value was tested only for emptiness, so
+ * `engine-url: http://attacker.example/` on a customer's runner posted that
+ * token to an arbitrary host in cleartext.
+ *
+ * The digest verification further down is not a mitigation for this. It stops
+ * an unverified archive from EXECUTING, which is a different property; it
+ * cannot un-send a credential that left before it ran. Ordering is the control:
+ * refuse the endpoint first, mint second.
+ *
+ * https is required rather than encouraged. Over http the assertion is readable
+ * by anything on the path, and no legitimate deployment fetches the engine over
+ * plaintext. The HOST is deliberately left open -- self-hosted and staging
+ * endpoints are supported, and it is the audience claim in `mintIdToken` that
+ * binds the token to a service permitted to accept it, not an allowlist here.
+ *
+ * Returns the refusal message, or `null` when the URL is acceptable. Split out
+ * from `main` so it can be exercised directly; this repository has no test
+ * runner yet, and a security control that cannot be called in isolation is one
+ * nobody checks.
+ */
+export function engineUrlRefusal(endpoint) {
+  let parsed;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    return `engine-url is not a valid URL: ${endpoint}`;
+  }
+  if (parsed.protocol !== 'https:') {
+    return (
+      `engine-url must use https, but it is ${parsed.protocol} (${endpoint}). ` +
+      'Credda mints a repository-scoped OIDC token to authenticate this fetch and ' +
+      'will not send it over a plaintext connection.'
+    );
+  }
+  return null;
+}
+
 /** Largest archive accepted, in bytes. The real one is about a megabyte. */
 const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
 
@@ -487,6 +529,23 @@ async function main() {
         'engine-url is empty and engine-archive is not set, so Credda has no way to obtain its engine.',
       );
     }
+
+    // Validate the endpoint BEFORE minting anything. The token below is a
+    // GitHub-signed OIDC assertion scoped to the caller's repository, and
+    // `download` sends it to whatever `endpoint` names. Until this check
+    // existed, `engine-url: http://attacker.example/` on a customer's runner
+    // handed that token to an arbitrary host in cleartext -- the digest
+    // verification further down stops unverified code from EXECUTING, but it
+    // cannot un-send a credential that was posted before it ran.
+    //
+    // https is required rather than merely recommended: over http the token is
+    // readable by anything on the path, and there is no legitimate deployment
+    // of this action that fetches its engine over plaintext. Host is left open
+    // on purpose -- self-hosted and staging endpoints are supported, and the
+    // audience check in `mintIdToken` is what binds the token to a service
+    // that is allowed to accept it.
+    const refusal = engineUrlRefusal(endpoint);
+    if (refusal !== null) fail(refusal);
 
     let token;
     try {
