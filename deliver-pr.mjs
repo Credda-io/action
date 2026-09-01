@@ -178,6 +178,38 @@ if (branchExists) {
     '--jq', '.[0].url // ""',
   ]);
 
+  /*
+   * A QUERY THAT FAILED IS NOT AN ANSWER OF "NONE".
+   *
+   * `run` never throws -- it hands back `{status, out}` from spawnSync -- so a
+   * `gh pr list` that failed for any reason returns status !== 0 and out ''.
+   * That used to fall straight through into the refusal below, which tells the
+   * customer their branch "already exists and has no open pull request" and
+   * advises them to "delete or rename the branch".
+   *
+   * On a re-run where a Credda pull request IS open, that is a false statement
+   * about their repository produced by our own failed API call, and the remedy
+   * it offers is to delete the head branch of a live pull request. gh being
+   * unauthenticated, a 5xx, a rate limit, or a workflow granting
+   * `contents: write` without `pull-requests: read` all look identical to "no
+   * proposal exists".
+   *
+   * Every other command in this file already separates a failure from a result
+   * -- head, remote, created, applied, committed each check `.status !== 0`.
+   * This was the one that did not.
+   */
+  if (open.status !== 0) {
+    const named = explainForgeRefusal(open.said);
+    refuse(
+      `Credda could not ask GitHub whether a pull request is already open for \`${branch}\`, so nothing was pushed.`,
+      named ??
+        'The branch exists and may or may not have an open proposal on it, and Credda will not ' +
+          'force-push over a branch whose state it cannot read. Check that the workflow grants ' +
+          '`pull-requests: read` and that the run is authenticated, then re-run. No branch needs ' +
+          `deleting on the strength of this message. GitHub said: ${open.said.trim()}`,
+    );
+  }
+
   if (open.status === 0 && open.out !== '') {
     const line =
       `Credda already proposed this fix: ${open.out}. The branch \`${branch}\` is the one that ` +

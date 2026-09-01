@@ -366,6 +366,44 @@ async function meter(outcome) {
       return null;
     }
 
+    /*
+     * https, for the same reason `engine-url` requires it.
+     *
+     * The report carries `licenseKey` -- action.yml calls it "a bearer
+     * credential for entitlement", sent "IN THE CLEAR over TLS" -- alongside
+     * HMACs of the org, the repository and the actor. That TLS promise was made
+     * in the documentation and enforced nowhere: `metering-url` was passed
+     * through to `reportRun` exactly as given, so a mirror, a corporate proxy
+     * or a typo beginning `http://` POSTed the credential in plaintext.
+     *
+     * `engineUrlRefusal` in launcher/fetch-engine.mjs already makes this exact
+     * argument for the sibling endpoint -- "over http the assertion is readable
+     * by anything on the path", and a later integrity check "cannot un-send a
+     * credential that left before it ran". One endpoint had the check and the
+     * one carrying the longer-lived secret did not.
+     *
+     * Skipped rather than thrown, because metering fails open by design and a
+     * receipt is not worth failing somebody's build over. Skipping sends
+     * nothing, which is the safe half of fail-open; sending it anyway is not.
+     * An operator who wants no metering at all sets `metering-url` to empty,
+     * which is the branch directly above.
+     */
+    let parsed;
+    try {
+      parsed = new URL(endpoint);
+    } catch {
+      console.log(`metering-url is not a valid URL (${endpoint}), so no receipt was reported.`);
+      return null;
+    }
+    if (parsed.protocol !== 'https:') {
+      console.log(
+        `metering-url must use https, but it is ${parsed.protocol} (${endpoint}). ` +
+          'The receipt carries a licence key, which is a bearer credential, and Credda will not ' +
+          'send it over a plaintext connection. No request was made and this run is unaffected.',
+      );
+      return null;
+    }
+
     const client = await import(pathToFileURL(meteringBundle).href);
 
     const report = await client.buildRunReport({
