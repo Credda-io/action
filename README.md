@@ -5,7 +5,7 @@
 You label a bug report or a security vulnerability. Credda reproduces the
 failure, diagnoses the cause, writes the patch, proves it with a test that fails
 before and passes after, and hands back a diff. Opening a pull request is
-`open-pull-request` below: opt-in, off by default. It proposes and never merges.
+`open-pull-request` below: opt-in, off by default. It proposes. It never merges.
 
 That first sentence used to read "Credda finds the bugs and security
 vulnerabilities in a company's production and QA environments". Nothing in this
