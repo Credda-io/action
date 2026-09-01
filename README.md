@@ -26,7 +26,7 @@ stage has landed. ADR 0019 in the engine repository put the fixer and the
 verifier back on the investigation path on 2026-08-27, and on 2026-08-28 the
 engine's forge delivery path was wired to open a pull request for a run that
 reaches `READY_FOR_REVIEW` still carrying a patch, on either of two verdicts: a
-`VERIFIED` one, or -- since 2026-08-29 -- a `PARTIALLY_VERIFIED` one whose
+`VERIFIED` one, or -- since 2026-08-28 -- a `PARTIALLY_VERIFIED` one whose
 recorded signals prove the reported failure changed shape rather than survived.
 So, saying it before it does:
 
