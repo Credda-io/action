@@ -186,10 +186,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Credda-io/action@v1
-        # Optional. Without it the deterministic heuristic provider runs:
-        # it reproduces and reports, and cannot reason over prose.
-        # with:
-        #   anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          # NAMED EXPLICITLY, and it is not optional at `@v1`.
+          #
+          # That tag's `label` input still defaults to `codereef` alone, so a
+          # workflow that relies on the default triggers, starts, resolves the
+          # action, fetches the engine and then SKIPS -- exit 0, a green check,
+          # no report, and nothing saying why. See the warning above. This line
+          # is what makes the example above actually work when copied.
+          label: credda
+          # Optional. Without it the deterministic heuristic provider runs:
+          # it reproduces and reports, and cannot reason over prose.
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
 Then create the label the workflow triggers on, once, from a clone of the
