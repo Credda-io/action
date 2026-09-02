@@ -22,6 +22,20 @@ permissions:
   # endpoint answers 401 naming this exact line.
   id-token: write
 
+# One run per branch, and an obsolete one does not keep billing.
+#
+# Without this, five quick pushes to a pull request start five runs and none is
+# cancelled: four of them are already answering a question nobody is asking any
+# more. `credda-app`'s build.yml has carried this since it was written and this
+# workflow did not.
+#
+# `cancel-in-progress` is FALSE on main deliberately. Off main a superseded run
+# is waste; on main it is the record of whether that commit is good, and
+# cancelling it to save a minute is how a broken main goes unnoticed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   engine:
     runs-on: ubuntu-latest
