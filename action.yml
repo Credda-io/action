@@ -172,8 +172,29 @@ inputs:
     #
     # A triage job needs `issues: [opened]` on its trigger and nothing else
     # changed: same permissions, same token, same posting step.
-    description: "'investigate' to reproduce a labelled issue, 'triage' to read a newly opened one."
+    #
+    # 'discover' is the one that does not wait to be asked. It reads the
+    # checkout and reports the defects nobody reported, which is what Credda is
+    # for. It runs no repository code and executes none of the programs it
+    # emits, so like triage it needs no sandbox, no model call and no API key --
+    # a checkout and a Node process. It posts nothing: findings go to the job
+    # summary, because a tool whose first act is to open twenty issues gets
+    # uninstalled the same afternoon.
+    #
+    # A discover job wants `on: push` (or a schedule) and
+    # `contents: read` -- no issues: write, no pull-requests: write.
+    description: >-
+      'investigate' to reproduce a labelled issue, 'triage' to read a newly
+      opened one, 'discover' to read the repository and report what nobody filed.
     default: investigate
+  max-files:
+    # Discover mode only. The walk is over a customer's whole checkout and a
+    # monorepo can be very large, so there is a cap; the engine has its own
+    # default and this overrides it. It is an input rather than a constant
+    # because the right number depends on the repository, and the only person
+    # who knows that is the one who owns it.
+    description: "In discover mode, the most source files to read. Ignored by the other modes."
+    default: "4000"
   label:
     description: >-
       In investigate mode, run only when one of these labels was added ('*'
@@ -422,6 +443,18 @@ outputs:
       The engine version this run verified and executed, from engine.lock.json.
       The same number as this action's own release.
     value: ${{ steps.engine.outputs.engine-version }}
+  stated-findings:
+    description: >-
+      In discover mode, how many findings were settled by reading -- established
+      by the repository itself, with nothing executed. Empty in the other modes.
+    value: ${{ steps.credda.outputs.stated-findings }}
+  candidates:
+    description: >-
+      In discover mode, every row the run produced, settled and unsettled
+      together. Most carry a program that has not been run, so gating a merge on
+      this number would gate on questions rather than on findings. Empty in the
+      other modes.
+    value: ${{ steps.credda.outputs.candidates }}
   investigation-id:
     description: Investigate mode only. The investigation id, for credda inspect / credda report.
     value: ${{ steps.credda.outputs.investigation-id }}
@@ -558,6 +591,12 @@ runs:
         CREDDA_ENGINE_ROOT: ${{ steps.engine.outputs.engine-root }}
         CREDDA_MODE: ${{ inputs.mode }}
         CREDDA_LABEL: ${{ inputs.label }}
+        # Discover mode's file cap. Set here rather than defaulted in the script
+        # alone: an unset variable is the empty string on a runner, so a name the
+        # script reads and the manifest never sets is a knob that silently does
+        # nothing -- which is what .github/check-manifest.rb exists to catch, and
+        # did catch on the commit that added this mode.
+        CREDDA_MAX_FILES: ${{ inputs.max-files }}
         CREDDA_SANDBOX: ${{ inputs.sandbox }}
         # The step below reads `should-post` rather than re-deciding, so the
         # value has to reach the script that computes it.
