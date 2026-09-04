@@ -70,12 +70,49 @@ licence and is refused with a `402` at the fetch step until it has one. Your own
 Actions minutes are the other cost, and `investigate` spends more of them than
 `triage` does.
 
-## Two modes
+## Three modes
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
+| `discover` | **a push. Nobody has to file anything** | one download and one Node process, seconds | a job summary listing the defects Credda found in your code |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
 | `triage` | an issue being opened | one download and one Node process, seconds | a short note saying what Credda could not use in the report -- **or nothing** |
+
+`discover` is the one that does not wait to be asked, and it is what Credda is
+for: it reads your repository and reports defects nobody reported. The other two
+both start from an issue somebody filed.
+
+It **runs none of your code**. It reads source and reports what it found; it
+starts no container, installs nothing from your repository, makes no model call
+and needs no API key. Some of what it finds is settled by reading -- a function
+that calls what its siblings guard, a declaration the code beside it
+contradicts -- and the summary says so. Everything else is a **candidate**: a
+question with a program attached that has not been run. The summary never calls
+one of those a finding.
+
+It **posts nothing**. No issue, no comment, no pull request. Findings go to the
+job summary, because a tool whose first act is to open twenty issues gets
+uninstalled the same afternoon. `stated-findings` and `candidates` are outputs,
+so gating a merge on either is your decision to wire up rather than ours to
+make.
+
+```yaml
+# .github/workflows/credda-discover.yml
+name: Credda
+on: push
+
+permissions:
+  contents: read          # nothing else. It posts nothing.
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        with:
+          mode: discover
+```
 
 `triage` runs no repository code, starts no container, installs nothing from
 your repository, makes no model call and needs no API key. It reads the issue

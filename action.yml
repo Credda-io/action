@@ -172,7 +172,20 @@ inputs:
     #
     # A triage job needs `issues: [opened]` on its trigger and nothing else
     # changed: same permissions, same token, same posting step.
-    description: "'investigate' to reproduce a labelled issue, 'triage' to read a newly opened one."
+    #
+    # 'discover' is the one that does not wait to be asked. It reads the
+    # checkout and reports the defects nobody reported, which is what Credda is
+    # for. It runs no repository code and executes none of the programs it
+    # emits, so like triage it needs no sandbox, no model call and no API key --
+    # a checkout and a Node process. It posts nothing: findings go to the job
+    # summary, because a tool whose first act is to open twenty issues gets
+    # uninstalled the same afternoon.
+    #
+    # A discover job wants `on: push` (or a schedule) and
+    # `contents: read` -- no issues: write, no pull-requests: write.
+    description: >-
+      'investigate' to reproduce a labelled issue, 'triage' to read a newly
+      opened one, 'discover' to read the repository and report what nobody filed.
     default: investigate
   label:
     description: >-
@@ -422,6 +435,18 @@ outputs:
       The engine version this run verified and executed, from engine.lock.json.
       The same number as this action's own release.
     value: ${{ steps.engine.outputs.engine-version }}
+  stated-findings:
+    description: >-
+      In discover mode, how many findings were settled by reading -- established
+      by the repository itself, with nothing executed. Empty in the other modes.
+    value: ${{ steps.credda.outputs.stated-findings }}
+  candidates:
+    description: >-
+      In discover mode, every row the run produced, settled and unsettled
+      together. Most carry a program that has not been run, so gating a merge on
+      this number would gate on questions rather than on findings. Empty in the
+      other modes.
+    value: ${{ steps.credda.outputs.candidates }}
   investigation-id:
     description: Investigate mode only. The investigation id, for credda inspect / credda report.
     value: ${{ steps.credda.outputs.investigation-id }}

@@ -147,6 +147,14 @@ const anyLabel = expectedLabels.includes('*');
 const primaryLabel = expectedLabels[0] ?? 'credda';
 const sandbox = env('CREDDA_SANDBOX', 'docker');
 const mode = env('CREDDA_MODE', 'investigate');
+/*
+ * The file cap for discovery, passed straight through to the CLI.
+ *
+ * A cap exists at all because the walk is over a customer's whole checkout and
+ * a monorepo can be very large; the CLI has its own default and this only
+ * overrides it when the caller asks.
+ */
+const maxDiscoverFiles = env('CREDDA_MAX_FILES', '4000');
 
 // The engine. A single prebuilt ESM file with its own createRequire shim, with
 // the sandbox Dockerfile and the database migrations beside it -- the CLI finds
@@ -176,8 +184,39 @@ if (!existsSync(creddaBundle)) {
   process.exit(1);
 }
 
-const event = JSON.parse(readFileSync(env('GITHUB_EVENT_PATH'), 'utf8'));
+/*
+ * THE EVENT, AND WHY IT IS NO LONGER MANDATORY.
+ *
+ * `investigate` and `triage` both start from an issue, so this used to be read
+ * unconditionally at load: no GITHUB_EVENT_PATH meant no job. `discover` starts
+ * from the repository and runs on push, where the payload has no issue in it
+ * and may not be present at all -- so demanding one here refused the mode
+ * before its first line ran.
+ *
+ * The demand moves to the two modes that actually have the requirement. It is
+ * still a hard failure for them: an investigate job with no event is broken,
+ * and guessing would be worse than stopping.
+ */
+const event = (() => {
+  const path = process.env['GITHUB_EVENT_PATH'];
+  if (path === undefined || path === '') return {};
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return {};
+  }
+})();
 const issue = event.issue;
+
+function requireIssueEvent() {
+  if (process.env['GITHUB_EVENT_PATH'] === undefined || process.env['GITHUB_EVENT_PATH'] === '') {
+    console.error(
+      `CREDDA_MODE is '${mode}', which runs on an issue, and GITHUB_EVENT_PATH is not set. ` +
+        'This script only runs inside a GitHub Actions job.',
+    );
+    process.exit(1);
+  }
+}
 
 const work = join(env('RUNNER_TEMP'), 'credda');
 const home = join(work, 'home');
@@ -784,13 +823,179 @@ function footer() {
   return `---\n\nNothing was run to produce this note; it comes from reading the report alone. ${invite}\n\n[Action run](${runUrl()})`;
 }
 
+/* -------------------------------- discover -------------------------------- */
+
+/**
+ * The mode that does not wait to be asked.
+ *
+ * `investigate` and `triage` both start from an issue somebody filed. This one
+ * starts from the repository: it reads a checkout and reports the defects
+ * nobody reported. That is the thing Credda is for, and until this existed the
+ * only way to reach the finders was to run the CLI by hand on a laptop.
+ *
+ * ## WHY IT IS AS CHEAP AS TRIAGE, NOT AS EXPENSIVE AS INVESTIGATE
+ *
+ * `credda discover` reads source and executes nothing -- not the repository's
+ * code, not the programs it emits. So this mode starts no container, installs
+ * nothing from the repository, makes no model call and needs no API key. It
+ * wants a checkout and a Node process, which is the same shape as triage.
+ *
+ * The engine's own header explains why it executes nothing (a ReDoS candidate's
+ * whole defect is that matching it hangs a CPU). This mode does not change that
+ * decision and must not: a job that started running candidate programs against
+ * a customer's dependencies would be a different product with a different
+ * consent question.
+ *
+ * ## WHY IT POSTS NOTHING
+ *
+ * The findings go to the job summary and nowhere else. No issue is opened, no
+ * comment is written, no pull request is raised. A first run on a repository
+ * with a large dependency tree can raise a lot of candidates, and a tool whose
+ * first act is to open twenty issues gets uninstalled the same afternoon.
+ *
+ * The summary is also the honest surface for what discovery produces: a STATED
+ * finding is settled by reading, and every other row is a candidate whose
+ * program has not been run. Those are different claims and a list of issues
+ * would flatten them into one.
+ */
+async function discover() {
+  const checkout = env('GITHUB_WORKSPACE');
+
+  // --json so this reads events rather than scraping the rendered listing.
+  // Failure to parse a line is not failure to run: the CLI is free to add event
+  // types, and an unknown one must not take the job red.
+  const ran = credda(['discover', checkout, '--json', '--max-files', maxDiscoverFiles], 'pipe');
+
+  if (ran.error !== undefined || ran.status === null) {
+    console.error(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
+    process.exit(1);
+  }
+
+  const events = [];
+  for (const line of String(ran.stdout ?? '').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('{')) continue;
+    try {
+      events.push(JSON.parse(trimmed));
+    } catch {
+      /* not an event this version writes */
+    }
+  }
+
+  const candidates = events.filter((one) => one.type === 'discovery.candidate');
+  const finished = events.find((one) => one.type === 'discovery.finished');
+
+  if (finished === undefined) {
+    // No finishing event means the run did not complete, and reporting "0
+    // candidates" for a run that never finished is the worst thing this could
+    // print: it reads exactly like a clean repository.
+    console.error(String(ran.stderr ?? '').slice(0, 4000));
+    console.error('Credda discovery did not finish, so nothing is being reported.');
+    process.exit(1);
+  }
+
+  const stated = candidates.filter((one) => one.standing === 'STATED');
+  const proposed = candidates.filter((one) => one.standing !== 'STATED');
+
+  writeSummary(discoverSummary(stated, proposed, finished));
+
+  output('skipped', 'false');
+  output('issue-number', '');
+  // Discovery starts nothing and produces no patch, so it can never deliver
+  // one. Written rather than left unset so the delivery step reads one answer
+  // whichever mode ran, exactly as triage does.
+  output('deliver', 'false');
+  output('patch-path', '');
+  output('should-post', 'false');
+  output('comment-path', '');
+  output('body-path', '');
+  output('stated-findings', String(stated.length));
+  output('candidates', String(candidates.length));
+
+  /*
+   * ALWAYS GREEN, findings or none.
+   *
+   * A candidate is a report and not a verdict, and a red check beside a list of
+   * unproven candidates is a build failure a maintainer cannot act on. Even the
+   * STATED rows are reports: they say a divergence is there, not that the
+   * repository must not ship. Whether any of this should gate a merge is the
+   * maintainer's decision, and the outputs above are how they would wire it.
+   */
+}
+
+/** The job summary: what is settled, what is not, and what was looked for. */
+function discoverSummary(stated, proposed, finished) {
+  const lines = ['## Credda discovery', ''];
+
+  lines.push(
+    `Read ${finished.filesRead} file${finished.filesRead === 1 ? '' : 's'}. ` +
+      'Nothing in this repository was executed.',
+    '',
+  );
+
+  if (stated.length === 0 && proposed.length === 0) {
+    lines.push(
+      'No candidate was written. That is not a statement that this repository has no defects, ' +
+        'and it is not an audit -- it says the shapes Credda looks for were not seen in the files ' +
+        'it read.',
+      '',
+    );
+  }
+
+  if (stated.length > 0) {
+    lines.push(
+      `### ${stated.length} settled by reading`,
+      '',
+      'Each of these is established by the repository itself -- a sibling that guards the same ' +
+        'call, a declaration that contradicts the code beside it. Nothing was run to state them.',
+      '',
+    );
+    for (const one of stated) {
+      lines.push(`- **${one.class}** — ${one.title}`, `  \`${one.file}${one.line > 0 ? `:${one.line}` : ''}\``, '');
+    }
+  }
+
+  if (proposed.length > 0) {
+    lines.push(
+      `### ${proposed.length} candidate${proposed.length === 1 ? '' : 's'}, none of them run`,
+      '',
+      'Each carries a program that would settle it, and no program has been executed. These are ' +
+        'questions, not findings, and they do not state a severity.',
+      '',
+      '<details><summary>Show candidates</summary>',
+      '',
+    );
+    for (const one of proposed.slice(0, 50)) {
+      lines.push(`- **${one.class}** — ${one.title}`, `  \`${one.file}${one.line > 0 ? `:${one.line}` : ''}\``, '');
+    }
+    if (proposed.length > 50) lines.push(`_…and ${proposed.length - 50} more._`, '');
+    lines.push('</details>', '');
+  }
+
+  if (finished.executionGated > 0) {
+    lines.push(
+      `${finished.executionGated} pattern${finished.executionGated === 1 ? ' was' : 's were'} ` +
+        'enumerated and are not listed: whether one takes super-linear time is settled by running ' +
+        'its program and by nothing else, and this run executed nothing.',
+      '',
+    );
+  }
+
+  lines.push(`[Action run](${runUrl()})`, '');
+  return lines.join('\n');
+}
+
 /* -------------------------------- dispatch -------------------------------- */
 
 if (mode === 'triage') {
+  requireIssueEvent();
   await triage();
 } else if (mode === 'investigate') {
+  requireIssueEvent();
   await investigate();
+} else if (mode === 'discover') {
+  await discover();
 } else {
-  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate' or 'triage'.`);
+  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage' or 'discover'.`);
   process.exit(1);
 }
