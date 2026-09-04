@@ -187,6 +187,14 @@ inputs:
       'investigate' to reproduce a labelled issue, 'triage' to read a newly
       opened one, 'discover' to read the repository and report what nobody filed.
     default: investigate
+  max-files:
+    # Discover mode only. The walk is over a customer's whole checkout and a
+    # monorepo can be very large, so there is a cap; the engine has its own
+    # default and this overrides it. It is an input rather than a constant
+    # because the right number depends on the repository, and the only person
+    # who knows that is the one who owns it.
+    description: "In discover mode, the most source files to read. Ignored by the other modes."
+    default: "4000"
   label:
     description: >-
       In investigate mode, run only when one of these labels was added ('*'
@@ -583,6 +591,12 @@ runs:
         CREDDA_ENGINE_ROOT: ${{ steps.engine.outputs.engine-root }}
         CREDDA_MODE: ${{ inputs.mode }}
         CREDDA_LABEL: ${{ inputs.label }}
+        # Discover mode's file cap. Set here rather than defaulted in the script
+        # alone: an unset variable is the empty string on a runner, so a name the
+        # script reads and the manifest never sets is a knob that silently does
+        # nothing -- which is what .github/check-manifest.rb exists to catch, and
+        # did catch on the commit that added this mode.
+        CREDDA_MAX_FILES: ${{ inputs.max-files }}
         CREDDA_SANDBOX: ${{ inputs.sandbox }}
         # The step below reads `should-post` rather than re-deciding, so the
         # value has to reach the script that computes it.
