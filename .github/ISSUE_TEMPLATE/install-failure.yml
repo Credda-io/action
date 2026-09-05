@@ -1,0 +1,75 @@
+name: The action did not run
+description: It failed before it read your issue — token, download, digest, or sandbox.
+labels: [install]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is for the **install path**: minting the OIDC token,
+        being served the engine, verifying it against `engine.lock.json`, and
+        starting the sandbox. If the action ran and its report was wrong, use
+        "The report was wrong" instead.
+
+        Four failures account for most of these, and three you can fix now.
+
+        **401 naming `id-token: write`.** Your workflow's `permissions:` block
+        is missing that line, so GitHub minted no token. It is the disclosed
+        cost of the design and it is documented in `action.yml`.
+
+        **A wrong-audience refusal.** The audience and the endpoint are two
+        different strings and both are read from the launcher. If you pinned an
+        old tag, an audience that is no longer accepted is the expected result
+        of pinning, not a break.
+
+        **A digest mismatch.** The bytes served are not the bytes the lockfile
+        you pinned commits to. Do not work around this. **Report it.**
+
+        **No Linux runner or no Docker.** `sandbox: docker` is the only isolated
+        plane and the default; the sandbox refuses to fall back to the host, by
+        design. `ubuntu-latest` has both.
+  - type: input
+    id: ref
+    attributes:
+      label: The `uses:` line, exactly
+      description: >
+        `@v1` is a moving tag with no published Release behind it. If you pinned
+        a SHA, give the SHA — it is the only version this report can be tied to.
+      placeholder: 'uses: Credda-io/action@v1'
+    validations:
+      required: true
+  - type: textarea
+    id: permissions
+    attributes:
+      label: Your workflow's `permissions:` block
+      description: The whole block, verbatim. Most of these are answered by it alone.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: The failing step's log
+      description: >
+        Verbatim, from the step name to the failure. The lines printing the
+        audience, the endpoint, the requested version and the status code are
+        the useful ones. **Never paste the OIDC token itself** — it is a
+        credential; the log does not print it and neither should you.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: runner
+    attributes:
+      label: Which runner
+      description: 'ubuntu-latest, or a self-hosted image — say which, and whether Docker is available.'
+    validations:
+      required: true
+  - type: dropdown
+    id: repo-visibility
+    attributes:
+      label: Is the calling repository public or private?
+      options:
+        - public
+        - private
+    validations:
+      required: true

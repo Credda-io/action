@@ -81,7 +81,8 @@
 // through the metering client, which is documented to fail open inside a
 // bounded race and never to throw. The receipt goes to the endpoint the action
 // defaults to; a caller who sets `metering-url` to the empty string gets no
-// request of any kind, and so does `CREDDA_TELEMETRY=off`. What one receipt
+// request of any kind. That is the ONLY switch, and it is an input rather than
+// an environment variable on purpose -- see `meter()` below. What one receipt
 // contains is written out in the `metering-url` input description in action.yml
 // and in README.md, in the fields it actually sends.
 //
@@ -95,6 +96,8 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import { decideDelivery } from './delivery.mjs';
 
 function env(name, fallback = null) {
   const value = process.env[name];
@@ -144,6 +147,14 @@ const anyLabel = expectedLabels.includes('*');
 const primaryLabel = expectedLabels[0] ?? 'credda';
 const sandbox = env('CREDDA_SANDBOX', 'docker');
 const mode = env('CREDDA_MODE', 'investigate');
+/*
+ * The file cap for discovery, passed straight through to the CLI.
+ *
+ * A cap exists at all because the walk is over a customer's whole checkout and
+ * a monorepo can be very large; the CLI has its own default and this only
+ * overrides it when the caller asks.
+ */
+const maxDiscoverFiles = env('CREDDA_MAX_FILES', '4000');
 
 // The engine. A single prebuilt ESM file with its own createRequire shim, with
 // the sandbox Dockerfile and the database migrations beside it -- the CLI finds
@@ -173,8 +184,39 @@ if (!existsSync(creddaBundle)) {
   process.exit(1);
 }
 
-const event = JSON.parse(readFileSync(env('GITHUB_EVENT_PATH'), 'utf8'));
+/*
+ * THE EVENT, AND WHY IT IS NO LONGER MANDATORY.
+ *
+ * `investigate` and `triage` both start from an issue, so this used to be read
+ * unconditionally at load: no GITHUB_EVENT_PATH meant no job. `discover` starts
+ * from the repository and runs on push, where the payload has no issue in it
+ * and may not be present at all -- so demanding one here refused the mode
+ * before its first line ran.
+ *
+ * The demand moves to the two modes that actually have the requirement. It is
+ * still a hard failure for them: an investigate job with no event is broken,
+ * and guessing would be worse than stopping.
+ */
+const event = (() => {
+  const path = process.env['GITHUB_EVENT_PATH'];
+  if (path === undefined || path === '') return {};
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return {};
+  }
+})();
 const issue = event.issue;
+
+function requireIssueEvent() {
+  if (process.env['GITHUB_EVENT_PATH'] === undefined || process.env['GITHUB_EVENT_PATH'] === '') {
+    console.error(
+      `CREDDA_MODE is '${mode}', which runs on an issue, and GITHUB_EVENT_PATH is not set. ` +
+        'This script only runs inside a GitHub Actions job.',
+    );
+    process.exit(1);
+  }
+}
 
 const work = join(env('RUNNER_TEMP'), 'credda');
 const home = join(work, 'home');
@@ -195,8 +237,48 @@ function credda(args, stdio) {
   });
 }
 
+/**
+ * Ends the job red, and says so on the first line of the annotation list and on
+ * the job summary.
+ *
+ * The three places this is called used to `console.error` and `process.exit(1)`.
+ * The job did go red, so none of them was a silent failure -- but a bare
+ * `console.error` is a log line and nothing else: it produces no annotation, so
+ * the failure had no entry in the list a person reads before opening the log,
+ * and it wrote nothing to the summary panel, where `skip()` above and
+ * `deliver-pr.mjs` and the launcher all write theirs. Every other refusal in
+ * this action already had this shape; these were the exception, and README.md's
+ * "How it fails" opens by asserting that every failure names its own cause on
+ * the first line of the annotation.
+ *
+ * The first line goes to `::error::` because that is all an annotation takes.
+ */
+function die(message) {
+  console.log(`::error::${message.split('\n')[0]}`);
+  console.error(message);
+  writeSummary(`### Credda did not finish\n\n${message}\n`);
+  process.exit(1);
+}
+
+/**
+ * Ends the job without running anything, and says so where a person will look.
+ *
+ * The reason used to go to `console.log` only. Every other route through this
+ * file writes to the job summary -- a run that established nothing, a decline
+ * reply that was produced and withheld, a triage that correctly had nothing to
+ * ask for -- and these four were the exception: a green job whose summary panel
+ * was empty, which is indistinguishable from Credda having done nothing at all.
+ * A maintainer who labelled an issue and got a green tick with no summary has
+ * no way to tell a deliberate skip from a broken install.
+ *
+ * The reasons themselves are already written for a reader, so they are used as
+ * they are rather than restated. The leading sentence names what did not
+ * happen, because the reason is a subordinate clause and a summary that opens
+ * mid-explanation reads as a fragment.
+ */
 function skip(reason) {
   console.log(`Skipping: ${reason}`);
+  writeSummary(`Credda did not run on this event: ${reason}\n`);
   output('skipped', 'true');
   process.exit(0);
 }
@@ -293,6 +375,20 @@ function creddaVersion() {
  * is what is dialled, and setting it to the empty string disables the call
  * outright here, before the client is even imported.
  *
+ * THERE IS NO ENVIRONMENT-VARIABLE OPT-OUT, and this is the second time that
+ * has had to be written down. README.md and the `metering-url` description both
+ * used to offer `CREDDA_TELEMETRY=off` in the job environment; no file in this
+ * repository ever read that name, so it was an opt-out that metered you. It is
+ * not simply added here because `.github/check-manifest.rb` assertion 7 requires
+ * every name a step reads to be set by that step's own `env:` block, and its
+ * rationale rejects "the caller's job environment supplies it" by name -- an
+ * `env:` key is what makes this action independent of what a caller happens to
+ * have exported. Honouring a job-environment variable therefore needs either a
+ * new input (which `metering-url: ''` already is) or an exemption in that gate.
+ * Neither was worth a second switch, so the promise was removed instead of the
+ * gate being weakened. If a `telemetry` input is ever wanted, it goes in
+ * `action.yml`, into that step's `env:`, and is read HERE, above the import.
+ *
  * The `try` around everything is the second guard. `reportRun` is built never
  * to throw, but this function also imports a module, reads an environment and
  * hashes two strings, and none of those promises anything. What must be true is
@@ -305,6 +401,44 @@ async function meter(outcome) {
     if (endpoint === '') {
       console.log(
         'metering-url is empty, so no receipt was reported and no request of any kind was made.',
+      );
+      return null;
+    }
+
+    /*
+     * https, for the same reason `engine-url` requires it.
+     *
+     * The report carries `licenseKey` -- action.yml calls it "a bearer
+     * credential for entitlement", sent "IN THE CLEAR over TLS" -- alongside
+     * HMACs of the org, the repository and the actor. That TLS promise was made
+     * in the documentation and enforced nowhere: `metering-url` was passed
+     * through to `reportRun` exactly as given, so a mirror, a corporate proxy
+     * or a typo beginning `http://` POSTed the credential in plaintext.
+     *
+     * `engineUrlRefusal` in launcher/fetch-engine.mjs already makes this exact
+     * argument for the sibling endpoint -- "over http the assertion is readable
+     * by anything on the path", and a later integrity check "cannot un-send a
+     * credential that left before it ran". One endpoint had the check and the
+     * one carrying the longer-lived secret did not.
+     *
+     * Skipped rather than thrown, because metering fails open by design and a
+     * receipt is not worth failing somebody's build over. Skipping sends
+     * nothing, which is the safe half of fail-open; sending it anyway is not.
+     * An operator who wants no metering at all sets `metering-url` to empty,
+     * which is the branch directly above.
+     */
+    let parsed;
+    try {
+      parsed = new URL(endpoint);
+    } catch {
+      console.log(`metering-url is not a valid URL (${endpoint}), so no receipt was reported.`);
+      return null;
+    }
+    if (parsed.protocol !== 'https:') {
+      console.log(
+        `metering-url must use https, but it is ${parsed.protocol} (${endpoint}). ` +
+          'The receipt carries a licence key, which is a bearer credential, and Credda will not ' +
+          'send it over a plaintext connection. No request was made and this run is unaffected.',
       );
       return null;
     }
@@ -399,11 +533,10 @@ async function investigate() {
   try {
     result = JSON.parse(readFileSync(resultFile, 'utf8'));
   } catch {
-    console.error(
+    die(
       `Credda did not record a result (investigate exited ${run.status ?? 'null'}). ` +
         'This is a Credda failure, not a finding about the repository, and nothing will be posted.',
     );
-    process.exit(1);
   }
 
   console.log(`Investigation ${result.investigationId} reached ${result.outcome}`);
@@ -437,8 +570,11 @@ async function investigate() {
 
   const report = credda(['report', result.investigationId, '--markdown'], ['ignore', 'pipe', 'inherit']);
   if (report.status !== 0 || report.stdout === null || report.stdout.length === 0) {
-    console.error(`credda report exited ${report.status ?? 'null'} with no document; not posting.`);
-    process.exit(1);
+    die(
+      `Credda reached ${result.outcome} and then could not render the report for it ` +
+        `(credda report exited ${report.status ?? 'null'} with no document). This is a Credda ` +
+        'failure, not a finding about the repository, and nothing will be posted.',
+    );
   }
 
   const reportFile = join(work, 'report.md');
@@ -461,12 +597,79 @@ async function investigate() {
 ${readFileSync(reportFile, 'utf8')}
 `);
 
+  /*
+   * ---------------------------- the delivery gate ---------------------------
+   *
+   * Whether this run's patch is pushed to a branch and offered as a pull
+   * request. OFF unless the calling workflow asked for it, and off whatever the
+   * workflow asked unless the run PROVED a change.
+   *
+   * The proof is not judged here. `result.delivery.deliverable` is computed by
+   * the engine on the executed record -- the terminal state, the patch row that
+   * survived, the verification verdict, and the regression test's FAIL-then-PASS
+   * pair -- by the same predicate the GitHub App's delivery uses. This script
+   * reads it, exactly as it reads `establishedSomething` rather than keeping a
+   * list of outcomes. A pull request is the loudest claim this product makes,
+   * and it must not be reachable from an opinion formed in the launcher.
+   *
+   * `decideDelivery` lives in `delivery.mjs` because it is a pure function of
+   * two values and therefore the one part of this that a test can hold.
+   */
+  const openPullRequest = env('CREDDA_OPEN_PULL_REQUEST', 'false').trim() === 'true';
+  const decision = decideDelivery({ enabled: openPullRequest, result });
+
+  let patchFile = '';
+  let deliveryNote = decision.reason;
+
+  if (decision.deliver) {
+    // Emitted by the engine, byte-exact, straight to a file. Not routed through
+    // a shell and not reassembled from the result file: whitespace is the whole
+    // of a diff.
+    const patch = credda(['report', result.investigationId, '--patch'], ['ignore', 'pipe', 'inherit']);
+    if (patch.status !== 0 || patch.stdout === null || String(patch.stdout).trim() === '') {
+      // The engine said this run carries a verified change and then could not
+      // produce it. That is an inconsistency in Credda, so nothing is pushed and
+      // the refusal says whose fault it is.
+      //
+      // ANNOTATED RATHER THAN ONLY NOTED, AND DELIBERATELY NOT FATAL. The
+      // customer asked for a pull request, the run proved a fix, and Credda
+      // broke -- which `deliver-pr.mjs` treats as a red job in as many words
+      // ("a green job would be this action denying something it failed to
+      // do"). This one cannot exit: the posting step runs after this script,
+      // so failing here would take the report comment down with it, and
+      // action.yml puts the comment first precisely so a delivery problem
+      // cannot cost the customer the report. So the job stays green and the
+      // failure is raised to the annotation list instead of living only in a
+      // summary paragraph a green job invites nobody to read.
+      console.log(
+        '::error::Credda recorded a verified change for this run and then could not emit the diff ' +
+          'for it. Nothing was pushed. This is a Credda failure, not a finding about the repository.',
+      );
+      deliveryNote =
+        'Credda recorded a verified change for this run and then could not emit the diff for it ' +
+        `(credda report --patch exited ${String(patch.status ?? 'null')}). Nothing was pushed. ` +
+        'This is a Credda failure, not a finding about the repository.';
+      decision.deliver = false;
+    } else {
+      patchFile = join(work, 'verified.patch');
+      writeFileSync(patchFile, String(patch.stdout), 'utf8');
+    }
+  }
+
+  writeSummary(`\n${deliveryNote}\n`);
+
+  // Written on every path that ran, not only on the path that did not. An
+  // output that appears only when it is 'true' is one a caller has to test for
+  // emptiness, and emptiness is what a broken step also produces.
+  output('skipped', 'false');
   output('issue-number', String(issue.number));
   output('investigation-id', result.investigationId);
   output('outcome', result.outcome);
   output('established', established ? 'true' : 'false');
   output('should-post', willComment ? 'true' : 'false');
   output('report-path', reportFile);
+  output('deliver', decision.deliver ? 'true' : 'false');
+  output('patch-path', patchFile);
   // The two names are not a duplicate. `report-path` is part of this action's
   // published interface and means the report; `body-path` is what the single
   // posting step reads, and both modes write it, so there is one posting step
@@ -549,11 +752,10 @@ async function triage() {
    */
   const status = run.status;
   if (status !== 0 && status !== 6) {
-    console.error(
+    die(
       `credda triage exited ${status ?? 'null'}, which is neither a comment (6) nor silence (0). ` +
         'This is a Credda failure, not a finding about the report, and nothing will be posted.',
     );
-    process.exit(1);
   }
 
   const comment = status === 6 ? String(run.stdout ?? '').trimEnd() : '';
@@ -587,7 +789,13 @@ async function triage() {
 ${spoke ? readFileSync(commentFile, 'utf8') : ''}
 `);
 
+  output('skipped', 'false');
   output('issue-number', String(issue.number));
+  // Triage runs nothing and produces no patch, so it can never deliver one. The
+  // output is written rather than left unset so the delivery step reads one
+  // answer whichever mode ran, exactly as the posting step does.
+  output('deliver', 'false');
+  output('patch-path', '');
   output('triage-outcome', spoke ? 'COMMENT' : 'SILENT');
   output('should-post', willComment ? 'true' : 'false');
   output('comment-path', commentFile);
@@ -615,13 +823,179 @@ function footer() {
   return `---\n\nNothing was run to produce this note; it comes from reading the report alone. ${invite}\n\n[Action run](${runUrl()})`;
 }
 
+/* -------------------------------- discover -------------------------------- */
+
+/**
+ * The mode that does not wait to be asked.
+ *
+ * `investigate` and `triage` both start from an issue somebody filed. This one
+ * starts from the repository: it reads a checkout and reports the defects
+ * nobody reported. That is the thing Credda is for, and until this existed the
+ * only way to reach the finders was to run the CLI by hand on a laptop.
+ *
+ * ## WHY IT IS AS CHEAP AS TRIAGE, NOT AS EXPENSIVE AS INVESTIGATE
+ *
+ * `credda discover` reads source and executes nothing -- not the repository's
+ * code, not the programs it emits. So this mode starts no container, installs
+ * nothing from the repository, makes no model call and needs no API key. It
+ * wants a checkout and a Node process, which is the same shape as triage.
+ *
+ * The engine's own header explains why it executes nothing (a ReDoS candidate's
+ * whole defect is that matching it hangs a CPU). This mode does not change that
+ * decision and must not: a job that started running candidate programs against
+ * a customer's dependencies would be a different product with a different
+ * consent question.
+ *
+ * ## WHY IT POSTS NOTHING
+ *
+ * The findings go to the job summary and nowhere else. No issue is opened, no
+ * comment is written, no pull request is raised. A first run on a repository
+ * with a large dependency tree can raise a lot of candidates, and a tool whose
+ * first act is to open twenty issues gets uninstalled the same afternoon.
+ *
+ * The summary is also the honest surface for what discovery produces: a STATED
+ * finding is settled by reading, and every other row is a candidate whose
+ * program has not been run. Those are different claims and a list of issues
+ * would flatten them into one.
+ */
+async function discover() {
+  const checkout = env('GITHUB_WORKSPACE');
+
+  // --json so this reads events rather than scraping the rendered listing.
+  // Failure to parse a line is not failure to run: the CLI is free to add event
+  // types, and an unknown one must not take the job red.
+  const ran = credda(['discover', checkout, '--json', '--max-files', maxDiscoverFiles], 'pipe');
+
+  if (ran.error !== undefined || ran.status === null) {
+    console.error(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
+    process.exit(1);
+  }
+
+  const events = [];
+  for (const line of String(ran.stdout ?? '').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('{')) continue;
+    try {
+      events.push(JSON.parse(trimmed));
+    } catch {
+      /* not an event this version writes */
+    }
+  }
+
+  const candidates = events.filter((one) => one.type === 'discovery.candidate');
+  const finished = events.find((one) => one.type === 'discovery.finished');
+
+  if (finished === undefined) {
+    // No finishing event means the run did not complete, and reporting "0
+    // candidates" for a run that never finished is the worst thing this could
+    // print: it reads exactly like a clean repository.
+    console.error(String(ran.stderr ?? '').slice(0, 4000));
+    console.error('Credda discovery did not finish, so nothing is being reported.');
+    process.exit(1);
+  }
+
+  const stated = candidates.filter((one) => one.standing === 'STATED');
+  const proposed = candidates.filter((one) => one.standing !== 'STATED');
+
+  writeSummary(discoverSummary(stated, proposed, finished));
+
+  output('skipped', 'false');
+  output('issue-number', '');
+  // Discovery starts nothing and produces no patch, so it can never deliver
+  // one. Written rather than left unset so the delivery step reads one answer
+  // whichever mode ran, exactly as triage does.
+  output('deliver', 'false');
+  output('patch-path', '');
+  output('should-post', 'false');
+  output('comment-path', '');
+  output('body-path', '');
+  output('stated-findings', String(stated.length));
+  output('candidates', String(candidates.length));
+
+  /*
+   * ALWAYS GREEN, findings or none.
+   *
+   * A candidate is a report and not a verdict, and a red check beside a list of
+   * unproven candidates is a build failure a maintainer cannot act on. Even the
+   * STATED rows are reports: they say a divergence is there, not that the
+   * repository must not ship. Whether any of this should gate a merge is the
+   * maintainer's decision, and the outputs above are how they would wire it.
+   */
+}
+
+/** The job summary: what is settled, what is not, and what was looked for. */
+function discoverSummary(stated, proposed, finished) {
+  const lines = ['## Credda discovery', ''];
+
+  lines.push(
+    `Read ${finished.filesRead} file${finished.filesRead === 1 ? '' : 's'}. ` +
+      'Nothing in this repository was executed.',
+    '',
+  );
+
+  if (stated.length === 0 && proposed.length === 0) {
+    lines.push(
+      'No candidate was written. That is not a statement that this repository has no defects, ' +
+        'and it is not an audit -- it says the shapes Credda looks for were not seen in the files ' +
+        'it read.',
+      '',
+    );
+  }
+
+  if (stated.length > 0) {
+    lines.push(
+      `### ${stated.length} settled by reading`,
+      '',
+      'Each of these is established by the repository itself -- a sibling that guards the same ' +
+        'call, a declaration that contradicts the code beside it. Nothing was run to state them.',
+      '',
+    );
+    for (const one of stated) {
+      lines.push(`- **${one.class}** — ${one.title}`, `  \`${one.file}${one.line > 0 ? `:${one.line}` : ''}\``, '');
+    }
+  }
+
+  if (proposed.length > 0) {
+    lines.push(
+      `### ${proposed.length} candidate${proposed.length === 1 ? '' : 's'}, none of them run`,
+      '',
+      'Each carries a program that would settle it, and no program has been executed. These are ' +
+        'questions, not findings, and they do not state a severity.',
+      '',
+      '<details><summary>Show candidates</summary>',
+      '',
+    );
+    for (const one of proposed.slice(0, 50)) {
+      lines.push(`- **${one.class}** — ${one.title}`, `  \`${one.file}${one.line > 0 ? `:${one.line}` : ''}\``, '');
+    }
+    if (proposed.length > 50) lines.push(`_…and ${proposed.length - 50} more._`, '');
+    lines.push('</details>', '');
+  }
+
+  if (finished.executionGated > 0) {
+    lines.push(
+      `${finished.executionGated} pattern${finished.executionGated === 1 ? ' was' : 's were'} ` +
+        'enumerated and are not listed: whether one takes super-linear time is settled by running ' +
+        'its program and by nothing else, and this run executed nothing.',
+      '',
+    );
+  }
+
+  lines.push(`[Action run](${runUrl()})`, '');
+  return lines.join('\n');
+}
+
 /* -------------------------------- dispatch -------------------------------- */
 
 if (mode === 'triage') {
+  requireIssueEvent();
   await triage();
 } else if (mode === 'investigate') {
+  requireIssueEvent();
   await investigate();
+} else if (mode === 'discover') {
+  await discover();
 } else {
-  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate' or 'triage'.`);
+  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage' or 'discover'.`);
   process.exit(1);
 }
