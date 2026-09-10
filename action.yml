@@ -436,6 +436,47 @@ inputs:
       own GITHUB_TOKEN, in your own workflow file. A run that did not produce a
       verified fix opens nothing, whatever this is set to. Credda never merges.
     default: 'false'
+  notify-url:
+    # OFF BY DEFAULT, AND OFF MEANS NO REQUEST. Empty is the default; the step
+    # that reads this is skipped outright when it is empty, so a default install
+    # makes no outbound call from this feature at all.
+    #
+    # WHY IT IS HERE AND NOT ON CREDDA'S SIDE. Credda's backend never receives a
+    # run's facts -- the metering receipt above carries salted hashes, an
+    # outcome token and a version, and nothing else -- so there is no server of
+    # ours that could tell your channel what a run found without first being
+    # sent what it has been promised it never sees. The POST is made from YOUR
+    # runner, to the address YOU typed, and nothing about it reaches Credda.
+    #
+    # EXACTLY WHAT LEAVES THE RUNNER, so this is checkable rather than
+    # reassuring. One POST per job, only when the run established something or
+    # stated at least one finding, of a JSON body with these seven fields:
+    #
+    #   investigationId  the investigation id (empty outside investigate mode)
+    #   repository       owner/repo
+    #   outcome          the outcome token, e.g. REPRODUCED_AND_DIAGNOSED
+    #   statedFindings   how many findings discover mode settled by reading
+    #   established      true or false
+    #   reportUrl        this run's URL on GitHub, or null
+    #   actionVersion    Credda's own release string
+    #
+    # When the host is `hooks.slack.com` the body is instead `{text}`: the same
+    # seven facts as one sentence, which is the only shape an incoming webhook
+    # renders. NEVER SENT: the report, the issue title or body, a diff, a file
+    # path, a command line, output, or anything a reporter wrote -- the step
+    # that posts never opens the report file.
+    #
+    # It cannot fail your job: one request, a ten-second timeout, no retry, and
+    # any failure is one line in the log naming the status or the error.
+    description: >-
+      Opt-in. A URL to POST the run's facts to when it established something or
+      stated a finding: the investigation id, repository, outcome, count of
+      stated findings, whether anything was established, the run's URL, and
+      Credda's version. A hooks.slack.com URL gets the same facts as one
+      sentence in Slack's {text} shape. Sent from your runner to your URL;
+      nothing reaches Credda. Never carries the report, issue text, code or
+      paths. A failure cannot fail your job. Empty (the default) sends nothing.
+    default: ''
 
 outputs:
   engine-version:
@@ -650,3 +691,27 @@ runs:
         CREDDA_BODY_PATH: ${{ steps.credda.outputs.body-path }}
         CREDDA_ISSUE_NUMBER: ${{ steps.credda.outputs.issue-number }}
       run: node "$GITHUB_ACTION_PATH/deliver-pr.mjs"
+
+    # AFTER EVERYTHING THAT DELIVERS THE REPORT, AND OFF UNLESS YOU ASK.
+    #
+    # Reached only when `notify-url` is set; an empty default is skipped here,
+    # not inside the script, so a default install makes no request from this
+    # step and prints no line about it. Whether the run has anything to say is
+    # decided in notify.mjs from the outputs above -- `established` is the
+    # engine's own verdict and `stated-findings` is discover mode's count --
+    # rather than from a second reading of the run.
+    #
+    # Last, for the same reason the pull request step follows the comment: the
+    # report reaching the issue is what this product owes, and a channel being
+    # down must not cost it. The script exits 0 on every failure and says why.
+    - name: Notify a webhook
+      if: inputs.notify-url != ''
+      shell: bash
+      env:
+        CREDDA_ACTION_ROOT: ${{ github.action_path }}
+        CREDDA_NOTIFY_URL: ${{ inputs.notify-url }}
+        CREDDA_INVESTIGATION_ID: ${{ steps.credda.outputs.investigation-id }}
+        CREDDA_OUTCOME: ${{ steps.credda.outputs.outcome }}
+        CREDDA_STATED_FINDINGS: ${{ steps.credda.outputs.stated-findings }}
+        CREDDA_ESTABLISHED: ${{ steps.credda.outputs.established }}
+      run: node "$GITHUB_ACTION_PATH/notify.mjs"
