@@ -469,6 +469,7 @@ trigger.
 | `github-token` | `${{ github.token }}` | Posts the report comment, and -- only when `open-pull-request` is on -- makes the `gh` calls that open the proposal. The branch itself is pushed with the credential `actions/checkout` persisted, not with this value, so passing your own token here changes who opens the pull request and not who pushes the branch. |
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
 | `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
+| `notify-url` | `''` | **Opt-in, off by default.** A URL to POST the run's facts to when it established something or stated a finding. A `hooks.slack.com` URL gets one sentence in Slack's `{text}` shape. Sent from your runner to your URL; nothing reaches Credda, and the report itself is never sent. A failure cannot fail your job. See *Notifying a channel*. |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://metering.codereef.app/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
 | `engine-url` | `https://metering.codereef.app/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
@@ -644,6 +645,42 @@ real repository from this checkout. The gate, the branch naming and the refusal
 messages are covered by tests; the push, the `gh pr create` call and the
 permission errors they produce are not, and cannot be from here.
 
+### Notifying a channel
+
+**Off by default.** Every competitor posts findings to Slack, and Credda now
+can -- from your runner, to your URL, and nowhere else. Set one input:
+
+```yaml
+      - uses: Credda-io/action@main
+        with:
+          notify-url: ${{ secrets.CREDDA_NOTIFY_URL }}
+```
+
+A `hooks.slack.com` incoming webhook gets one sentence in Slack's `{text}`
+shape; any other URL gets a JSON body with seven fields: `investigationId`,
+`repository`, `outcome`, `statedFindings`, `established`, `reportUrl` (this
+run's URL on GitHub, or `null`) and `actionVersion`. Every one of them is
+already an output of this action or a value GitHub provides; the step never
+opens the report, so the body cannot carry issue text, code, paths or a
+reporter's words.
+
+**Why this runs on your runner and not on Credda's side.** Credda's backend
+never receives a run's facts -- the metering receipt below carries salted
+hashes, an outcome token and a version, and nothing else -- so there is no
+server of ours that could tell your channel what a run found without first
+being sent the things it has been promised it never sees. The POST leaves your
+runner with your data for the address you typed. Nothing about it reaches
+Credda.
+
+**It sends nothing for a run that found nothing.** The request is made only
+when the run established something (investigate mode) or stated at least one
+finding (discover mode); otherwise the step says so in the log and sends
+nothing. When `notify-url` is empty the step is skipped and says nothing at all.
+
+**It cannot fail your job.** One request, a ten-second timeout, no retry. A
+refusal, a hang or a 500 is one line in the log naming the status or the error,
+and the job stays whatever colour the steps before it made it.
+
 ## How it fails
 
 Every failure below names its own cause on the first line of the annotation,
@@ -816,6 +853,12 @@ delivery.mjs               the single predicate that decides whether a run has a
 deliver-pr.mjs             commits the patch, pushes the branch and opens the
                            pull request. Reached only when open-pull-request is
                            on AND the run produced a verified fix. It never merges
+notification.mjs           the decision, the body and the one bounded POST behind
+                           notify-url, with fetch handed in so it can be tested
+                           with no network. Imported by notify.mjs; never a step
+notify.mjs                 POSTs the run's facts to the URL in notify-url, from the
+                           customer's runner. Reached only when that input is set;
+                           it never opens the report and never fails the job
 engine.lock.json           the SHA-256 of the engine archive and of every file
                            in it -- the trust anchor. Generated; never edited.
 launcher/fetch-engine.mjs  mints the token, downloads, verifies, unpacks
@@ -841,6 +884,9 @@ LICENSE                    Apache-2.0
 .github/check-manifest.rb  proves action.yml is valid YAML and would install, and
                            that every name its expressions, and its steps'
                            scripts, reach for is one that exists
+.github/notify.test.mjs    node:test over notification.mjs: the body, the Slack
+                           shape, silence with nothing to say, and a failed POST
+                           that fails nothing. No dependency; `node --test` runs it
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong
 .github/PULL_REQUEST_TEMPLATE.md
