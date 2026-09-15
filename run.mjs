@@ -98,6 +98,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
+import { sweep } from './sweep.mjs';
 
 function env(name, fallback = null) {
   const value = process.env[name];
@@ -155,6 +156,23 @@ const mode = env('CREDDA_MODE', 'investigate');
  * overrides it when the caller asks.
  */
 const maxDiscoverFiles = env('CREDDA_MAX_FILES', '4000');
+
+/*
+ * The most candidates a `sweep` run will ever reproduce and propose, and thus a
+ * HARD CEILING on how many pull requests one sweep can open.
+ *
+ * Small by default and NEVER unbounded: discovery on a large tree can raise many
+ * candidates, and a mode whose first run opens twenty pull requests gets
+ * uninstalled the same afternoon. A value that is not a positive integer falls
+ * back to the default rather than being trusted -- the whole point of the cap is
+ * defeated by reading it loosely. Sweep slices to this number whatever discovery
+ * found.
+ */
+const maxCandidates = (() => {
+  const raw = env('CREDDA_MAX_CANDIDATES', '3');
+  const n = /^[0-9]+$/.test(raw) ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isInteger(n) && n > 0 ? n : 3;
+})();
 
 // The engine. A single prebuilt ESM file with its own createRequire shim, with
 // the sandbox Dockerfile and the database migrations beside it -- the CLI finds
@@ -995,7 +1013,24 @@ if (mode === 'triage') {
   await investigate();
 } else if (mode === 'discover') {
   await discover();
+} else if (mode === 'sweep') {
+  // discover + per-candidate investigate + open-a-PR-per-verified-fix. Runs on a
+  // push like discover, so no issue event is required. The delivery gate is
+  // read here and passed in; `sweep.mjs` reads no environment of its own.
+  await sweep({
+    credda,
+    workspace,
+    repository: env('GITHUB_REPOSITORY'),
+    sandbox,
+    work,
+    maxFiles: maxDiscoverFiles,
+    maxCandidates,
+    openPullRequest: env('CREDDA_OPEN_PULL_REQUEST', 'false').trim() === 'true',
+    output,
+    writeSummary,
+    runUrl,
+  });
 } else {
-  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage' or 'discover'.`);
+  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage', 'discover' or 'sweep'.`);
   process.exit(1);
 }

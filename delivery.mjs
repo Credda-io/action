@@ -118,6 +118,66 @@ export function branchNameFor(issueNumber) {
 }
 
 /**
+ * The branch a sweep proposal is pushed to, named from a discovery candidate's
+ * provenance rather than from an issue number.
+ *
+ * DETERMINISTIC AND DISTINCT PER CANDIDATE, and that is the whole of the
+ * idempotency argument for sweep -- the same reason `branchNameFor` above is
+ * deterministic for the issue path. A sweep re-run on an unchanged tree
+ * rediscovers the same candidates, so the same provenance produces the same
+ * branch name, and `deliver-pr.mjs`/`deliver-core.mjs` meet the branch a
+ * previous run pushed rather than opening a second proposal or force-pushing
+ * over the first. Two DIFFERENT candidates must never collide on one name, or a
+ * second finding would silently overwrite the first's proposal -- so the whole
+ * provenance is slugged, not just a prefix of it.
+ *
+ * The provenance is the candidate report's own filename, which `credda discover
+ * --out` writes deterministically from the candidate's class, file and line. It
+ * is engine-generated text about the repository, not a reporter's words, but it
+ * is still sanitised to a bounded `[a-z0-9-]` slug here rather than trusted --
+ * a branch ref that a repository path flowed into unfiltered is a ref-injection
+ * waiting to happen. An empty slug throws, exactly as an unusable issue number
+ * does above: a branch that cannot be named is a push that does not happen.
+ *
+ * @param {string} provenance the candidate report's filename or stable id
+ * @returns {string}
+ */
+export function branchNameForFinding(provenance) {
+  const raw = String(provenance ?? '');
+  // Drop a single trailing extension (`.md`, `.json`) so two spellings of one
+  // candidate cannot become two branches, then slug the rest.
+  const base = raw.replace(/\.[^./]*$/, '');
+  const slug = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/g, '');
+  if (slug === '') {
+    throw new Error(
+      `A sweep pull request branch needs a candidate provenance, and got '${String(provenance)}'. ` +
+        'Nothing was pushed.',
+    );
+  }
+  return `credda/sweep-${slug}`;
+}
+
+/**
+ * The pull request title for a sweep proposal.
+ *
+ * Generic on purpose, and NO CLOSING KEYWORD for the same reason as
+ * `pullRequestTitle` below: a title is rendered in a dozen unaudited places, and
+ * a discovery candidate's provenance carries a repository file path, which is
+ * not interpolated into it. The branch name carries the identity; the linked
+ * commit and the pull request body carry what the fix was.
+ *
+ * @returns {string}
+ */
+export function pullRequestTitleForFinding() {
+  return 'Credda: a verified fix for a discovered issue';
+}
+
+/**
  * The pull request title.
  *
  * NO CLOSING KEYWORD, deliberately. `Fix #12` in a title or body closes the

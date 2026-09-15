@@ -183,10 +183,40 @@ inputs:
     #
     # A discover job wants `on: push` (or a schedule) and
     # `contents: read` -- no issues: write, no pull-requests: write.
+    #
+    # 'sweep' is discover carried all the way to a proposal. It runs discover to
+    # get candidate reports, reproduces the first `max-candidates` of them in a
+    # sandbox exactly as investigate does, and -- for the ones that reach a
+    # VERIFIED change -- opens ONE pull request each, through the same delivery
+    # code the single-investigate path uses. It is the surface that makes the
+    # autonomous loop ship pull requests rather than only listing findings.
+    #
+    # A sweep job wants `on: push` (or a schedule). To PROPOSE it needs
+    # `open-pull-request: true` AND, in the calling workflow's own
+    # `permissions:` block, `contents: write` + `pull-requests: write` (plus the
+    # `id-token: write` every mode needs to fetch the engine). WITHOUT the write
+    # scopes, or with `open-pull-request` off, sweep still discovers and
+    # reproduces and the job summary says of every verified candidate that it
+    # WOULD be proposed -- nothing is pushed and the run holds a token that
+    # cannot write. See README.md, "Sweep mode".
     description: >-
       'investigate' to reproduce a labelled issue, 'triage' to read a newly
-      opened one, 'discover' to read the repository and report what nobody filed.
+      opened one, 'discover' to read the repository and report what nobody
+      filed, 'sweep' to discover, reproduce and open a pull request per verified
+      fix.
     default: investigate
+  max-candidates:
+    # Sweep mode only. THE HARD CAP on how many discovered candidates one sweep
+    # reproduces and, therefore, how many pull requests it can open in a single
+    # run. Small by default and never unbounded: discovery on a large tree can
+    # raise many candidates, and a mode whose first run opens twenty pull
+    # requests gets uninstalled the same afternoon. run.mjs falls back to the
+    # default for any value that is not a positive integer.
+    description: >-
+      In sweep mode, the most discovered candidates to reproduce and propose in
+      one run -- a hard cap on the pull requests a single sweep can open.
+      Ignored by the other modes.
+    default: "3"
   max-files:
     # Discover mode only. The walk is over a customer's whole checkout and a
     # monorepo can be very large, so there is a cap; the engine has its own
@@ -638,7 +668,22 @@ runs:
         # nothing -- which is what .github/check-manifest.rb exists to catch, and
         # did catch on the commit that added this mode.
         CREDDA_MAX_FILES: ${{ inputs.max-files }}
+        # Sweep mode's hard cap on candidates (and thus on pull requests). Set
+        # here rather than defaulted in the script alone, for the same reason as
+        # CREDDA_MAX_FILES above: a name the script reads and the manifest never
+        # sets is a knob that silently does nothing, which .github/check-manifest.rb
+        # exists to catch.
+        CREDDA_MAX_CANDIDATES: ${{ inputs.max-candidates }}
         CREDDA_SANDBOX: ${{ inputs.sandbox }}
+        # Sweep opens its pull requests from THIS step, in-process, because a
+        # composite action cannot loop the separate delivery step over an unknown
+        # number of candidates. `gh` reads this token from the environment; no
+        # script reads it by name. The other modes ignore it (investigate's
+        # single proposal is still opened by the dedicated delivery step below,
+        # which sets its own GH_TOKEN). The branch is pushed with the credential
+        # actions/checkout persisted, not with this value -- exactly as the
+        # delivery step documents.
+        GH_TOKEN: ${{ inputs.github-token }}
         # The step below reads `should-post` rather than re-deciding, so the
         # value has to reach the script that computes it.
         CREDDA_COMMENT: ${{ inputs.comment }}

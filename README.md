@@ -70,11 +70,12 @@ licence and is refused with a `402` at the fetch step until it has one. Your own
 Actions minutes are the other cost, and `investigate` spends more of them than
 `triage` does.
 
-## Three modes
+## Four modes
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
 | `discover` | **a push. Nobody has to file anything** | one download and one Node process, seconds | a job summary listing the defects Credda found in your code |
+| `sweep` | **a push. Nobody has to file anything** | a runner, Docker, and a reproduction per candidate, minutes | a job summary, and -- if you asked for it -- a pull request per verified fix |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
 | `triage` | an issue being opened | one download and one Node process, seconds | a short note saying what Credda could not use in the report -- **or nothing** |
 
@@ -113,6 +114,65 @@ jobs:
         with:
           mode: discover
 ```
+
+### Sweep mode
+
+`sweep` is `discover` carried all the way to a proposal. It discovers the defects
+nobody filed, reproduces the first `max-candidates` of them in a sandbox exactly
+as `investigate` does, and -- for the ones that reach a **verified** change -- opens
+**one pull request each**, through the same delivery code the single-investigate
+path uses. It is the surface that lets Credda run its own loop: find, reproduce,
+fix, verify, propose, with nobody labelling anything.
+
+It **proposes nothing on a default install.** Delivery happens only when
+`open-pull-request: true` **and** your workflow grants `contents: write` +
+`pull-requests: write`. With `open-pull-request` off, or without those scopes,
+sweep still discovers and reproduces, and the job summary says of every verified
+candidate that it **would** be proposed -- nothing is pushed, and the run holds a
+token that cannot write to your repository. When the scopes are missing the first
+push is refused by GitHub with a message naming the two lines to add; sweep
+records it, stops attempting the rest, and the job stays green.
+
+Three guardrails hold it:
+
+- **A hard cap.** `max-candidates` (default 3, never unbounded) is the most
+  candidates one sweep reproduces, and thus the most pull requests it can open in
+  a single run. A mode whose first run opens twenty pull requests gets
+  uninstalled the same afternoon.
+- **One idempotent pull request per finding.** Each candidate's branch is named
+  deterministically and distinctly from its provenance, so a re-run on an
+  unchanged tree meets its own previous branches. An existing branch with an open
+  proposal is left alone and reported; a branch with no open proposal is refused
+  rather than overwritten. Credda never force-pushes.
+- **Credda proposes and never merges.** There is no merge call anywhere on this
+  path.
+
+```yaml
+# .github/workflows/credda-sweep.yml
+name: Credda sweep
+on: push        # or a schedule
+
+permissions:
+  contents: write         # push each fix branch
+  pull-requests: write    # open each proposal
+  id-token: write         # mint the OIDC token that fetches the engine
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest    # a Linux runner with Docker; sweep reproduces in a sandbox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        with:
+          mode: sweep
+          open-pull-request: true
+          max-candidates: '3'
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}   # a model-backed provider fixes far more than the heuristic one
+```
+
+Drop `open-pull-request`, `contents: write` and `pull-requests: write` and the
+same workflow becomes a dry run: it discovers, reproduces, and reports on the job
+summary what it would have proposed, opening nothing.
 
 `triage` runs no repository code, starts no container, installs nothing from
 your repository, makes no model call and needs no API key. It reads the issue
@@ -462,7 +522,9 @@ trigger.
 
 | Input | Default | What it does |
 | --- | --- | --- |
-| `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one. |
+| `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one; `discover` reads the repository and reports what nobody filed; `sweep` discovers, reproduces, and opens a pull request per verified fix. |
+| `max-files` | `'4000'` | In `discover` and `sweep` mode, the most source files to read. Ignored by the other modes. |
+| `max-candidates` | `'3'` | **Sweep mode only.** The most discovered candidates one sweep reproduces and proposes -- a hard cap on the pull requests a single run can open. Never unbounded. |
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
 | `sandbox` | `docker` | Execution plane for repository code. `docker` is the only isolated plane, and needs a Linux runner. |
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
@@ -519,7 +581,9 @@ If you have pinned either input explicitly, nothing here affects you.
 | Output | Mode | Value |
 | --- | --- | --- |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
-| `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. |
+| `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
+| `candidates` | discover, sweep | How many candidates the run produced. In `sweep`, how many discovery wrote before the `max-candidates` cap. |
+| `stated-findings` | discover, sweep | In `discover`, findings settled by reading. In `sweep`, the count of candidates that reached a verified change -- the run's real yield. |
 | `investigation-id` | investigate | The investigation id, for `credda inspect` / `credda report`. |
 | `outcome` | investigate | Terminal outcome, e.g. `REPRODUCED_AND_DIAGNOSED` or `NO_RUNNABLE_CHECK`. |
 | `established` | investigate | Whether the run established anything about the repository. |
@@ -846,12 +910,25 @@ and a second or so of work.
 
 ```
 action.yml                 the action metadata (root, so it can be listed)
-run.mjs                    the runner: event in, report out
-delivery.mjs               the single predicate that decides whether a run has a
-                           verified fix to deliver. Imported by run.mjs and by
-                           deliver-pr.mjs; never executed as a step of its own
-deliver-pr.mjs             commits the patch, pushes the branch and opens the
-                           pull request. Reached only when open-pull-request is
+run.mjs                    the runner: event in, report out. Dispatches the four
+                           modes; imports sweep.mjs for the sweep branch
+sweep.mjs                  the sweep orchestration: discover, reproduce each
+                           candidate up to max-candidates, and open a pull request
+                           per verified fix through the shared delivery code.
+                           Imported by run.mjs; never a step of its own
+delivery.mjs               the pure decisions: the single predicate that decides
+                           whether a run has a verified fix to deliver, and the
+                           branch names for both the issue and the sweep paths.
+                           Imported by run.mjs, deliver-pr.mjs, deliver-core.mjs
+                           and sweep.mjs; never executed as a step of its own
+deliver-core.mjs           the git-and-gh machinery that pushes a branch and opens
+                           one pull request, reading no environment so both the
+                           single-investigate path and the sweep loop share it. It
+                           never force-pushes and never merges
+deliver-pr.mjs             the single-investigate entry: reads this run's one
+                           patch, issue and body from the environment, names the
+                           branch from the issue number, and delivers it through
+                           deliver-core.mjs. Reached only when open-pull-request is
                            on AND the run produced a verified fix. It never merges
 notification.mjs           the decision, the body and the one bounded POST behind
                            notify-url, with fetch handed in so it can be tested
