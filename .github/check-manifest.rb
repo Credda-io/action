@@ -35,13 +35,22 @@
 
 require 'yaml'
 
+# EVERY `File.read` BELOW PINS UTF-8, and that is not decoration. Ruby's default
+# external encoding follows the locale, so on a machine whose LANG is unset --
+# a maintainer's Mac, which is exactly where the comment above promises this
+# check can be run before it is committed -- it is US-ASCII, and the first
+# `scan` over a shipped file containing an em dash aborts with `invalid byte
+# sequence in US-ASCII`. The GitHub-hosted runners set a UTF-8 locale, so this
+# check was green in CI and crashed locally: the one failure mode this file
+# argues hardest against is a check that does not run where it says it runs.
+
 problems = []
 note = ->(line) { problems << line }
 
 MANIFEST = 'action.yml'
 
 begin
-  text = File.read(MANIFEST)
+  text = File.read(MANIFEST, encoding: 'UTF-8')
 rescue StandardError => e
   abort "Could not read #{MANIFEST}: #{e.message}"
 end
@@ -206,7 +215,7 @@ steps.each do |step|
     note.("#{MANIFEST}: step `#{step['id']}` runs `#{script}`, which is not a file in this checkout.")
     next
   end
-  writers[step['id']] = File.read(script).scan(/\boutput\(\s*['"]([A-Za-z0-9_-]+)['"]/).flatten.uniq
+  writers[step['id']] = File.read(script, encoding: 'UTF-8').scan(/\boutput\(\s*['"]([A-Za-z0-9_-]+)['"]/).flatten.uniq
 end
 
 step_refs.each do |(id, output_name), refs|
@@ -268,7 +277,7 @@ def env_names_read(path, seen = {})
   return [] if seen.key?(path) || !File.file?(path)
 
   seen[path] = true
-  source = File.read(path)
+  source = File.read(path, encoding: 'UTF-8')
   names = source.scan(ENV_READ).map { |match| match.compact.first }
 
   source.scan(RELATIVE_IMPORT) do |match|
