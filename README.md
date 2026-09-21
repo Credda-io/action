@@ -127,68 +127,46 @@ nothing, and the note it posts says so in its first sentence.
 
 ## Setup
 
-> ### Read this before you copy the workflow below: `@v1` still wants the `codereef` label
+> ### What `@v1` has and has not, re-measured 2026-09-20
 >
-> **Checked 2026-08-30.** The published `v1` tag is **8 commits behind `main`**,
-> and one of those commits is the label rename. At `v1` the `label` input
-> defaults to **`codereef` alone**; on `main` it defaults to `credda,codereef`
-> and accepts either.
+> **This block said, until 2026-09-20, that `@v1` was 8 commits behind `main`,
+> that its `label` input defaulted to `codereef` alone, and that
+> `open-pull-request` existed "on no published ref -- not `@v1` and not
+> `@main`". Every one of those was true when it was checked on 2026-08-30 and
+> none of them is true now.** The tag was moved on 2026-09-04 (`e01e3c7`) and
+> the `feat/notify-url` branch this page is written on was merged to `main`
+> (`d032d82`, PR #3). Nothing edited this warning, which is precisely the
+> failure it was written to describe, turned on itself.
 >
-> The example below tells you to create a label called `credda`. Copy it as
-> written against `@v1` and every part of it works except the part that
-> matters: the workflow triggers, the job starts, the action resolves, the
-> engine is fetched — and then the run **skips**, because the label it was
-> given is not the label that tag runs on. A skip is exit 0. **You get a green
-> check and no report, and nothing anywhere says why.** That is the worst
-> failure mode this repository has, because it is indistinguishable from
-> success.
+> Measured at `e01e3c7`, with `git show v1:action.yml`:
 >
-> Until the tag is moved — a release decision, not a documentation one — pick
-> one of these, both of which work on `@v1` today:
+> | | at `@v1` | on `@main` |
+> |---|---|---|
+> | `label` default | `credda,codereef` | `credda,codereef` |
+> | `open-pull-request` input | declared, `default: 'false'` | declared |
+> | `pull-request-opened`, `skipped` outputs | both declared | both declared |
+> | `notify-url` input | **absent** | declared |
+> | `sweep` mode | **absent** | declared (`61a817c`) |
 >
-> ```yaml
->       - uses: Credda-io/action@v1
->         with:
->           label: credda        # name the label explicitly; do not rely on the default
-> ```
+> `git rev-list --count v1..origin/main` is **3**, not 8: `59a368f` and its
+> merge `d032d82` (notify-url), and `61a817c` (sweep mode).
 >
-> or pin the branch instead of the tag:
+> **So the workflow below can be copied against `@v1` as written.** The
+> `credda` label works on the default, and `open-pull-request: 'true'` is a
+> declared input there. The silent exit-0 this note used to warn about -- a
+> green check, no report, nothing saying why -- is not reachable through either
+> of those any more.
 >
-> ```yaml
->       - uses: Credda-io/action@main
-> ```
+> **What `@v1` still does not have is this page's own feature.** `notify-url`
+> is on `@main` and not at the tag, and so is `sweep` mode. Set `notify-url` on
+> `@v1` and the old failure shape is exactly what you get: an undeclared input
+> is the empty string on the runner, so it is simply off, the job is green, and
+> nothing anywhere says why nothing was posted to your channel. That is a
+> release decision -- moving the tag -- and it has not been made.
 >
-> Pinning `@main` is not the recommendation for an install you leave alone —
-> it moves under you — but it is the ref where the label default is the one
-> this page tells you to create.
->
-> **`@main` is not this page, either.** This README is written against an
-> unmerged branch, and it is one feature ahead of every published ref: read
-> the next paragraph before you assume a section applies to the ref you pinned.
->
-> **The label is not the only thing that tag is missing, and the second one is
-> the promise.** `open-pull-request` **is not an input at `v1` at all.** It was
-> added on `main`, in one of the same 8 commits. Set it on `@v1` and there is
-> no error: an undeclared input evaluates to the empty string on the runner, so
-> the feature is simply off. You will have added `contents: write` and
-> `pull-requests: write` to your own workflow, watched the job go green, read a
-> report on the issue — and no pull request will ever be opened, with nothing
-> anywhere saying why. It is the label failure again, on the thing this action
-> is for.
->
-> The outputs `pull-request-opened` and `skipped` are absent at `v1` for the
-> same reason, and a caller reading either of them gets `''` rather than a
-> failure.
->
-> So: **`open-pull-request` needs `@main`, once this branch has merged there.**
-> It is on no published ref yet -- not `@v1` and not `@main` -- so a caller
-> pointing at either before that merge meets the same silent exit-0 this note is
-> about. There is no spelling of it that works on `@v1`, which is the difference between this and the label —
-> that one had a workaround and this one does not. Everything the section
-> *Opening a pull request* describes arrives on `@main` when this branch merges
-> there, and on `@v1` when the tag is moved after that — both release decisions,
-> neither of them made yet. Every other section of this page describes `@main`
-> today.
+> Read a section's ref before you assume it applies to yours: every section of
+> this page describes `@main`, and `@main` is now ahead of `@v1` by notify-url
+> and sweep mode alone.
 
 ```yaml
 # .github/workflows/credda.yml
@@ -224,13 +202,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Credda-io/action@v1
         with:
-          # NAMED EXPLICITLY, and it is not optional at `@v1`.
-          #
-          # That tag's `label` input still defaults to `codereef` alone, so a
-          # workflow that relies on the default triggers, starts, resolves the
-          # action, fetches the engine and then SKIPS -- exit 0, a green check,
-          # no report, and nothing saying why. See the warning above. This line
-          # is what makes the example above actually work when copied.
+          # Named explicitly. It is no longer REQUIRED at `@v1` -- that tag's
+          # `label` default has been `credda,codereef` since the tag moved on
+          # 2026-09-04, and this comment said until 2026-09-20 that it still
+          # defaulted to `codereef` alone and that relying on the default meant
+          # a silent exit-0. It does not. The line stays because naming the
+          # label you actually created is worth more than a default that is
+          # documented to lose `codereef` when the deprecation window closes.
           label: credda
           # Optional. Without it the deterministic heuristic provider runs:
           # it reproduces and reports, and cannot reason over prose.
@@ -587,10 +565,11 @@ permissions:
   pull-requests: write   # open the proposal
 
 # ...
-      # NOT `@v1`, AND NOT `@main` EITHER, YET. This input exists on no
-      # published ref: an undeclared input is '' on the runner, which is
-      # 'off', so this block is green and silent on both. It works once this
-      # feature merges to `main`. See the note at the top of this file.
+      # `open-pull-request` is declared at `@v1` AND on `@main`, with
+      # `default: 'false'` on both. This comment said until 2026-09-20 that it
+      # "exists on no published ref" and was green and silent on both; that was
+      # true on 2026-08-30 and the tag moved on 2026-09-04. `@main` is used
+      # here only because the rest of this page describes `@main`.
       - uses: Credda-io/action@main
         with:
           open-pull-request: 'true'
@@ -695,7 +674,7 @@ because that list is what somebody reads before they open the log.
 | `sandbox: docker` on a non-Linux runner | *Refuse a plane the runner cannot isolate* | Use `ubuntu-latest`. The action refuses rather than falling back to running your code on the host. |
 | The event is not the label this action runs on | *Run Credda* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
 | The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
-| `open-pull-request: 'true'` on any published ref | none | Nothing, and that is the problem: the input exists at neither `@v1` nor `@main` yet, so it evaluates to `''`, the feature is off, the job is green and the report is posted with nothing anywhere saying why no pull request appeared. There is no ref to move to today; it works from `@main` once this feature merges there. |
+| `notify-url` set at `@v1` | none | Nothing, and that is the problem: that input is declared on `@main` and not at the tag, so on `@v1` it evaluates to `''`, the feature is off, the job is green, and nothing anywhere says why your channel got no message. Pin `@main`, or wait for the tag to move. (This row said the same of `open-pull-request` until 2026-09-20; that input has been declared at `@v1` since the tag moved on 2026-09-04.) |
 | `open-pull-request: 'true'`, and the org forbids Actions opening pull requests | *Open a pull request with the verified fix* | An admin turns on *Allow GitHub Actions to create and approve pull requests* under Settings -> Actions -> General. The branch was pushed; anyone can open the proposal by hand meanwhile. |
 | `open-pull-request: 'true'` without `contents: write` / `pull-requests: write` | *Open a pull request with the verified fix* | Add both to your workflow's `permissions:` block. The message names them. The report comment is already posted by then. |
 | `open-pull-request: 'true'`, and your checkout ran with `persist-credentials: false` | *Open a pull request with the verified fix* | Drop that setting on this workflow's `actions/checkout` step, or configure a credential for `origin` yourself. It removes the token git pushes with, and Credda has none of its own to fall back on. Adding scopes will not fix it, so the message says that rather than quoting git. |
