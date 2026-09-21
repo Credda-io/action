@@ -849,9 +849,9 @@ package.json               not installed from, and there is no lockfile because
                            there are no dependencies. It carries the one version
                            string that names both this action and its engine.
 README.md                  this file
-SYNC.md                    how a release is cut and verified
+SYNC.md                    why the release procedure is not in this repository
 LICENSE                    Apache-2.0
-.gitignore                 one line: `node_modules/`, which nothing here creates
+.gitignore                 `node_modules/`, which nothing here creates, and `.env` files
 .github/workflows/ci.yml   the two jobs below, on every pull request: what can be
                            proved with no engine, no network and no customer
 .github/workflows/smoke.yml  asks the real endpoint for the real artifact with a
@@ -883,9 +883,13 @@ no build step, and nothing here is compiled before it runs.
 agent prompts as plain string literals -- was published in a public repository.
 Minifying does not help: a string literal survives it.
 
-The engine source lives in a separate, private repository. `SYNC.md` records how
-the artifact and its lockfile are regenerated; one command writes both, so they
-cannot be released out of step with each other.
+The engine source lives in a separate, private repository, and so does the
+release procedure. `SYNC.md` used to record how the artifact and its lockfile
+are regenerated; it now records why that moved, and the procedure itself is in
+the private tree. What still holds here is the guarantee, which does not depend
+on where the procedure is written down: a runner refuses any archive whose
+SHA-256 does not match the `engine.lock.json` committed beside it, so an
+artifact and a lockfile cannot be served out of step with each other.
 
 ## Licence
 
