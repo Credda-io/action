@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Full history is not needed; the tracked file list at this commit is.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: the shipped tree is complete
         run: node .github/check-shipped.mjs
 
@@ -74,7 +74,7 @@ jobs:
     # Its own job, so that a failure names the manifest rather than the tree.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # Named rather than assumed: this check needs Ruby, which the runner image
       # provides. If it ever stops providing it, this line is where that is
       # visible and the job goes red -- it does not quietly check nothing.
@@ -97,8 +97,8 @@ jobs:
     # until it is, it does not exist as far as CI is concerned.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
       - name: notify-url says what it sends, and a refused comment names its fix
