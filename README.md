@@ -673,6 +673,12 @@ because that list is what somebody reads before they open the log.
 | The downloaded bytes do not match `engine.lock.json` | *Fetch and verify the Credda engine* | The job fails printing both digests and `NOTHING WAS EXECUTED`. Nothing was written to disk. |
 | `sandbox: docker` on a non-Linux runner | *Refuse a plane the runner cannot isolate* | Use `ubuntu-latest`. The action refuses rather than falling back to running your code on the host. |
 | The event is not the label this action runs on | *Run Credda* | Nothing. The step logs `Skipping:` and exits 0 -- a green job, not a red one. |
+| `mode` is not `investigate`, `triage` or `discover` | *Run Credda* | Fix the spelling. The message names the three it accepts. |
+| `mode: investigate` or `triage` on a trigger that carries no issue | *Run Credda* | Those two modes start from an issue. Trigger them on `issues`, or use `mode: discover`, which starts from the repository. |
+| The job has no `issues: write` | *Post the comment* | Add the line. The message prints the whole `permissions:` block, and the report is already on the job summary. |
+| Credda is triggered by a fork's pull request | *Post the comment* | GitHub hands those runs a read-only token whatever your `permissions:` block says, so adding the line does not help. Trigger on `issues`, or set `comment: false` and read the report on the job summary. |
+| GitHub rate-limits the comment | *Post the comment* | Re-run later. The message says it is a rate limit rather than a permission, because both are `403` and the remedies are opposite. |
+| The issue tracker is off, or the repository is archived | *Post the comment* | Nothing in the workflow fixes either; the message names which one it was. |
 | The metering receipt fails | none | Nothing. It cannot redden a build, in any direction. See *It cannot break your job*. |
 | `notify-url` set at `@v1` | none | Nothing, and that is the problem: that input is declared on `@main` and not at the tag, so on `@v1` it evaluates to `''`, the feature is off, the job is green, and nothing anywhere says why your channel got no message. Pin `@main`, or wait for the tag to move. (This row said the same of `open-pull-request` until 2026-09-20; that input has been declared at `@v1` since the tag moved on 2026-09-04.) |
 | `open-pull-request: 'true'`, and the org forbids Actions opening pull requests | *Open a pull request with the verified fix* | An admin turns on *Allow GitHub Actions to create and approve pull requests* under Settings -> Actions -> General. The branch was pushed; anyone can open the proposal by hand meanwhile. |
@@ -832,6 +838,13 @@ delivery.mjs               the single predicate that decides whether a run has a
 deliver-pr.mjs             commits the patch, pushes the branch and opens the
                            pull request. Reached only when open-pull-request is
                            on AND the run produced a verified fix. It never merges
+commenting.mjs             what a refused report comment means, as a pure function
+                           of what gh said. Imported by comment-failure.mjs;
+                           never executed as a step of its own
+comment-failure.mjs        reached only when `gh issue comment` has already
+                           failed: names the switch that fixes it on the
+                           annotation list and the job summary, and exits 1 so
+                           a comment that did not arrive still reddens the job
 notification.mjs           the decision, the body and the one bounded POST behind
                            notify-url, with fetch handed in so it can be tested
                            with no network. Imported by notify.mjs; never a step
@@ -852,7 +865,7 @@ README.md                  this file
 SYNC.md                    why the release procedure is not in this repository
 LICENSE                    Apache-2.0
 .gitignore                 `node_modules/`, which nothing here creates, and `.env` files
-.github/workflows/ci.yml   the two jobs below, on every pull request: what can be
+.github/workflows/ci.yml   the three jobs below, on every pull request: what can be
                            proved with no engine, no network and no customer
 .github/workflows/smoke.yml  asks the real endpoint for the real artifact with a
                            real OIDC token and checks the bytes against the
@@ -866,6 +879,10 @@ LICENSE                    Apache-2.0
 .github/notify.test.mjs    node:test over notification.mjs: the body, the Slack
                            shape, silence with nothing to say, and a failed POST
                            that fails nothing. No dependency; `node --test` runs it
+.github/comment.test.mjs   node:test over commenting.mjs: that a refused report
+                           comment names the switch that fixes it, and that a
+                           rate limit and a missing permission -- both 403, with
+                           opposite remedies -- are never confused for each other
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong
 .github/PULL_REQUEST_TEMPLATE.md

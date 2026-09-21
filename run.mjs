@@ -103,8 +103,13 @@ function env(name, fallback = null) {
   const value = process.env[name];
   if (value !== undefined && value !== '') return value;
   if (fallback !== null) return fallback;
-  console.error(`${name} is not set. This script only runs inside a GitHub Actions job.`);
-  process.exit(1);
+  // Through `die` rather than a bare console.error, for the reason that
+  // function's own docblock gives: a log line produces no annotation, so the
+  // failure has no entry in the list a person reads before opening the log.
+  // `launcher/fetch-engine.mjs` already annotates its own missing GITHUB_OUTPUT
+  // and says in as many words that the two scripts hold one policy rather than
+  // opposite ones; this was the half still holding the other one.
+  die(`${name} is not set. This script only runs inside a GitHub Actions job.`);
 }
 
 function output(name, value) {
@@ -176,12 +181,11 @@ const creddaBundle = join(engineRoot, 'bundle', 'reef.mjs');
 const meteringBundle = join(engineRoot, 'bundle', 'metering.mjs');
 
 if (!existsSync(creddaBundle)) {
-  console.error(
+  die(
     `The Credda engine is not at ${creddaBundle}. The step that downloads and verifies it should ` +
       'have run before this one and should have failed loudly if it could not -- so reaching here ' +
       'means the action manifest is broken, not that a download failed silently. Nothing was run.',
   );
-  process.exit(1);
 }
 
 /*
@@ -210,11 +214,11 @@ const issue = event.issue;
 
 function requireIssueEvent() {
   if (process.env['GITHUB_EVENT_PATH'] === undefined || process.env['GITHUB_EVENT_PATH'] === '') {
-    console.error(
+    die(
       `CREDDA_MODE is '${mode}', which runs on an issue, and GITHUB_EVENT_PATH is not set. ` +
-        'This script only runs inside a GitHub Actions job.',
+        "Trigger this job on 'issues', or use mode 'discover', which starts from the repository " +
+        'rather than from a report.',
     );
-    process.exit(1);
   }
 }
 
@@ -241,7 +245,8 @@ function credda(args, stdio) {
  * Ends the job red, and says so on the first line of the annotation list and on
  * the job summary.
  *
- * The three places this is called used to `console.error` and `process.exit(1)`.
+ * Every failure in this file now ends here, and the three that did first are
+ * why. They used to `console.error` and `process.exit(1)`.
  * The job did go red, so none of them was a silent failure -- but a bare
  * `console.error` is a log line and nothing else: it produces no annotation, so
  * the failure had no entry in the list a person reads before opening the log,
@@ -252,6 +257,15 @@ function credda(args, stdio) {
  * the first line of the annotation.
  *
  * The first line goes to `::error::` because that is all an annotation takes.
+ *
+ * THE REST OF THE FILE WAS BROUGHT HERE AFTERWARDS, and those were the louder
+ * half: a mistyped `mode`, an investigate job triggered on a push with no issue
+ * in the payload, and a discovery that did not finish are all things a CUSTOMER
+ * does or meets, not things only a maintainer sees. Each of them exited 1 with
+ * one line on stderr -- no annotation, no summary -- while README.md's "How it
+ * fails" asserted at the top of its table that every failure names its own
+ * cause on the first line of the annotation. The assertion was true of every
+ * row in the table and false of the failures that had no row.
  */
 function die(message) {
   console.log(`::error::${message.split('\n')[0]}`);
@@ -867,8 +881,7 @@ async function discover() {
   const ran = credda(['discover', checkout, '--json', '--max-files', maxDiscoverFiles], 'pipe');
 
   if (ran.error !== undefined || ran.status === null) {
-    console.error(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
-    process.exit(1);
+    die(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
   }
 
   const events = [];
@@ -890,8 +903,10 @@ async function discover() {
     // candidates" for a run that never finished is the worst thing this could
     // print: it reads exactly like a clean repository.
     console.error(String(ran.stderr ?? '').slice(0, 4000));
-    console.error('Credda discovery did not finish, so nothing is being reported.');
-    process.exit(1);
+    die(
+      'Credda discovery did not finish, so nothing is being reported. This is a Credda failure, ' +
+        'not a finding about the repository; the engine\'s own output is above.',
+    );
   }
 
   const stated = candidates.filter((one) => one.standing === 'STATED');
@@ -996,6 +1011,5 @@ if (mode === 'triage') {
 } else if (mode === 'discover') {
   await discover();
 } else {
-  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage' or 'discover'.`);
-  process.exit(1);
+  die(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage' or 'discover'.`);
 }

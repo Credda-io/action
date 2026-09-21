@@ -84,15 +84,22 @@ jobs:
         run: ruby .github/check-manifest.rb
 
   notification:
-    # `notification.mjs` is the one shipped module that is a pure function of
-    # values plus a POST whose `fetch` is handed in, so it is the one whose
-    # meaning CAN be checked here without the engine, a network or a customer.
-    # `node --test` is Node's own runner; nothing is installed for it.
+    # `notification.mjs` and `commenting.mjs` are the shipped modules that are
+    # pure functions of values -- plus, in the first, a POST whose `fetch` is
+    # handed in -- so they are the ones whose meaning CAN be checked here
+    # without the engine, a network or a customer. `node --test` is Node's own
+    # runner; nothing is installed for it.
+    #
+    # THE FILES ARE NAMED RATHER THAN DISCOVERED. `node --test .github/` does
+    # not walk a dot-directory, and a glob that matches nothing is a step that
+    # runs no test and exits 0 -- which is the defect this repository keeps
+    # finding elsewhere. A new test file is added to this line by hand, and
+    # until it is, it does not exist as far as CI is concerned.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
-      - name: notify-url says what it sends and never fails a job
-        run: node --test .github/notify.test.mjs
+      - name: notify-url says what it sends, and a refused comment names its fix
+        run: node --test .github/notify.test.mjs .github/comment.test.mjs

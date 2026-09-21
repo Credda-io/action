@@ -667,7 +667,32 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         ISSUE_NUMBER: ${{ steps.credda.outputs.issue-number }}
         BODY_PATH: ${{ steps.credda.outputs.body-path }}
-      run: gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_PATH"
+      # THE ONE FAILURE IN THIS ACTION THAT USED TO SAY NOTHING ABOUT ITSELF.
+      #
+      # This was the bare gh call below and nothing around it. A job missing
+      # `issues: write` -- the likeliest mistake in a hand-written workflow, and
+      # the one a fork's read-only token produces whatever the workflow says --
+      # ended with
+      # `gh: Resource not accessible by integration (HTTP 403)` and nothing
+      # else: no annotation, nothing on the job summary, and no mention of the
+      # two words that fix it, on the step that delivers the thing this product
+      # owes. README.md's "How it fails" asserts that every failure names its
+      # own cause on the first line of the annotation, and had no row for this
+      # step at all.
+      #
+      # gh is still invoked exactly once and exactly as it was. What is added is
+      # the failure path: its output goes to a file under RUNNER_TEMP rather
+      # than a shell variable -- `.github/check-manifest.rb` assertion 7 reads
+      # every `$NAME` in this block and requires the step's own `env:` to set
+      # it, and RUNNER_* is the runner's to provide -- and comment-failure.mjs
+      # turns what gh said into a refusal that names the switch. It exits 1, so
+      # a comment that did not arrive still reddens the job.
+      run: |
+        if gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_PATH" > "$RUNNER_TEMP/credda-comment.log" 2>&1; then
+          cat "$RUNNER_TEMP/credda-comment.log"
+        else
+          node "$GITHUB_ACTION_PATH/comment-failure.mjs" "$RUNNER_TEMP/credda-comment.log"
+        fi
 
     # THE LAST STEP OF THE PRODUCT, AND THE ONE THAT IS OFF UNLESS YOU ASK.
     #
