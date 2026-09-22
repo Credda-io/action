@@ -287,13 +287,13 @@ inputs:
       a public/private flag, and on private repositories only the `license`
       value. Never sends names, URLs, issue text, code, paths, output, branches
       or commit SHAs. A metering failure cannot fail your job.
-    # Still `codereef.app` after the rename, deliberately. The endpoints move
-    # to `api.credda.io`, but that hostname is AWS-hosted and serves the
-    # retired scoring product, while metering is a Cloudflare Worker; nothing
-    # routes `/v1/runs` there yet. A default that does not answer is worse than
-    # one with the old name on it. See README, "Why the defaults above still
-    # say codereef.app".
-    default: https://metering.codereef.app/v1/runs
+    # MOVED to `api.credda.io` on 2026-09-22, once `/v1/runs` was served there.
+    # api.credda.io is AWS (44.193.67.254); the `credda-metering` service now
+    # answers /v1/runs behind nginx, off Cloudflare. Kept equal to
+    # DEFAULT_ENDPOINT in core/packages/metering/src/client.ts -- client.test.ts
+    # asserts the two match. The runs receipt is advisory, so it moves before
+    # the engine (which stays until its artifacts are on the box; see below).
+    default: https://api.credda.io/v1/runs
   engine-url:
     # Where the engine is fetched from. Present so that a self-hosted or
     # air-gapped deployment can point at its own copy of the service, and so
@@ -307,20 +307,24 @@ inputs:
       Where to fetch the verified engine artifact. Defaults to Credda's engine
       endpoint. The download is checked against the SHA-256 digest pinned in
       this action's engine.lock.json whatever this is set to.
-    # Not moved to `api.credda.io` for the same reason as `metering-url`, and
-    # with more at stake: this is the ONE endpoint whose failure fails a
-    # customer's job.
+    # NOT moved yet, and this is the ONE endpoint whose failure fails a
+    # customer's job, so it moves last and only when the destination can serve
+    # the bytes.
     #
-    # CORRECTED 2026-08-29. This comment said the OIDC audience the launcher
-    # requests had moved to `https://api.credda.io/v1/engine`. It has not:
+    # As of 2026-09-22 `metering-url` above HAS moved to api.credda.io -- its
+    # route answers there -- but this one has not, and the reason is now the
+    # artifacts, not the routing. The AWS box's /v1/engine route answers (it
+    # returns the launcher a proper 401 for a missing token, no longer a 404),
+    # but its engine store is empty: the tarballs still live in the retiring
+    # Worker's R2 bucket. Until they are copied onto the box, pointing here at
+    # api.credda.io would return `storage-unavailable` for every private-repo
+    # install. Move it after the artifacts are on the box.
+    #
+    # The OIDC AUDIENCE is a separate thing and already migrated:
     # `launcher/fetch-engine.mjs` sets `ENGINE_AUDIENCE` to
-    # `https://backend.credda.io/v1/engine`, and `api.credda.io/v1/engine`
-    # answers 404 live -- that host serves the developer website and routes only
-    # exact paths, none of them `/v1/*`. The verifier accepts an audience set
-    # spanning both names, so nothing broke; what was wrong was the note, and a
-    # note about the single most breakable string in the launcher is exactly the
-    # one that has to be right. An audience is still a string compared against a
-    # set, not an address anything connects to.
+    # `https://backend.credda.io/v1/engine`, and the verifier accepts a set
+    # spanning that and the legacy name. An audience is a string compared
+    # against a set, not an address anything connects to.
     default: https://metering.codereef.app/v1/engine
   engine-archive:
     # THE ANSWER TO "WE CANNOT DEPEND ON YOUR UPTIME". Point this at a local or
