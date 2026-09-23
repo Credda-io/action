@@ -186,13 +186,15 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
  * without minting a GitHub OIDC token, so it is a release step and not a
  * reading exercise.
  *
- * The standing risk while this stays on the legacy value: every install in the
- * fleet fetches its engine from a Cloudflare Worker that the port exists to
- * retire. Turning that Worker off breaks every install at the one step that
- * genuinely stops a customer's build. This is now a sequencing decision rather
- * than a blocked one.
+ * MOVED to `backend.credda.io/v1/engine` on 2026-09-22 -- the same host as
+ * `ENGINE_AUDIENCE` above, off Cloudflare, where credda-backend serves
+ * /v1/engine. Caveat carried over: whether that host can hand over the tarball
+ * depends on credda-backend's engine store being populated; the Cloudflare
+ * account has no R2, so the legacy Worker never served bytes either and no
+ * install has ever fetched one. This moves a non-functional path to its correct
+ * address rather than breaking a working one.
  */
-export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
+export const DEFAULT_ENGINE_URL = 'https://backend.credda.io/v1/engine';
 
 /**
  * Why `engine-url` is checked BEFORE a token is minted, and not after.
