@@ -371,7 +371,7 @@ function creddaVersion() {
  * silently disables a feature somebody pays for costs a customer.
  *
  * ON BY DEFAULT, AND AN EMPTY ENDPOINT STILL MEANS NO CALL. `action.yml`
- * defaults `metering-url` to `https://metering.codereef.app/v1/runs`, the same
+ * defaults `metering-url` to `https://backend.credda.io/v1/runs`, the same
  * endpoint the client carries as `DEFAULT_ENDPOINT`, so a run receipt and the
  * licence check both happen without the customer having to assemble them --
  * which is what the paid plans are actually sold against, and a gate somebody

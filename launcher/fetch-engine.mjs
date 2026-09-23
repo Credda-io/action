@@ -137,62 +137,30 @@ import { extract } from './untar.mjs';
 export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
 
 /**
- * Where the engine is fetched from unless `engine-url` says otherwise.
+ * Where the engine is fetched from unless `engine-url` overrides it.
  *
- * Still on `codereef.app`, and DELIBERATELY not moved with the audience above.
- * The two look like the same rename and are not.
+ * MOVED to `https://backend.credda.io/v1/engine` on 2026-09-22 -- the same host
+ * as `ENGINE_AUDIENCE` above. Metering was ported out of the Cloudflare Worker
+ * into the Express backend that serves that hostname (credda-backend), so runs
+ * and engine share one host and the constant follows the audience.
  *
- * The audience is a string compared against a set the verifier already accepts,
- * so moving it is safe the moment that set is deployed. This is a URL that must
- * ANSWER -- a different and stricter test, which is why the two do not move
- * together. It DOES answer; the measurement is below, and the sentence that
- * used to stand here saying it did not was left behind by its own update.
+ * Two caveats, both real:
  *
- * Its home is `https://backend.credda.io/v1/engine`. The metering service has
- * been ported out of the Cloudflare Worker and into the Express backend that
- * already serves that hostname.
+ *  1. TAKES EFFECT ON THE NEXT TAG. This change is on a branch. The published
+ *     `v1` tag still fetches from the legacy host and requests the legacy
+ *     audience, so the released fleet is self-consistent today. Before a tag
+ *     carrying this move is cut, confirm against the RUNNING verifier -- not the
+ *     repo -- that it accepts `https://backend.credda.io/v1/engine`. It does
+ *     today: the deployed metering handler answers /v1/engine (a 401 for a
+ *     missing token, with a 404 on a neighbouring path proving it is the handler
+ *     and not a catch-all), and its accepted-audience set spans both names.
  *
- * THE PRECONDITION THIS PARAGRAPH SET HAS NOW BEEN MET, AND THE OLD
- * MEASUREMENT IS SUPERSEDED. It read: "it is not deployed, and nginx does not
- * yet pass `/v1/*` to it. Measured rather than assumed: `POST
- * https://backend.credda.io/v1/engine` answers 404 today." That was true when
- * written and is not true now. Re-measured 2026-08-28:
- *
- *     POST https://backend.credda.io/v1/engine   (content-type json, body {})
- *       -> 401, Server: nginx, and the METERING HANDLER'S OWN BODY:
- *          {"ok":false,"error":"engine_unavailable","reason":"missing",
- *           "message":"No GitHub OIDC token was presented. ... see the Credda README."}
- *
- *     POST https://backend.credda.io/v1/definitely-not-a-route
- *       -> 404
- *
- * The control is what makes this evidence rather than a hopeful reading: a 404
- * on a neighbouring path on the same host proves the 401 is a handler
- * answering, not a catch-all. Re-measured again 2026-08-30: both
- * `backend.credda.io/v1/engine` and the legacy `metering.codereef.app/v1/engine`
- * still answer that same 401, each naming its own README. nginx passes `/v1/*` and the Express port is
- * live. The test this paragraph named -- reached versus not reached -- is
- * satisfied, and satisfied more strongly than the 400 it asked for.
- *
- * THE CONSTANT STILL DOES NOT MOVE IN THIS COMMIT, AND THE REASON IS NO LONGER
- * THE ENDPOINT. Moving it means cutting a tag, and the deploy order below is
- * not symmetric. What is unverified is the other half: the published `v1` tag
- * requests the LEGACY audience (`metering.codereef.app/v1/engine`) and fetches
- * from the legacy host, so the fleet is self-consistent and working today. The
- * audience move above exists only on this branch, unreleased. Before any tag
- * carrying it is published, the DEPLOYED verifier on whichever host the fetch
- * targets must be confirmed to accept `https://backend.credda.io/v1/engine` --
- * against the running service, not the repository. That cannot be checked
- * without minting a GitHub OIDC token, so it is a release step and not a
- * reading exercise.
- *
- * MOVED to `backend.credda.io/v1/engine` on 2026-09-22 -- the same host as
- * `ENGINE_AUDIENCE` above, off Cloudflare, where credda-backend serves
- * /v1/engine. Caveat carried over: whether that host can hand over the tarball
- * depends on credda-backend's engine store being populated; the Cloudflare
- * account has no R2, so the legacy Worker never served bytes either and no
- * install has ever fetched one. This moves a non-functional path to its correct
- * address rather than breaking a working one.
+ *  2. THE STORE MAY BE EMPTY. Whether this host can actually hand over the
+ *     tarball depends on credda-backend's engine store being populated. The
+ *     Cloudflare account has no R2, so the legacy Worker never served bytes
+ *     either and no install has ever fetched an engine. This moves a
+ *     non-functional path to its correct address; it does not by itself make
+ *     the engine downloadable.
  */
 export const DEFAULT_ENGINE_URL = 'https://backend.credda.io/v1/engine';
 
