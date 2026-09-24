@@ -317,13 +317,15 @@ inputs:
       a public/private flag, and on private repositories only the `license`
       value. Never sends names, URLs, issue text, code, paths, output, branches
       or commit SHAs. A metering failure cannot fail your job.
-    # Still `codereef.app` after the rename, deliberately. The endpoints move
-    # to `api.credda.io`, but that hostname is AWS-hosted and serves the
-    # retired scoring product, while metering is a Cloudflare Worker; nothing
-    # routes `/v1/runs` there yet. A default that does not answer is worse than
-    # one with the old name on it. See README, "Why the defaults above still
-    # say codereef.app".
-    default: https://metering.codereef.app/v1/runs
+    # MOVED to `backend.credda.io`. Metering was ported into credda-backend on
+    # 2026-09-06 and is served live at `backend.credda.io/v1/*`; the old
+    # `metering.codereef.app` Cloudflare Worker no longer routes `/v1/runs`. This
+    # default is kept EQUAL to `DEFAULT_ENDPOINT` in
+    # `core/packages/metering/src/client.ts`, which `client.test.ts` asserts, so
+    # the launcher and the client never disagree about where a receipt goes. Not
+    # `api.credda.io`: that host serves the site and routes no `/v1/*`. A metering
+    # failure fails open (see above), so this move cannot break a job.
+    default: https://backend.credda.io/v1/runs
   engine-url:
     # Where the engine is fetched from. Present so that a self-hosted or
     # air-gapped deployment can point at its own copy of the service, and so
