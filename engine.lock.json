@@ -1,26 +1,32 @@
 {
-  "_": "Written by engine-dist/pack.mjs. Do not edit by hand: the digests below are what every customer runner checks downloaded code against, and a hand-edited value is either an outage or a hole. Re-pack instead.",
-  "version": "v0.1.1",
+  "_": "Written by core/scripts/pack-engine.mjs. Do not edit by hand: the digests below are what every customer runner checks downloaded code against, and a hand-edited value is either an outage or a hole. Re-pack instead.",
+  "version": "v0.1.2",
   "entry": "reef.mjs",
   "archive": {
-    "bytes": 1908772,
-    "sha256": "d72a841ba90259a4305439318925894fdf49117cdf408d51849f2099c30de944"
+    "bytes": 2246997,
+    "sha256": "72d7b77d8d245ef211dac8d512f842e022edf4b983ca1a883dc7c85225f3749f"
   },
   "files": {
-    "Dockerfile": "faa6f57c1ff60eec6141a2bb92fd0acfc127703043f233ec8eadeaae88321824",
-    "metering.mjs": "40a33cb6b1fdf2d84d0bb80d73fe9c59d7ff5ad7c71bc8ce3bd0941f8b5f94ae",
-    "reef.mjs": "db95054a664f9d497439610e8ab58c3a0efde6b60da93f76f4c848d6ffb782ee",
-    "sql/002_jobs.sql": "7a02213e6baaf542d4698024b25e90914486f8a1e3d45a9ff976d7e1f98300f4",
+    "reef.mjs": "fe9f066ca5d8fca50cf3ec1726baaf2ed338e7f87703c1531dbe1da83f3eceb0",
+    "Dockerfile": "015dc3316b24a8a7a65f7bc21aa4612c7ded8df768a9eb01e7e0c617a1482f9e",
+    "metering.mjs": "fe360ec850e7900376f9d97ae8468d9a3aef0fbfa57261c45cb394ad83304484",
+    "sql/002_jobs.sql": "1cefe923d708dbe59ccdc64a0c84b691212eaa4db6907dc8f1f7fef8de63a6ce",
     "sql/003_memory.sql": "b42e60ceba767fa0d911a4a0660b89b0900216e9556ec98688787d92f031dced",
     "sql/004_change_contracts.sql": "80b88d89108a575a64f13e8de53d31e3c0781c397df35f378d81424cd7fc40ab",
-    "sql/005_validations.sql": "410ed34371d823d6dae97572c3f09c19988846b6396017188b3c8bdc2fe6658b",
+    "sql/005_validations.sql": "3c5739b69db40483c48691f9c50ab040e924de2de4a0071ffbe3b862512f7bcf",
     "sql/006_key_repairs.sql": "81085b49892472b894a9177009d08ea0abeba1b36cf48a9358050cf3e5c37737",
-    "sql/007_resolutions.sql": "32ab5b1021abdc41edb1c6e3078c4c1958a8a2a9964dfd4ab49f52bef27cd980",
+    "sql/007_resolutions.sql": "f6cc286cb2e553c0af17575c16664fe17649d2af7a4994fd464797651dbb5870",
     "sql/008_api_keys.sql": "723d0145e8eaf1c8d8f44eb1c25739d173a9b4494504c4e8a76b41aeeffaea84",
-    "sql/009_run_costs.sql": "3c8797601f12c496ed4b3ce92d6722b29fdcc672f3d0c4dd5e3140db478964b2",
-    "sql/010_resolution_timeout_attempts.sql": "b8eba7354f29c03959d19f381721cae5e2260f338fadc9cb33354e2dc8a28d83",
+    "sql/009_run_costs.sql": "99fca6c5931d2712e62cdfca626b61f8b46775fd1b5d54db662552a09a0ffb48",
+    "sql/010_resolution_timeout_attempts.sql": "259d535522ea2207b460f2a52e6018a6446047f0e446f1d926385b3c35fe18a9",
     "sql/011_sessions.sql": "de33e82071a0d8c6a2649fecb30dd5549ff12851e0d2d257ffd31f229091ab5b",
-    "sql/012_signal_reproduction.sql": "adbaa94358eb7398085868d7a7bb0929b9d4e0607699e1872a2a4275969d4389",
-    "sql/schema.sql": "79526c1fb859973787a6c3ebadb6bae5186b1c3cfe61f0941d38ad6b7c646c6b"
+    "sql/012_signal_reproduction.sql": "f1eab7d4c1455fab4829c953af3ce302998146d512f6dd39345773d83d3fbeff",
+    "sql/013_resolution_declined_reproductions.sql": "b7875ce03e16705215e67c9207f6456ca132e4313dc8f6be5f1bd781becf6922",
+    "sql/014_job_cancellation.sql": "93f037e6d4ccb7b63ca5ae6ee8d698cadec10916cbb8eeb0feb9403532d483ed",
+    "sql/015_investigation_idempotency.sql": "9e64450ba4bcbce4abe0c98d4eb8589caba2ac2cea44c81b0a92f2ee5df4ccd2",
+    "sql/016_model_usage_repairs.sql": "5deb1886c85aa21bc65ca7c4a85e0e401acd7e0466c1354cacd73dd870e208e2",
+    "sql/017_run_budgets.sql": "602078f19bdc6cb3d57838dd617ed947480d0c8df5e62dd3765467c0d1cfaf41",
+    "sql/018_established_without_a_patch.sql": "4cbf8b882e2b6a5d95b2b09e2e41c7642342234c020ddbf63db700977fa14ad5",
+    "sql/schema.sql": "64a7a6c5e2e6df62905b9df1f157786f9db85c20f864ae8d298efa59d57f67e8"
   }
 }

@@ -341,7 +341,7 @@ When it happens the failure names itself. The step is called *Fetch and verify
 the Credda engine* and the message says whose problem it is:
 
 ```
-Credda could not reach its engine service at https://metering.codereef.app/v1/engine
+Credda could not reach its engine service at https://backend.credda.io/v1/engine
 (<the network error>). This is an outage on our side or a network problem on the
 runner, not a problem with your repository.
 ```
@@ -470,46 +470,35 @@ trigger.
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
 | `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
-| `metering-url` | `https://metering.codereef.app/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
-| `engine-url` | `https://metering.codereef.app/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
+| `metering-url` | `https://backend.credda.io/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
+| `engine-url` | `https://backend.credda.io/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
 | `engine-archive` | `''` | Path on the runner to a mirrored copy of the engine archive. When set, **no request is made to Credda and no OIDC token is minted**; the copy goes through the identical digest check. |
 
 Every input has a default and none is required on a public repository, so
 `uses:` with no `with:` block at all is a working configuration.
 
-### Why the defaults above still say `codereef.app`
+### The defaults point at `backend.credda.io`
 
-The name is Credda; two of these URLs are not, yet. That is a deployment fact
-rather than an oversight, and it is stated here because you can read the
-defaults and would otherwise have to guess.
+Both `metering-url` and `engine-url` default to **`backend.credda.io`**, where
+Credda's metering and engine-delivery service runs. This moved off the old
+`metering.codereef.app` Cloudflare Worker on 2026-10-24, once the engine store
+was populated and the backend was serving `/v1/engine` and `/v1/runs` — a move
+whose success could only be proved from a real runner, which `smoke.yml` does by
+fetching the engine with a GitHub-signed OIDC token and checking the bytes
+against `engine.lock.json`.
 
-The endpoints are moving to **`api.credda.io`**. One half of that move has
-happened and the other has not, and they are different kinds of thing:
+The OIDC audience the launcher requests (`ENGINE_AUDIENCE` in
+`launcher/fetch-engine.mjs`) is also `https://backend.credda.io/v1/engine`. An
+audience is a string the service compares, not an address anything connects to,
+and the verifier accepts both the current and the legacy name
+(`ACCEPTED_ENGINE_AUDIENCES` in the engine repository), so a workflow pinned to
+an older tag keeps working: the legacy `metering.codereef.app` endpoint stays
+answering until no supported pin still uses it.
 
-- **The OIDC audience has moved** to `https://backend.credda.io/v1/engine` --
-  the value of `ENGINE_AUDIENCE` in `launcher/fetch-engine.mjs`, and *not*
-  `api.credda.io`, which serves the developer website and routes no `/v1/*`
-  path at all. An
-  audience is a string the service compares, not an address anything connects
-  to, and the metering Worker already accepts both the new and the old name, so
-  moving it cannot strand a pinned workflow. (`ACCEPTED_ENGINE_AUDIENCES` in the
-  engine repository is the set that does this.)
-- **`metering-url` and `engine-url` have not moved**, because they are addresses
-  that must answer. `api.credda.io` resolves today and, as of 2026-08-28, serves
-  Credda's developer surface — a landing page, [the API
-  reference](https://api.credda.io/reference), and
-  [`openapi.json`](https://api.credda.io/openapi.json), which *describes*
-  `/v1/engine` and `/v1/runs`. It does not yet *serve* them: that host is
-  AWS-hosted and the metering service is a Cloudflare Worker, and both paths
-  return `404 NOT_FOUND` there on `GET` and on `POST` (checked 2026-08-28).
-  Documented is not routed.
-
-So the remaining work is a routing change somebody has to configure -- getting
-those two paths on `api.credda.io` in front of the Cloudflare Worker, and
-keeping `metering.codereef.app` answering until no supported pin still uses it.
-**Until that is configured and observed answering, these defaults stay where
-they are.** `engine-url` is the one input that can genuinely fail your build, so
-it is the last thing that should move on optimism.
+Not `api.credda.io`: that host serves Credda's developer surface — a landing
+page, [the API reference](https://api.credda.io/reference), and
+[`openapi.json`](https://api.credda.io/openapi.json) — and routes no `/v1/*`
+path, which is why the runtime endpoints are on `backend.credda.io` instead.
 
 If you have pinned either input explicitly, nothing here affects you.
 
@@ -689,7 +678,7 @@ push.
 ## Receipts, and the one thing a licence buys
 
 The action reports **one receipt per run**, to
-`https://metering.codereef.app/v1/runs`. **This is on by default**, and it is
+`https://backend.credda.io/v1/runs`. **This is on by default**, and it is
 what the run count and the licence check are made of. On a private repository,
 add your licence:
 
