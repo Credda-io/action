@@ -82,3 +82,17 @@ jobs:
         run: ruby --version
       - name: action.yml would install
         run: ruby .github/check-manifest.rb
+
+  notification:
+    # `notification.mjs` is the one shipped module that is a pure function of
+    # values plus a POST whose `fetch` is handed in, so it is the one whose
+    # meaning CAN be checked here without the engine, a network or a customer.
+    # `node --test` is Node's own runner; nothing is installed for it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: notify-url says what it sends and never fails a job
+        run: node --test .github/notify.test.mjs

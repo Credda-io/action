@@ -183,10 +183,40 @@ inputs:
     #
     # A discover job wants `on: push` (or a schedule) and
     # `contents: read` -- no issues: write, no pull-requests: write.
+    #
+    # 'sweep' is discover carried all the way to a proposal. It runs discover to
+    # get candidate reports, reproduces the first `max-candidates` of them in a
+    # sandbox exactly as investigate does, and -- for the ones that reach a
+    # VERIFIED change -- opens ONE pull request each, through the same delivery
+    # code the single-investigate path uses. It is the surface that makes the
+    # autonomous loop ship pull requests rather than only listing findings.
+    #
+    # A sweep job wants `on: push` (or a schedule). To PROPOSE it needs
+    # `open-pull-request: true` AND, in the calling workflow's own
+    # `permissions:` block, `contents: write` + `pull-requests: write` (plus the
+    # `id-token: write` every mode needs to fetch the engine). WITHOUT the write
+    # scopes, or with `open-pull-request` off, sweep still discovers and
+    # reproduces and the job summary says of every verified candidate that it
+    # WOULD be proposed -- nothing is pushed and the run holds a token that
+    # cannot write. See README.md, "Sweep mode".
     description: >-
       'investigate' to reproduce a labelled issue, 'triage' to read a newly
-      opened one, 'discover' to read the repository and report what nobody filed.
+      opened one, 'discover' to read the repository and report what nobody
+      filed, 'sweep' to discover, reproduce and open a pull request per verified
+      fix.
     default: investigate
+  max-candidates:
+    # Sweep mode only. THE HARD CAP on how many discovered candidates one sweep
+    # reproduces and, therefore, how many pull requests it can open in a single
+    # run. Small by default and never unbounded: discovery on a large tree can
+    # raise many candidates, and a mode whose first run opens twenty pull
+    # requests gets uninstalled the same afternoon. run.mjs falls back to the
+    # default for any value that is not a positive integer.
+    description: >-
+      In sweep mode, the most discovered candidates to reproduce and propose in
+      one run -- a hard cap on the pull requests a single sweep can open.
+      Ignored by the other modes.
+    default: "3"
   max-files:
     # Discover mode only. The walk is over a customer's whole checkout and a
     # monorepo can be very large, so there is a cap; the engine has its own
@@ -287,13 +317,14 @@ inputs:
       a public/private flag, and on private repositories only the `license`
       value. Never sends names, URLs, issue text, code, paths, output, branches
       or commit SHAs. A metering failure cannot fail your job.
-    # MOVED to `backend.credda.io` on 2026-10-24, with the engine-store cutover.
-    # Metering was ported out of the Cloudflare Worker into the Express backend
-    # that serves `backend.credda.io`, and `/v1/runs` answers there now, so the
-    # default matches the client's own `DEFAULT_ENDPOINT`
-    # (`core/packages/metering/src/client.ts`) again -- the drift between the two
-    # that a test in core pinned is closed by this edit. The legacy Worker still
-    # answers for older pinned tags until it is retired.
+    # MOVED to `backend.credda.io`. Metering was ported into credda-backend on
+    # 2026-09-06 and is served live at `backend.credda.io/v1/*`; the old
+    # `metering.codereef.app` Cloudflare Worker no longer routes `/v1/runs`. This
+    # default is kept EQUAL to `DEFAULT_ENDPOINT` in
+    # `core/packages/metering/src/client.ts`, which `client.test.ts` asserts, so
+    # the launcher and the client never disagree about where a receipt goes. Not
+    # `api.credda.io`: that host serves the site and routes no `/v1/*`. A metering
+    # failure fails open (see above), so this move cannot break a job.
     default: https://backend.credda.io/v1/runs
   engine-url:
     # Where the engine is fetched from. Present so that a self-hosted or
@@ -436,6 +467,47 @@ inputs:
       own GITHUB_TOKEN, in your own workflow file. A run that did not produce a
       verified fix opens nothing, whatever this is set to. Credda never merges.
     default: 'false'
+  notify-url:
+    # OFF BY DEFAULT, AND OFF MEANS NO REQUEST. Empty is the default; the step
+    # that reads this is skipped outright when it is empty, so a default install
+    # makes no outbound call from this feature at all.
+    #
+    # WHY IT IS HERE AND NOT ON CREDDA'S SIDE. Credda's backend never receives a
+    # run's facts -- the metering receipt above carries salted hashes, an
+    # outcome token and a version, and nothing else -- so there is no server of
+    # ours that could tell your channel what a run found without first being
+    # sent what it has been promised it never sees. The POST is made from YOUR
+    # runner, to the address YOU typed, and nothing about it reaches Credda.
+    #
+    # EXACTLY WHAT LEAVES THE RUNNER, so this is checkable rather than
+    # reassuring. One POST per job, only when the run established something or
+    # stated at least one finding, of a JSON body with these seven fields:
+    #
+    #   investigationId  the investigation id (empty outside investigate mode)
+    #   repository       owner/repo
+    #   outcome          the outcome token, e.g. REPRODUCED_AND_DIAGNOSED
+    #   statedFindings   how many findings discover mode settled by reading
+    #   established      true or false
+    #   reportUrl        this run's URL on GitHub, or null
+    #   actionVersion    Credda's own release string
+    #
+    # When the host is `hooks.slack.com` the body is instead `{text}`: the same
+    # seven facts as one sentence, which is the only shape an incoming webhook
+    # renders. NEVER SENT: the report, the issue title or body, a diff, a file
+    # path, a command line, output, or anything a reporter wrote -- the step
+    # that posts never opens the report file.
+    #
+    # It cannot fail your job: one request, a ten-second timeout, no retry, and
+    # any failure is one line in the log naming the status or the error.
+    description: >-
+      Opt-in. A URL to POST the run's facts to when it established something or
+      stated a finding: the investigation id, repository, outcome, count of
+      stated findings, whether anything was established, the run's URL, and
+      Credda's version. A hooks.slack.com URL gets the same facts as one
+      sentence in Slack's {text} shape. Sent from your runner to your URL;
+      nothing reaches Credda. Never carries the report, issue text, code or
+      paths. A failure cannot fail your job. Empty (the default) sends nothing.
+    default: ''
 
 outputs:
   engine-version:
@@ -597,7 +669,22 @@ runs:
         # nothing -- which is what .github/check-manifest.rb exists to catch, and
         # did catch on the commit that added this mode.
         CREDDA_MAX_FILES: ${{ inputs.max-files }}
+        # Sweep mode's hard cap on candidates (and thus on pull requests). Set
+        # here rather than defaulted in the script alone, for the same reason as
+        # CREDDA_MAX_FILES above: a name the script reads and the manifest never
+        # sets is a knob that silently does nothing, which .github/check-manifest.rb
+        # exists to catch.
+        CREDDA_MAX_CANDIDATES: ${{ inputs.max-candidates }}
         CREDDA_SANDBOX: ${{ inputs.sandbox }}
+        # Sweep opens its pull requests from THIS step, in-process, because a
+        # composite action cannot loop the separate delivery step over an unknown
+        # number of candidates. `gh` reads this token from the environment; no
+        # script reads it by name. The other modes ignore it (investigate's
+        # single proposal is still opened by the dedicated delivery step below,
+        # which sets its own GH_TOKEN). The branch is pushed with the credential
+        # actions/checkout persisted, not with this value -- exactly as the
+        # delivery step documents.
+        GH_TOKEN: ${{ inputs.github-token }}
         # The step below reads `should-post` rather than re-deciding, so the
         # value has to reach the script that computes it.
         CREDDA_COMMENT: ${{ inputs.comment }}
@@ -650,3 +737,27 @@ runs:
         CREDDA_BODY_PATH: ${{ steps.credda.outputs.body-path }}
         CREDDA_ISSUE_NUMBER: ${{ steps.credda.outputs.issue-number }}
       run: node "$GITHUB_ACTION_PATH/deliver-pr.mjs"
+
+    # AFTER EVERYTHING THAT DELIVERS THE REPORT, AND OFF UNLESS YOU ASK.
+    #
+    # Reached only when `notify-url` is set; an empty default is skipped here,
+    # not inside the script, so a default install makes no request from this
+    # step and prints no line about it. Whether the run has anything to say is
+    # decided in notify.mjs from the outputs above -- `established` is the
+    # engine's own verdict and `stated-findings` is discover mode's count --
+    # rather than from a second reading of the run.
+    #
+    # Last, for the same reason the pull request step follows the comment: the
+    # report reaching the issue is what this product owes, and a channel being
+    # down must not cost it. The script exits 0 on every failure and says why.
+    - name: Notify a webhook
+      if: inputs.notify-url != ''
+      shell: bash
+      env:
+        CREDDA_ACTION_ROOT: ${{ github.action_path }}
+        CREDDA_NOTIFY_URL: ${{ inputs.notify-url }}
+        CREDDA_INVESTIGATION_ID: ${{ steps.credda.outputs.investigation-id }}
+        CREDDA_OUTCOME: ${{ steps.credda.outputs.outcome }}
+        CREDDA_STATED_FINDINGS: ${{ steps.credda.outputs.stated-findings }}
+        CREDDA_ESTABLISHED: ${{ steps.credda.outputs.established }}
+      run: node "$GITHUB_ACTION_PATH/notify.mjs"
