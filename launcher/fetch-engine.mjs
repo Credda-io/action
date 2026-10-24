@@ -139,60 +139,34 @@ export const ENGINE_AUDIENCE = 'https://backend.credda.io/v1/engine';
 /**
  * Where the engine is fetched from unless `engine-url` says otherwise.
  *
- * Still on `codereef.app`, and DELIBERATELY not moved with the audience above.
- * The two look like the same rename and are not.
+ * MOVED to `backend.credda.io` on 2026-10-24, together with the `v0.1.2` engine
+ * store coming live. For most of this repository's history this stayed on
+ * `metering.codereef.app` on purpose: unlike the audience above -- a string
+ * compared against a set the verifier already accepts -- this is a URL that
+ * must ANSWER, and moving it meant cutting a tag whose success could not be read
+ * off a dev box. That precondition is now met and was met in order:
  *
- * The audience is a string compared against a set the verifier already accepts,
- * so moving it is safe the moment that set is deployed. This is a URL that must
- * ANSWER -- a different and stricter test, which is why the two do not move
- * together. It DOES answer; the measurement is below, and the sentence that
- * used to stand here saying it did not was left behind by its own update.
+ *   1. The engine store was populated -- `engine/v0.1.2/engine.tar.gz` uploaded
+ *      to `credda-deploy-artifacts-940031346042`, exempted from the bucket's
+ *      30-day expiry lifecycle, with the backend instance role granted
+ *      `s3:GetObject` on `engine/*`.
+ *   2. The backend was wired -- `ENGINE_S3_BUCKET` / `ENGINE_S3_REGION` set on
+ *      the production host and `credda-api` restarted, so `POST /v1/engine`
+ *      serves the bytes rather than answering `503 storage-unavailable`.
+ *   3. The audience was already `https://backend.credda.io/v1/engine` (above),
+ *      and the deployed verifier dual-accepts it alongside the legacy string,
+ *      so the token this launcher mints is accepted.
  *
- * Its home is `https://backend.credda.io/v1/engine`. The metering service has
- * been ported out of the Cloudflare Worker and into the Express backend that
- * already serves that hostname.
+ * The one claim a laptop cannot make -- that a GitHub-signed OIDC token is
+ * actually served the engine from this host -- is proved by `smoke.yml` on a
+ * real runner before `@v1` is moved onto the commit carrying this change. That
+ * is the release gate the old version of this comment reserved for.
  *
- * THE PRECONDITION THIS PARAGRAPH SET HAS NOW BEEN MET, AND THE OLD
- * MEASUREMENT IS SUPERSEDED. It read: "it is not deployed, and nginx does not
- * yet pass `/v1/*` to it. Measured rather than assumed: `POST
- * https://backend.credda.io/v1/engine` answers 404 today." That was true when
- * written and is not true now. Re-measured 2026-08-28:
- *
- *     POST https://backend.credda.io/v1/engine   (content-type json, body {})
- *       -> 401, Server: nginx, and the METERING HANDLER'S OWN BODY:
- *          {"ok":false,"error":"engine_unavailable","reason":"missing",
- *           "message":"No GitHub OIDC token was presented. ... see the Credda README."}
- *
- *     POST https://backend.credda.io/v1/definitely-not-a-route
- *       -> 404
- *
- * The control is what makes this evidence rather than a hopeful reading: a 404
- * on a neighbouring path on the same host proves the 401 is a handler
- * answering, not a catch-all. Re-measured again 2026-08-30: both
- * `backend.credda.io/v1/engine` and the legacy `metering.codereef.app/v1/engine`
- * still answer that same 401, each naming its own README. nginx passes `/v1/*` and the Express port is
- * live. The test this paragraph named -- reached versus not reached -- is
- * satisfied, and satisfied more strongly than the 400 it asked for.
- *
- * THE CONSTANT STILL DOES NOT MOVE IN THIS COMMIT, AND THE REASON IS NO LONGER
- * THE ENDPOINT. Moving it means cutting a tag, and the deploy order below is
- * not symmetric. What is unverified is the other half: the published `v1` tag
- * requests the LEGACY audience (`metering.codereef.app/v1/engine`) and fetches
- * from the legacy host, so the fleet is self-consistent and working today. The
- * audience move above exists only on this branch, unreleased. Before any tag
- * carrying it is published, the DEPLOYED verifier on whichever host the fetch
- * targets must be confirmed to accept `https://backend.credda.io/v1/engine` --
- * against the running service, not the repository. That cannot be checked
- * without minting a GitHub OIDC token, so it is a release step and not a
- * reading exercise.
- *
- * The standing risk while this stays on the legacy value: every install in the
- * fleet fetches its engine from a Cloudflare Worker that the port exists to
- * retire. Turning that Worker off breaks every install at the one step that
- * genuinely stops a customer's build. This is now a sequencing decision rather
- * than a blocked one.
+ * The legacy `metering.codereef.app/v1/engine` still answers (dual-accept), so a
+ * runner on an older pinned tag keeps working until that host is retired -- the
+ * three retirement conditions live in `core/packages/metering/src/oidc.ts`.
  */
-export const DEFAULT_ENGINE_URL = 'https://metering.codereef.app/v1/engine';
+export const DEFAULT_ENGINE_URL = 'https://backend.credda.io/v1/engine';
 
 /**
  * Why `engine-url` is checked BEFORE a token is minted, and not after.

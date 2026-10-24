@@ -401,7 +401,7 @@ When it happens the failure names itself. The step is called *Fetch and verify
 the Credda engine* and the message says whose problem it is:
 
 ```
-Credda could not reach its engine service at https://metering.codereef.app/v1/engine
+Credda could not reach its engine service at https://backend.credda.io/v1/engine
 (<the network error>). This is an outage on our side or a network problem on the
 runner, not a problem with your repository.
 ```
@@ -534,38 +534,39 @@ trigger.
 | `notify-url` | `''` | **Opt-in, off by default.** A URL to POST the run's facts to when it established something or stated a finding. A `hooks.slack.com` URL gets one sentence in Slack's `{text}` shape. Sent from your runner to your URL; nothing reaches Credda, and the report itself is never sent. A failure cannot fail your job. See *Notifying a channel*. |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://backend.credda.io/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
-| `engine-url` | `https://metering.codereef.app/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
+| `engine-url` | `https://backend.credda.io/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
 | `engine-archive` | `''` | Path on the runner to a mirrored copy of the engine archive. When set, **no request is made to Credda and no OIDC token is minted**; the copy goes through the identical digest check. |
 
 Every input has a default and none is required on a public repository, so
 `uses:` with no `with:` block at all is a working configuration.
 
-### Why `engine-url` still says `codereef.app` and `metering-url` no longer does
+### The defaults point at `backend.credda.io`
 
-The name is Credda; one of these two URLs is not yet, and that split is a
-deployment fact rather than an oversight. They are different kinds of thing.
+Both `metering-url` and `engine-url` default to **`backend.credda.io`**, where
+Credda's metering and engine-delivery service runs. `metering-url` moved when
+metering was ported into credda-backend (2026-09-06); `engine-url` moved on
+2026-10-24, once the engine store was populated and the backend was serving
+`/v1/engine` — the last of the two to move because it is the one input that can
+genuinely fail a build, so it changed only after a real runner was *observed*
+being served the engine. That proof is `smoke.yml`: it fetches the engine with a
+GitHub-signed OIDC token and checks the bytes against `engine.lock.json`. The
+client carries the same `metering-url` string as `DEFAULT_ENDPOINT`
+(`core/packages/metering/src/client.ts`), which the engine repository's
+`client.test.ts` asserts, so the launcher and the client never disagree about
+where a receipt goes.
 
-- **`metering-url` has moved** to `https://backend.credda.io/v1/runs`. Metering
-  was ported into credda-backend on 2026-09-06 and is served live at
-  `backend.credda.io/v1/*` -- the same host as the OIDC audience below -- so the
-  old `metering.codereef.app` Cloudflare Worker no longer routes `/v1/runs`. The
-  client carries the same string as `DEFAULT_ENDPOINT`
-  (`core/packages/metering/src/client.ts`), which the engine repository's
-  `client.test.ts` asserts, so the launcher and the client never disagree about
-  where a receipt goes. A run receipt **fails open** -- a metering failure can
-  never fail your job -- so this default could move as soon as the endpoint
-  answered, and it has.
-- **`engine-url` has not moved.** It is the one input that can genuinely fail
-  your build: whatever it returns is fetched and run (after the digest check in
-  `engine.lock.json`), so it must be an address that has been *observed
-  answering* before it changes. The OIDC audience has already moved --
-  `ENGINE_AUDIENCE` in `launcher/fetch-engine.mjs` reads
-  `https://backend.credda.io/v1/engine`, and the worker accepts both the new and
-  the old audience string (`ACCEPTED_ENGINE_AUDIENCES`), so no pinned workflow is
-  stranded -- but the engine tarball is still fetched from
-  `metering.codereef.app`, and that default stays until
-  `backend.credda.io/v1/engine` is configured and observed serving the engine.
-  `engine-url` is the last thing that should move on optimism.
+The OIDC audience the launcher requests (`ENGINE_AUDIENCE` in
+`launcher/fetch-engine.mjs`) is also `https://backend.credda.io/v1/engine`. An
+audience is a string the service compares, not an address anything connects to,
+and the verifier accepts both the current and the legacy name
+(`ACCEPTED_ENGINE_AUDIENCES` in the engine repository), so a workflow pinned to
+an older tag keeps working: the legacy `metering.codereef.app` endpoint stays
+answering until no supported pin still uses it.
+
+Not `api.credda.io`: that host serves Credda's developer surface — a landing
+page, [the API reference](https://api.credda.io/reference), and
+[`openapi.json`](https://api.credda.io/openapi.json) — and routes no `/v1/*`
+path, which is why the runtime endpoints are on `backend.credda.io` instead.
 
 If you have pinned either input explicitly, nothing here affects you.
 

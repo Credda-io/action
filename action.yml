@@ -339,21 +339,20 @@ inputs:
       Where to fetch the verified engine artifact. Defaults to Credda's engine
       endpoint. The download is checked against the SHA-256 digest pinned in
       this action's engine.lock.json whatever this is set to.
-    # Not moved to `api.credda.io` for the same reason as `metering-url`, and
-    # with more at stake: this is the ONE endpoint whose failure fails a
-    # customer's job.
+    # MOVED to `backend.credda.io` on 2026-10-24, with the engine-store cutover,
+    # and last to move because this is the ONE endpoint whose failure fails a
+    # customer's job -- so it moved only after the store was populated, the
+    # backend wired, and `smoke.yml` proved a real runner is served the engine
+    # from this host. The matching launcher constant is `DEFAULT_ENGINE_URL` in
+    # `launcher/fetch-engine.mjs`; see its comment for the ordered preconditions.
     #
-    # CORRECTED 2026-08-29. This comment said the OIDC audience the launcher
-    # requests had moved to `https://api.credda.io/v1/engine`. It has not:
-    # `launcher/fetch-engine.mjs` sets `ENGINE_AUDIENCE` to
-    # `https://backend.credda.io/v1/engine`, and `api.credda.io/v1/engine`
-    # answers 404 live -- that host serves the developer website and routes only
-    # exact paths, none of them `/v1/*`. The verifier accepts an audience set
-    # spanning both names, so nothing broke; what was wrong was the note, and a
-    # note about the single most breakable string in the launcher is exactly the
-    # one that has to be right. An audience is still a string compared against a
-    # set, not an address anything connects to.
-    default: https://metering.codereef.app/v1/engine
+    # The OIDC audience the launcher requests (`ENGINE_AUDIENCE` in
+    # `launcher/fetch-engine.mjs`) is `https://backend.credda.io/v1/engine` and
+    # has been for some time -- it is a string compared against the set the
+    # verifier accepts, not an address anything connects to, so it could lead the
+    # URL safely. NOT `api.credda.io`: that host serves the developer website and
+    # answers 404 on `/v1/*`.
+    default: https://backend.credda.io/v1/engine
   engine-archive:
     # THE ANSWER TO "WE CANNOT DEPEND ON YOUR UPTIME". Point this at a local or
     # mirrored copy of the same engine.tar.gz and NO request is made to Credda
