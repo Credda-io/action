@@ -528,6 +528,9 @@ trigger.
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
 | `sandbox` | `docker` | Execution plane for repository code. `docker` is the only isolated plane, and needs a Linux runner. |
 | `anthropic-api-key` | `''` | Optional. Without it the deterministic heuristic provider runs. Pass a secret. |
+| `model-base-url` | `''` | Optional. Base URL of your own OpenAI-compatible endpoint, such as a vLLM server. See *Using your own model*. |
+| `model-api-key` | `''` | Optional. Key for that endpoint. Required when either other `model-` input is set. Pass a secret. |
+| `model-name` | `''` | Optional. Model id the endpoint serves. Empty uses `qwen/qwen2.5-coder-32b-instruct`. |
 | `github-token` | `${{ github.token }}` | Posts the report comment, and -- only when `open-pull-request` is on -- makes the `gh` calls that open the proposal. The branch itself is pushed with the credential `actions/checkout` persisted, not with this value, so passing your own token here changes who opens the pull request and not who pushes the branch. |
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
 | `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
@@ -625,6 +628,37 @@ If you have pinned either input explicitly, nothing here affects you.
   shipped the engine in `bundle/` and fetched nothing at all -- see *How the
   engine gets here* and *What happens when Credda is down* above, both of
   which say what it costs.
+
+### Using your own model
+
+Credda can reason with any OpenAI-compatible endpoint instead of Anthropic,
+such as a vLLM server or NVIDIA NIM. You pay for the GPU and Credda pays nothing.
+
+```yaml
+      - uses: Credda-io/action@v1
+        with:
+          model-base-url: http://gpu-host:8000/v1
+          model-api-key: ${{ secrets.CREDDA_MODEL_API_KEY }}
+          model-name: Qwen/Qwen2.5-Coder-32B-Instruct
+```
+
+The inputs map onto the engine's `CREDDA_OPENAI_BASE_URL`,
+`CREDDA_OPENAI_API_KEY` and `CREDDA_OPENAI_MODEL`. Setting any of them also
+sets `CREDDA_PROVIDER=openai-compatible`, so your endpoint is used even if
+`anthropic-api-key` is passed as well, and a missing key fails the run instead
+of letting it continue without a model. Leave `model-base-url` empty with a key
+set to use NVIDIA NIM.
+
+- **The runner must reach the endpoint.** Model calls are made by the engine
+  on the runner, outside the sandbox. A model on a private network needs a
+  self-hosted runner that can reach it. The default docker sandbox still
+  needs Linux and Docker on that runner in `investigate` mode.
+- **Repository code never reaches it.** With the docker sandbox, repository
+  code runs in a container whose network is removed before any of it runs, and
+  whose environment is built explicitly, so neither the endpoint nor its key is
+  visible to it.
+- **Cost is not metered.** Credda has no price for your endpoint, so the run
+  reports the cost as unknown rather than as zero.
 
 ### Opening a pull request
 

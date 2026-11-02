@@ -379,6 +379,35 @@ inputs:
       reproduces and reports but cannot reason over prose. Pass a secret, never
       a literal.
     default: ''
+  # YOUR OWN MODEL. The three inputs below map one to one onto the engine's
+  # CREDDA_OPENAI_* variables (core/packages/models/src/registry.ts). Setting any
+  # of them also sets CREDDA_PROVIDER=openai-compatible on the run step, so the
+  # endpoint is used even when anthropic-api-key is passed too. Without that the
+  # engine's auto order prefers an Anthropic key and the endpoint would be
+  # ignored with nothing red. Naming the provider also means a missing key fails
+  # the run with the engine's own error instead of quietly running without a
+  # model. With all three empty, every variable is the empty string, which the
+  # engine reads as unset, so a default install behaves exactly as before.
+  model-base-url:
+    description: >-
+      Optional. Base URL of an OpenAI-compatible endpoint to use instead of
+      Anthropic, for example http://gpu-host:8000/v1 for a vLLM server. The
+      engine calls it from the runner, so the runner must be able to reach it:
+      use a self-hosted runner for a model on a private network. Leave empty
+      with model-api-key set to use NVIDIA NIM.
+    default: ''
+  model-api-key:
+    description: >-
+      Optional. Key for model-base-url, sent as a bearer token. Required whenever
+      model-base-url or model-name is set. For a vLLM server started without
+      --api-key any non-empty value is accepted. Pass a secret, never a literal.
+    default: ''
+  model-name:
+    description: >-
+      Optional. Model id the endpoint serves, for example
+      Qwen/Qwen2.5-Coder-32B-Instruct. Empty uses the engine default,
+      qwen/qwen2.5-coder-32b-instruct.
+    default: ''
   github-token:
     # CORRECTED 2026-08-29. This said "Token used only to post the report
     # comment", and that stopped being true the day the pull request step
@@ -695,6 +724,12 @@ runs:
         # posting step does not.
         CREDDA_OPEN_PULL_REQUEST: ${{ inputs.open-pull-request }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        # Your own OpenAI-compatible model. See the comment above model-base-url
+        # for why any of the three names the provider outright.
+        CREDDA_PROVIDER: ${{ (inputs.model-base-url != '' || inputs.model-api-key != '' || inputs.model-name != '') && 'openai-compatible' || '' }}
+        CREDDA_OPENAI_BASE_URL: ${{ inputs.model-base-url }}
+        CREDDA_OPENAI_API_KEY: ${{ inputs.model-api-key }}
+        CREDDA_OPENAI_MODEL: ${{ inputs.model-name }}
         # The real endpoint by default; set the input to '' and no request is
         # attempted at all. See the input's description for what one carries.
         CREDDA_METERING_URL: ${{ inputs.metering-url }}
