@@ -15,6 +15,11 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  # Hourly, because every customer's run downloads the engine from
+  # backend.credda.io and nothing else checks that path end to end: the HTTP
+  # watcher cannot mint an OIDC token. Minutes are free on this public repo.
+  schedule:
+    - cron: '17 * * * *'
 
 permissions:
   contents: read
