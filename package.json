@@ -1,6 +1,6 @@
 {
   "name": "credda-action",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "description": "The Credda GitHub Action. A launcher: it fetches a verified engine at run time and installs nothing.",
