@@ -6,8 +6,6 @@ exploit, fixes proven by test.**
 This Action is how Credda runs in your own CI. It carries the QA rule: no fix
 without a test that fails before the change and passes after.
 
-**Label an issue. Get back the fix.**
-
 You label a bug report or a security vulnerability. Credda reproduces the
 failure, diagnoses the cause, writes the patch, proves it with a test that fails
 before and passes after, and hands back a diff. Opening a pull request is
