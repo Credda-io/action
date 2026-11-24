@@ -1,6 +1,6 @@
 # Credda
 
-**Security and Quality Assurance for the Agentic Era. Findings proven by
+**Cybersecurity and Quality Assurance for the Agentic Era. Findings proven by
 exploit, fixes proven by test.**
 
 This Action is how Credda runs in your own CI. It carries the QA rule: no fix
