@@ -1,6 +1,6 @@
 # Credda
 
-**Security and QA engineering for AI-native software. Findings proven by
+**Security and Quality Assurance for the Agentic Era. Findings proven by
 exploit, fixes proven by test.**
 
 This Action is how Credda runs in your own CI. It carries the QA rule: no fix
