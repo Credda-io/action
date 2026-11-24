@@ -1,5 +1,11 @@
 # Credda
 
+**Security and QA engineering for AI-native software. Findings proven by
+exploit, fixes proven by test.**
+
+This Action is how Credda runs in your own CI. It carries the QA rule: no fix
+without a test that fails before the change and passes after.
+
 **Label an issue. Get back the fix.**
 
 You label a bug report or a security vulnerability. Credda reproduces the
