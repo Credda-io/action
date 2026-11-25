@@ -1075,9 +1075,12 @@ function securitySummary(findings, attempted) {
   } else {
     lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
     for (const one of findings) {
-      const where = one.site ? ` at \`${one.site}\`` : '';
+      const site = one.site && typeof one.site === 'object'
+        ? `${one.site.file}${one.site.line ? `:${one.site.line}` : ''}`
+        : one.site;
+      const where = site ? ` at \`${site}\`` : '';
       lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${where}`);
-      if (one.said) lines.push(`  ${String(one.said).split('\n')[0].slice(0, 300)}`);
+      if (one.sentence) lines.push(`  ${String(one.sentence).split('\n')[0].slice(0, 300)}`);
       if (one.program) {
         lines.push(
           '',
