@@ -1003,6 +1003,100 @@ function discoverSummary(stated, proposed, finished) {
   return lines.join('\n');
 }
 
+/* -------------------------------- security -------------------------------- */
+
+/**
+ * Findings proven by exploit.
+ *
+ * `credda security` installs the repository's package with install scripts
+ * off, then runs each exploit probe in a container with no network. A finding
+ * is reported only when the probe's exploit ran and printed its own finding
+ * sentence. Every other result (clean, no verdict, a crash of ours) is kept in
+ * security.json and never called a finding.
+ *
+ * Like discover it posts nothing. The findings go to the job summary, and the
+ * SARIF file goes to code scanning through the upload step in action.yml.
+ *
+ * The job stays green whatever was found, so a team can gate on the
+ * `security-findings` output when it chooses to. It goes red only when the
+ * probes could not run, because "0 findings" from a run that never happened
+ * reads exactly like a clean repository.
+ */
+async function security() {
+  const out = join(work, 'security');
+  mkdirSync(out, { recursive: true });
+  const ran = credda(['security', workspace, '--out', out], 'inherit');
+
+  if (ran.error !== undefined || ran.status === null) {
+    die(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
+  }
+  const resultPath = join(out, 'security.json');
+  if (ran.status !== 0 || !existsSync(resultPath)) {
+    die(`Credda security did not finish (exit ${ran.status}), so nothing is being reported.`);
+  }
+
+  let result;
+  try {
+    result = JSON.parse(readFileSync(resultPath, 'utf8'));
+  } catch (error) {
+    die(`Credda security wrote a result that could not be read: ${error.message}`);
+  }
+  const findings = Array.isArray(result.findings) ? result.findings : [];
+  const attempted = Array.isArray(result.probes) ? result.probes.length : 0;
+  const sarif = join(out, 'security.sarif');
+
+  writeSummary(securitySummary(findings, attempted));
+
+  output('skipped', 'false');
+  output('issue-number', '');
+  output('deliver', 'false');
+  output('patch-path', '');
+  output('should-post', 'false');
+  output('comment-path', '');
+  output('body-path', '');
+  output('security-findings', String(findings.length));
+  output('sarif-path', existsSync(sarif) ? sarif : '');
+}
+
+/** The job summary: each proven finding with the exploit that proved it. */
+function securitySummary(findings, attempted) {
+  const lines = ['## Credda security', ''];
+  lines.push(
+    `Ran ${attempted} exploit probe${attempted === 1 ? '' : 's'} against this repository, ` +
+      'each in a container with no network. Only findings an exploit proved are listed.',
+    '',
+  );
+  if (findings.length === 0) {
+    lines.push(
+      'No exploit succeeded. That is not an audit: it says the probes Credda has did not prove a ' +
+        'finding in the code they reached.',
+      '',
+    );
+  } else {
+    lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
+    for (const one of findings) {
+      const where = one.site ? ` at \`${one.site}\`` : '';
+      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${where}`);
+      if (one.said) lines.push(`  ${String(one.said).split('\n')[0].slice(0, 300)}`);
+      if (one.program) {
+        lines.push(
+          '',
+          '  <details><summary>The exploit that proved it</summary>',
+          '',
+          '  ```js',
+          ...String(one.program).split('\n').map((line) => `  ${line}`),
+          '  ```',
+          '',
+          '  </details>',
+        );
+      }
+      lines.push('');
+    }
+  }
+  lines.push(`[Action run](${runUrl()})`, '');
+  return lines.join('\n');
+}
+
 /* -------------------------------- dispatch -------------------------------- */
 
 if (mode === 'triage') {
@@ -1013,6 +1107,8 @@ if (mode === 'triage') {
   await investigate();
 } else if (mode === 'discover') {
   await discover();
+} else if (mode === 'security') {
+  await security();
 } else if (mode === 'sweep') {
   // discover + per-candidate investigate + open-a-PR-per-verified-fix. Runs on a
   // push like discover, so no issue event is required. The delivery gate is
@@ -1031,6 +1127,6 @@ if (mode === 'triage') {
     runUrl,
   });
 } else {
-  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage', 'discover' or 'sweep'.`);
+  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage', 'discover', 'sweep' or 'security'.`);
   process.exit(1);
 }

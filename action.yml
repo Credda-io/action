@@ -199,11 +199,21 @@ inputs:
     # reproduces and the job summary says of every verified candidate that it
     # WOULD be proposed -- nothing is pushed and the run holds a token that
     # cannot write. See README.md, "Sweep mode".
+    #
+    # 'security' runs Credda's exploit probes against the repository's own code
+    # and reports only what an exploit proved: prototype pollution, regex
+    # blow-up, archive path traversal, credentials sent across a redirect, and
+    # signature or certificate-chain bypass. The package is installed with
+    # install scripts off, and every probe runs in a container with no network.
+    # Nothing is posted: findings go to the job summary and, unless
+    # `upload-sarif` is 'false', to the repository's code scanning alerts. It
+    # needs a Linux runner with Docker, and `security-events: write` for the
+    # upload. See README.md, "Security mode".
     description: >-
       'investigate' to reproduce a labelled issue, 'triage' to read a newly
       opened one, 'discover' to read the repository and report what nobody
       filed, 'sweep' to discover, reproduce and open a pull request per verified
-      fix.
+      fix, 'security' to run exploit probes and report only proven findings.
     default: investigate
   max-candidates:
     # Sweep mode only. THE HARD CAP on how many discovered candidates one sweep
@@ -217,6 +227,17 @@ inputs:
       one run -- a hard cap on the pull requests a single sweep can open.
       Ignored by the other modes.
     default: "3"
+  upload-sarif:
+    # Security mode only. The findings are uploaded as SARIF to GitHub code
+    # scanning, so they appear under the repository's Security tab with GitHub's
+    # own history and alerting. Credda stores none of it. The upload needs
+    # `security-events: write`; on a private repository it also needs GitHub
+    # code scanning to be available. A refused upload does not fail the job,
+    # because the findings are already on the job summary.
+    description: >-
+      In security mode, upload proven findings to GitHub code scanning as SARIF.
+      'false' keeps them on the job summary only. Ignored by the other modes.
+    default: "true"
   max-files:
     # Discover mode only. The walk is over a customer's whole checkout and a
     # monorepo can be very large, so there is a cap; the engine has its own
@@ -539,6 +560,15 @@ inputs:
     default: ''
 
 outputs:
+  security-findings:
+    description: >-
+      In security mode, how many findings an exploit proved. Only proven
+      findings are counted, so this is safe to gate a merge on. Empty in the
+      other modes.
+    value: ${{ steps.credda.outputs.security-findings }}
+  sarif-path:
+    description: In security mode, absolute path of the SARIF file on the runner.
+    value: ${{ steps.credda.outputs.sarif-path }}
   engine-version:
     description: >-
       The engine version this run verified and executed, from engine.lock.json.
@@ -625,6 +655,17 @@ runs:
       run: |
         if [ "$CREDDA_SANDBOX_INPUT" = "docker" ] && [ "$RUNNER_OS" != "Linux" ]; then
           echo "::error::The docker sandbox needs a Linux runner (ubuntu-latest). This runner is $RUNNER_OS."
+          exit 1
+        fi
+
+    # Security mode always executes the repository's code inside containers,
+    # whatever `sandbox` says, so it needs Docker on a Linux runner.
+    - name: Refuse a runner that cannot run the exploit probes
+      if: inputs.mode == 'security'
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" != "Linux" ]; then
+          echo "::error::Security mode runs its probes in Docker and needs a Linux runner (ubuntu-latest). This runner is $RUNNER_OS."
           exit 1
         fi
 
@@ -785,6 +826,18 @@ runs:
     # Last, for the same reason the pull request step follows the comment: the
     # report reaching the issue is what this product owes, and a channel being
     # down must not cost it. The script exits 0 on every failure and says why.
+    # Off only when asked. The findings are already on the job summary, so a
+    # refused upload (no `security-events: write`, or code scanning not
+    # available on a private repository) leaves the job green and is named in
+    # the step's own log.
+    - name: Upload proven findings to code scanning
+      if: inputs.mode == 'security' && inputs.upload-sarif == 'true' && steps.credda.outputs.sarif-path != ''
+      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      with:
+        sarif_file: ${{ steps.credda.outputs.sarif-path }}
+        category: credda-security
+
     - name: Notify a webhook
       if: inputs.notify-url != ''
       shell: bash
