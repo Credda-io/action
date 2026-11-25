@@ -1058,6 +1058,8 @@ async function security() {
   output('body-path', '');
   output('security-findings', String(findings.length));
   output('sarif-path', existsSync(sarif) ? sarif : '');
+  // The proven findings in full, for the Slack, Linear and Jira steps.
+  output('security-json-path', resultPath);
 }
 
 /** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
