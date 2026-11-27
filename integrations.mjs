@@ -22,17 +22,22 @@ import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 
 import {
+  exercisedSentence,
   exploitLanguage,
   fenceFor,
+  findingPackage,
   fixFor,
   markdownText,
+  missedText,
   NOTHING_PROVEN,
   oneLine,
+  packageWords,
   ranText,
   reachSummaryText,
   reachWarning,
   securityCounts,
   siteText,
+  workspaceReach,
 } from './findings.mjs';
 import { decideNotification } from './notification.mjs';
 
@@ -94,6 +99,12 @@ export function checkUrl(value, input) {
 
 const firstLine = (text) => oneLine(text).trim();
 
+/** The first line of a text, cut to `max` with "..." as the job summary cuts it. Not escaped: slackText escapes the whole block. */
+const cutLine = (text, max) => {
+  const line = oneLine(text);
+  return line.length > max ? `${line.slice(0, max)}...` : line;
+};
+
 /**
  * Cuts text to `max` characters with a stated note, at a space when one is near,
  * so nothing is shortened without saying so.
@@ -137,7 +148,10 @@ export function readFindings(path, deliveryPath = '') {
     sentence: firstLine(f.sentence),
     program: typeof f.program === 'string' ? f.program : '',
     fix: fixFor(parsed.fixes, delivered, f.id),
+    // '' on a report of one package; the path (or `.`) on a workspace report, from the id's prefix.
+    package: firstLine(findingPackage(f, parsed)),
   }));
+  const w = workspaceReach(parsed);
   return {
     proven,
     unproven: Array.isArray(parsed.unproven) ? parsed.unproven.length : 0,
@@ -145,6 +159,8 @@ export function readFindings(path, deliveryPath = '') {
     fuzzed,
     reach: reachSummaryText(parsed),
     warning: reachWarning(parsed),
+    // A workspace report's "Credda exercised 3 of 30 packages", with the ones it did not (untrusted text), or null.
+    workspace: w === null ? null : { lead: exercisedSentence(w), missed: w.missed, partial: w.missed.length > 0 },
   };
 }
 
@@ -153,13 +169,17 @@ export function readFindings(path, deliveryPath = '') {
  * engine's finding id. The id carries no seed (`CLASS@fuzz:fn`, `CLASS@file:line`
  * or the probe name), so it is the same on every run of the same code. The
  * repository is in it because one Linear team or Jira project can serve many.
+ * On a workspace report the engine prefixes the id with the package path
+ * (`packages/a/CLASS@...`), so two packages' findings differ, and a report of one
+ * package keeps the key it always had. The root's ids are not prefixed.
  */
 export function fingerprint(repository, f) {
   return `creddafp${createHash('sha256').update(`${repository}\n${f.language}\n${f.id}`).digest('hex').slice(0, 20)}`;
 }
 
 /** "PROTOTYPE_POLLUTION through unflatten (fuzzing)" or "PROTOTYPE_POLLUTION at src/a.js:3". */
-const findingWords = (f) => (f.fuzzFunction ? `${f.class} through ${f.fuzzFunction} (fuzzing)` : `${f.class}${f.site ? ` ${f.site}` : ''}`);
+const findingWords = (f) =>
+  `${f.fuzzFunction ? `${f.class} through ${f.fuzzFunction} (fuzzing)` : `${f.class}${f.site ? ` ${f.site}` : ''}`}${f.package ? ` ${packageWords(f.package)}` : ''}`;
 
 /* ---------------------------------- Slack ---------------------------------- */
 
@@ -203,16 +223,20 @@ const slackText = (raw, max) => {
  * `reach` is findings.mjs's one line of counts and `warning` its reachWarning, so
  * a run that could not exercise the code never posts as "No exploit succeeded".
  */
-export function slackMessage({ repository, mode, outcome, runUrl, findings, unprovenCount, statedFindings, probes = 0, fuzzed = 0, reach = '', warning = null }) {
+export function slackMessage({ repository, mode, outcome, runUrl, findings, unprovenCount, statedFindings, probes = 0, fuzzed = 0, reach = '', warning = null, workspace = null }) {
   const security = mode === 'security';
   const count = security ? findings.length : statedFindings;
   const limited = security && count === 0 && warning !== null;
+  // A workspace where some packages were not exercised never posts as "No exploit succeeded".
+  const partial = security && count === 0 && !limited && workspace?.partial === true;
   const headline = security
     ? count > 0
       ? `Credda proved ${count} finding${count === 1 ? '' : 's'} in ${repository}`
       : limited
         ? `Credda could not exercise the code in ${repository}`
-        : `No exploit succeeded in ${repository}`
+        : partial
+          ? `${workspace.lead.replace(/\.$/, '')} in ${repository}`
+          : `No exploit succeeded in ${repository}`
     : `Credda ${outcome === '' ? 'ran' : `reached ${outcome}`} in ${repository}`;
   const blocks = [
     { type: 'header', text: { type: 'plain_text', text: cap(headline, 150, '...') } },
@@ -220,7 +244,7 @@ export function slackMessage({ repository, mode, outcome, runUrl, findings, unpr
       type: 'section',
       fields: [
         { type: 'mrkdwn', text: `*Repository*\n${slackText(repository, 1900)}` },
-        { type: 'mrkdwn', text: `*Outcome*\n${slackText(security ? (count > 0 ? 'findings proven by exploit' : limited ? 'could not exercise the code' : 'nothing proven') : outcome || 'established a result', 1900)}` },
+        { type: 'mrkdwn', text: `*Outcome*\n${slackText(security ? (count > 0 ? 'findings proven by exploit' : limited ? 'could not exercise the code' : partial ? 'nothing proven in the packages exercised' : 'nothing proven') : outcome || 'established a result', 1900)}` },
         { type: 'mrkdwn', text: `*${security ? 'Proven findings' : 'Stated findings'}*\n${count}` },
       ],
     },
@@ -230,12 +254,17 @@ export function slackMessage({ repository, mode, outcome, runUrl, findings, unpr
     const said = warning.said ? ` The engine said: ${warning.said}` : '';
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: slackText(`${warning.lead} ${warning.why}${said}`, SLACK_TEXT_LIMIT) } });
   }
+  if (security && workspace !== null) {
+    // The paths and the engine's reasons are the repository's text, escaped by slackText.
+    const missed = workspace.missed.length > 0 ? ` It did not exercise ${missedText(workspace.missed, (s) => s, cutLine)}.` : '';
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: slackText(`${workspace.lead}${missed}`, SLACK_TEXT_LIMIT) } });
+  }
   if (security && count === 0) {
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: slackText(`${ranText(probes, fuzzed)}. ${NOTHING_PROVEN}`, SLACK_TEXT_LIMIT) } });
   }
   for (const f of findings.slice(0, 5)) {
     const head = `*${mrkdwn(f.class)}*${f.cwe ? ` (${mrkdwn(f.cwe)})` : ''}`;
-    const where = f.fuzzFunction ? ` through ${f.fuzzFunction} (fuzzing)` : f.site ? ` ${f.site}` : '';
+    const where = `${f.fuzzFunction ? ` through ${f.fuzzFunction} (fuzzing)` : f.site ? ` ${f.site}` : ''}${f.package ? ` ${packageWords(f.package)}` : ''}`;
     // The URL passed pullRequestUrl, so it holds no character mrkdwn acts on.
     const fix = f.fix ? `\n${mrkdwn(f.fix.text)}${f.fix.url ? ` <${f.fix.url}|${f.fix.url}>` : ''}` : '';
     const room = SLACK_TEXT_LIMIT - head.length - fix.length - 1;
@@ -313,6 +342,7 @@ export function linearDescription(f, runUrl, fp) {
     '',
     `CWE: ${markdownText(f.cwe || 'n/a')}`,
     `Site: ${markdownText(f.site || 'not stated')}`,
+    ...(f.package ? [`Package: ${markdownText(f.package === '.' ? 'the workspace root' : f.package)}`] : []),
     `Credda finding id: ${markdownText(f.id)}`,
     `Credda fingerprint: ${fp}`,
     ...(f.fix ? [`${markdownText(f.fix.text)}${f.fix.url ? ` ${f.fix.url}` : ''}`] : []),
@@ -338,6 +368,7 @@ export function jiraDescription(f, runUrl, fp) {
     p(t(cap(f.sentence || f.class, 2000))),
     p(t(`CWE: ${f.cwe || 'n/a'}`)),
     p(t(`Site: ${cap(f.site || 'not stated', 2000)}`)),
+    ...(f.package ? [p(t(`Package: ${cap(f.package === '.' ? 'the workspace root' : f.package, 2000)}`))] : []),
     p(t(`Credda finding id: ${cap(f.id, 2000)}`)),
     p(t(`Credda fingerprint: ${fp}`)),
     ...(f.fix ? [f.fix.url ? p(t(`${f.fix.text} `), t(f.fix.url, [{ type: 'link', attrs: { href: f.fix.url } }])) : p(t(f.fix.text))] : []),

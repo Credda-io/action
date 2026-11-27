@@ -102,11 +102,15 @@ import {
   codeSpan,
   exploitLanguage,
   extraProbeEnv,
+  exercisedSentence,
   extraProbesLines,
   fenceFor,
+  findingPackage,
   LINE_BREAK,
+  missedText,
   NOTHING_PROVEN,
   oneLine,
+  packageWords,
   parseExtraProbes,
   plain,
   ranText,
@@ -115,6 +119,7 @@ import {
   reachWarning,
   securityCounts,
   siteText,
+  workspaceReach,
 } from './findings.mjs';
 import { deliverSecurityFixes, deliveryRecord, fixesSummary } from './security-fix.mjs';
 import { sweep } from './sweep.mjs';
@@ -1100,7 +1105,7 @@ async function security() {
     fixed = deliverSecurityFixes({
       result, outDir: out, patchDir, workspace, repository: env('GITHUB_REPOSITORY'), baseBranch, baseRefusal, openPullRequest, runUrl,
     });
-    writeSummary(fixesSummary({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal }));
+    writeSummary(fixesSummary({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal, workspace: workspaceReach(result) !== null }));
     // What delivery did, for the Slack, Linear and Jira steps that run after this one.
     fixDelivery = join(out, 'fix-delivery.json');
     writeFileSync(fixDelivery, JSON.stringify(deliveryRecord({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal })), 'utf8');
@@ -1153,6 +1158,18 @@ function securitySummary(findings, attempted, fuzzed, result) {
   if (warning !== null) {
     lines.push(`**${warning.lead}** ${warning.why}${warning.said ? ` The engine said: ${plain(warning.said, 300)}` : ''}`, '');
   }
+  // A workspace (monorepo) report says how many of its packages were exercised
+  // and names the ones that were not, so a partly exercised repository never
+  // reads as clean. Paths are code spans and the engine's reasons are escaped.
+  const ws = workspaceReach(result);
+  if (ws !== null) {
+    const missed = ws.missed.length > 0
+      ? ` It did not exercise ${missedText(ws.missed, codeSpan, plain)}. This run says nothing about the code of those packages.`
+      : '';
+    lines.push(`${warning === null ? `**${exercisedSentence(ws)}**` : exercisedSentence(ws)}${missed}`, '');
+  } else if (warning === null && (result.workspace?.total ?? 0) > 0) {
+    lines.push('**Credda scanned only the root of this workspace.** Its packages were not scanned, so this run says nothing about them. *What this run reached* names them.', '');
+  }
   lines.push(
     `${ranText(attempted, fuzzed)} against this repository, ` +
       'each in a container with no network. Only findings an exploit proved are listed.',
@@ -1170,7 +1187,8 @@ function securitySummary(findings, attempted, fuzzed, result) {
       const site = siteText(one.site, codeSpan);
       const cls = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(one.class)) ? one.class : 'UNNAMED_CLASS';
       const cwe = /^CWE-[0-9]{1,5}$/.test(String(one.cwe)) ? one.cwe : '';
-      lines.push(`- **${cls}**${cwe ? ` (${cwe})` : ''}${site ? ` ${site}` : ''}`);
+      const pkg = packageWords(oneLine(findingPackage(one, result)).slice(0, 200), codeSpan);
+      lines.push(`- **${cls}**${cwe ? ` (${cwe})` : ''}${site ? ` ${site}` : ''}${pkg ? ` ${pkg}` : ''}`);
       // The whole sentence: it is the finding. A thrown probe error arrives with an `Error: ` prefix that says nothing.
       if (one.sentence) lines.push(`  ${plain(String(one.sentence).replace(/^Error: /, ''), 1200)}`);
       const program = one.program ? String(one.program) : '';

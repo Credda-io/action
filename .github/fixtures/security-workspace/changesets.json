@@ -1,0 +1,2697 @@
+{
+  "schemaVersion": 1,
+  "tool": "credda security",
+  "engineVersion": "1.2.0",
+  "generatedAt": "2026-11-27T13:20:39.533Z",
+  "checkout": "/home/runner/work/_temp/changesets",
+  "copy": {
+    "filesCopied": 336,
+    "skippedLarge": [],
+    "skippedLinks": 0
+  },
+  "installed": true,
+  "summary": {
+    "attempted": 105,
+    "proven": 0,
+    "clean": 50,
+    "abstained": 55,
+    "timedOut": 0,
+    "crashed": 0,
+    "notRun": 0
+  },
+  "probes": [
+    {
+      "id": "packages/types/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/types/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 0 function(s) were tried.",
+      "package": "packages/types"
+    },
+    {
+      "id": "packages/types/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/types/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the entry point exports no callable function to probe.",
+      "package": "packages/types"
+    },
+    {
+      "id": "packages/types/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/types/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 0 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/types"
+    },
+    {
+      "id": "packages/types/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/types/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (0 calls accepted).",
+      "package": "packages/types"
+    },
+    {
+      "id": "packages/types/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/types/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/types"
+    },
+    {
+      "id": "packages/types/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/types/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/types"
+    },
+    {
+      "id": "packages/config/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/config/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 1 function(s) were tried.",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/config/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/config/package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 1 exported functions and 29 call shapes.",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/config/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/config/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 1 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/config/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/config/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (2 calls accepted).",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/config/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/config/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/config/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/config/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/config/REGEX_BLOWUP@src/utils.ts:22",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/config/src/utils.ts",
+        "line": 22
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/config"
+    },
+    {
+      "id": "packages/errors/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/errors/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 5 class(es) and 5 function(s) were tried.",
+      "package": "packages/errors"
+    },
+    {
+      "id": "packages/errors/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/errors/package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 5 exported functions and 29 call shapes.",
+      "package": "packages/errors"
+    },
+    {
+      "id": "packages/errors/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/errors/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 5 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/errors"
+    },
+    {
+      "id": "packages/errors/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/errors/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (5 calls accepted).",
+      "package": "packages/errors"
+    },
+    {
+      "id": "packages/errors/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/errors/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/errors"
+    },
+    {
+      "id": "packages/errors/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/errors/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/errors"
+    },
+    {
+      "id": "packages/git/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/git/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/git/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.m",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/git/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/git/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/git/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/git/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/REGEX_BLOWUP@src/index.ts:205",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/git/src/index.ts",
+        "line": 205
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/REGEX_BLOWUP@src/index.ts:260",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/git/src/index.ts",
+        "line": 260
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/REGEX_BLOWUP@src/index.ts:261",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/git/src/index.ts",
+        "line": 261
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/git/REGEX_BLOWUP@src/index.ts:365",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/git/src/index.ts",
+        "line": 365
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/git"
+    },
+    {
+      "id": "packages/should-skip-package/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/should-skip-package/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 1 function(s) were tried.",
+      "package": "packages/should-skip-package"
+    },
+    {
+      "id": "packages/should-skip-package/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/should-skip-package/package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 1 exported functions and 29 call shapes.",
+      "package": "packages/should-skip-package"
+    },
+    {
+      "id": "packages/should-skip-package/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/should-skip-package/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 1 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/should-skip-package"
+    },
+    {
+      "id": "packages/should-skip-package/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/should-skip-package/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (1 calls accepted).",
+      "package": "packages/should-skip-package"
+    },
+    {
+      "id": "packages/should-skip-package/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/should-skip-package/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/should-skip-package"
+    },
+    {
+      "id": "packages/should-skip-package/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/should-skip-package/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/should-skip-package"
+    },
+    {
+      "id": "packages/get-dependents-graph/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/get-dependents-graph/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-gra",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/get-dependents-graph/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-de",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/get-dependents-graph/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-gra",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/get-dependents-graph/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-gra",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/get-dependents-graph/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-gra",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/get-dependents-graph/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-gra",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/REGEX_BLOWUP@src/get-dependency-graph.ts:89",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/get-dependents-graph/src/get-dependency-graph.ts",
+        "line": 89
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/get-dependents-graph/REGEX_BLOWUP@src/get-dependency-graph.ts:110",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/get-dependents-graph/src/get-dependency-graph.ts",
+        "line": 110
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "id": "packages/pre/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/pre/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/pre"
+    },
+    {
+      "id": "packages/pre/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/pre/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.m",
+      "package": "packages/pre"
+    },
+    {
+      "id": "packages/pre/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/pre/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/pre"
+    },
+    {
+      "id": "packages/pre/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/pre/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/pre"
+    },
+    {
+      "id": "packages/pre/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/pre/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/pre"
+    },
+    {
+      "id": "packages/pre/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/pre/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported",
+      "package": "packages/pre"
+    },
+    {
+      "id": "packages/read/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/read/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported fr",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/read/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs'",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/read/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported fr",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/read/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported fr",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/read/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported fr",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/read/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported fr",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/REGEX_BLOWUP@src/index.ts:9",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/read/src/index.ts",
+        "line": 9
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/REGEX_BLOWUP@src/index.ts:20",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/read/src/index.ts",
+        "line": 20
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/read/REGEX_BLOWUP@src/index.ts:79",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/read/src/index.ts",
+        "line": 79
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/read"
+    },
+    {
+      "id": "packages/assemble-release-plan/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/assemble-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 1 class(es) and 1 function(s) were tried.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/assemble-release-plan/package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 1 exported functions and 29 call shapes.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/assemble-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 1 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/assemble-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (1 calls accepted).",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/assemble-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/assemble-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REGEX_BLOWUP@src/determine-dependents.ts:197",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/assemble-release-plan/src/determine-dependents.ts",
+        "line": 197
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REGEX_BLOWUP@src/determine-dependents.ts:211",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/assemble-release-plan/src/determine-dependents.ts",
+        "line": 211
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REGEX_BLOWUP@src/index.ts:50",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/assemble-release-plan/src/index.ts",
+        "line": 50
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REGEX_BLOWUP@src/index.ts:51",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/assemble-release-plan/src/index.ts",
+        "line": 51
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REGEX_BLOWUP@src/test-utils.ts:21",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/assemble-release-plan/src/test-utils.ts",
+        "line": 21
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/assemble-release-plan/REGEX_BLOWUP@src/test-utils.ts:21",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/assemble-release-plan/src/test-utils.ts",
+        "line": 21
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/assemble-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/apply-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 6 function(s) were tried.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/apply-release-plan/package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 9 exported functions and 29 call shapes.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/apply-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 6 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/apply-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (11 calls accepted).",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/apply-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/apply-release-plan/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/REGEX_BLOWUP@src/get-changelog-entry.ts:139",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/apply-release-plan/src/get-changelog-entry.ts",
+        "line": 139
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/REGEX_BLOWUP@src/get-changelog-entry.ts:147",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/apply-release-plan/src/get-changelog-entry.ts",
+        "line": 147
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/REGEX_BLOWUP@src/index.ts:356",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/apply-release-plan/src/index.ts",
+        "line": 356
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/REGEX_BLOWUP@src/utils.ts:47",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/apply-release-plan/src/utils.ts",
+        "line": 47
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/apply-release-plan/REGEX_BLOWUP@src/utils.ts:60",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/apply-release-plan/src/utils.ts",
+        "line": 60
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/apply-release-plan"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/commands/pack/index.ts:36",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/commands/pack/index.ts",
+        "line": 36
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/index.ts:38",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/index.ts",
+        "line": 38
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/lib/yarn.ts:215",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/lib/yarn.ts",
+        "line": 215
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/utils/askWithEditor.ts:31",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/utils/askWithEditor.ts",
+        "line": 31
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/utils/askWithEditor.ts:32",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/utils/askWithEditor.ts",
+        "line": 32
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/utils/getLastJsonObjectFromString.ts:2",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/utils/getLastJsonObjectFromString.ts",
+        "line": 2
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/utils/getLastJsonObjectFromString.ts:5",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/utils/getLastJsonObjectFromString.ts",
+        "line": 5
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/cli/REGEX_BLOWUP@src/utils/streamNdjson.ts:12",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/cli/src/utils/streamNdjson.ts",
+        "line": 12
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/cli"
+    },
+    {
+      "id": "packages/get-github-info/REGEX_BLOWUP@src/utils.ts:1",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/get-github-info/src/utils.ts",
+        "line": 1
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/get-github-info"
+    },
+    {
+      "id": "packages/parse/REGEX_BLOWUP@src/index.ts:6",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/parse/src/index.ts",
+        "line": 6
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/parse"
+    },
+    {
+      "id": "packages/changelog-github/REGEX_BLOWUP@src/index.ts:14",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/changelog-github/src/index.ts",
+        "line": 14
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/changelog-github"
+    },
+    {
+      "id": "packages/changelog-github/REGEX_BLOWUP@src/render-template.ts:4",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/changelog-github/src/render-template.ts",
+        "line": 4
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/changelog-github"
+    },
+    {
+      "id": "packages/release-utils/REGEX_BLOWUP@src/run.ts:47",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/release-utils/src/run.ts",
+        "line": 47
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/release-utils"
+    },
+    {
+      "id": "packages/release-utils/REGEX_BLOWUP@src/run.ts:75",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/release-utils/src/run.ts",
+        "line": 75
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/release-utils"
+    },
+    {
+      "id": "packages/release-utils/REGEX_BLOWUP@src/utils.ts:39",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/release-utils/src/utils.ts",
+        "line": 39
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/release-utils"
+    },
+    {
+      "id": "packages/release-utils/REGEX_BLOWUP@src/utils.ts:61",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/release-utils/src/utils.ts",
+        "line": 61
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/release-utils"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@guide/cli.data.ts:167",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/guide/cli.data.ts",
+        "line": 167
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@packages/[pkg].paths.ts:40",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/packages/[pkg].paths.ts",
+        "line": 40
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@packages/[pkg].paths.ts:44",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/packages/[pkg].paths.ts",
+        "line": 44
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@packages/[pkg].paths.ts:48",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/packages/[pkg].paths.ts",
+        "line": 48
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@packages/[pkg].paths.ts:79",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/packages/[pkg].paths.ts",
+        "line": 79
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@packages/[pkg].paths.ts:114",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/packages/[pkg].paths.ts",
+        "line": 114
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "docs/REGEX_BLOWUP@packages/[pkg].paths.ts:114",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "docs/packages/[pkg].paths.ts",
+        "line": 114
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "docs"
+    },
+    {
+      "id": "scripts/e2e/REGEX_BLOWUP@e2e-utils.ts:159",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/e2e/e2e-utils.ts",
+        "line": 159
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "scripts/e2e"
+    }
+  ],
+  "findings": [],
+  "fuzz": {
+    "fuzzer": "credda-seeded-fuzzer 2",
+    "seed": 1,
+    "budgetMs": 60000,
+    "iterationsPerTarget": null,
+    "elapsedMs": 265330,
+    "functions": 14,
+    "calls": 6390692,
+    "hits": 1,
+    "proven": 0,
+    "dropped": [
+      {
+        "kind": "slow",
+        "target": "packages/config/utils.globMatch",
+        "iteration": 87771,
+        "reason": "the minimisation budget (at most 30 s) ran out before its regex share was measured"
+      }
+    ],
+    "targets": [
+      {
+        "name": "packages/config/utils.globMatch",
+        "iterations": 625089,
+        "stoppedBy": "time",
+        "found": [
+          "slow"
+        ]
+      },
+      {
+        "name": "packages/errors/ExitError",
+        "iterations": 460823,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/errors/GitError",
+        "iterations": 485424,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/errors/InternalError",
+        "iterations": 470493,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/errors/PreEnterButInPreModeError",
+        "iterations": 330656,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/errors/PreExitButNotInPreModeError",
+        "iterations": 539165,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/should-skip-package/shouldSkipPackage",
+        "iterations": 1000000,
+        "stoppedBy": "iterations",
+        "found": []
+      },
+      {
+        "name": "packages/assemble-release-plan/test-utils.FakeFullState",
+        "iterations": 1000000,
+        "stoppedBy": "iterations",
+        "found": []
+      },
+      {
+        "name": "packages/apply-release-plan/edit-json.editJson",
+        "iterations": 185276,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/apply-release-plan/get-changelog-entry.generateMarkdownForVersionType",
+        "iterations": 198652,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/apply-release-plan/get-changelog-entry.getChangelogEntry",
+        "iterations": 215768,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/apply-release-plan/utils.capitalize",
+        "iterations": 290691,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/apply-release-plan/utils.shouldUpdateDependencyBasedOnConfig",
+        "iterations": 294748,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/apply-release-plan/version-package.getDependencyVersionEdits",
+        "iterations": 293907,
+        "stoppedBy": "time",
+        "found": []
+      }
+    ],
+    "note": "Fuzzing added up over 10 workspace packages; each had its own budget of 60.0 s. Each package's own record is under packages."
+  },
+  "unproven": [],
+  "timings": {
+    "probesMs": 19475,
+    "fuzzMs": 265330,
+    "totalMs": 286259
+  },
+  "untested": [
+    {
+      "language": "javascript",
+      "reason": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 0 function(s) were tried.",
+      "package": "packages/types"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts)",
+      "package": "packages/git"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts); src/get-dependency-graph.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts)",
+      "package": "packages/get-dependents-graph"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts)",
+      "package": "packages/pre"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported from /w/src/index.ts)",
+      "package": "packages/read"
+    }
+  ],
+  "workspaceScan": {
+    "declaredBy": "pnpm-workspace.yaml",
+    "patterns": [
+      "packages/*",
+      "scripts/*",
+      "docs"
+    ],
+    "total": 24,
+    "cap": 10,
+    "considered": 24,
+    "scanned": 10,
+    "exercised": 5,
+    "notTested": [
+      "packages/types",
+      "packages/git",
+      "packages/get-dependents-graph",
+      "packages/pre",
+      "packages/read"
+    ],
+    "overCap": [
+      "packages/changelog-git",
+      "packages/cli",
+      "packages/get-github-info",
+      "packages/parse",
+      "packages/write",
+      "packages/changelog-github",
+      "packages/get-release-plan",
+      "packages/get-version-range-type",
+      "packages/logger",
+      "packages/release-utils",
+      "scripts/test-utils",
+      "docs",
+      "packages/color",
+      "scripts/e2e"
+    ],
+    "root": {
+      "scanned": false,
+      "reason": "a workspace root with no code of its own: its package.json names no main, module, exports, bin or browser, and it has no Python manifest"
+    },
+    "fuzzBudgetPerPackageMs": 60000
+  },
+  "packages": [
+    {
+      "path": "packages/types",
+      "name": "@changesets/types",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 467,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "reach": {
+          "from": "entry",
+          "imported": [
+            "src/index.ts"
+          ],
+          "failed": [],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 0 function(s) were tried."
+        }
+      ],
+      "timings": {
+        "probesMs": 1403,
+        "fuzzMs": 467
+      }
+    },
+    {
+      "path": "packages/config",
+      "name": "@changesets/config",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": true,
+      "installed": true,
+      "linked": [
+        "packages/get-dependents-graph",
+        "packages/should-skip-package",
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 7,
+        "proven": 0,
+        "clean": 2,
+        "abstained": 5,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 90200,
+        "functions": 1,
+        "calls": 625089,
+        "hits": 1,
+        "proven": 0,
+        "dropped": [
+          {
+            "kind": "slow",
+            "target": "utils.globMatch",
+            "iteration": 87771,
+            "reason": "the minimisation budget (at most 30 s) ran out before its regex share was measured"
+          }
+        ],
+        "targets": [
+          {
+            "name": "utils.globMatch",
+            "iterations": 625089,
+            "stoppedBy": "time",
+            "found": [
+              "slow"
+            ]
+          }
+        ],
+        "reach": {
+          "from": "modules",
+          "imported": [
+            "src/utils.ts"
+          ],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package 'valibot' imported from /w/src/parse.ts"
+            },
+            {
+              "module": "src/config.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package 'valibot' imported from /w/src/config.ts"
+            },
+            {
+              "module": "src/defaults.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package 'valibot' imported from /w/src/defaults.ts"
+            },
+            {
+              "module": "src/parse.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package 'valibot' imported from /w/src/parse.ts"
+            },
+            {
+              "module": "src/rules.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/get-dependents-graph/dist/index.mjs' imported from /w/src/rules.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 7,
+          "node": "v22.23.5"
+        }
+      },
+      "timings": {
+        "probesMs": 3038,
+        "fuzzMs": 90200
+      }
+    },
+    {
+      "path": "packages/errors",
+      "name": "@changesets/errors",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": true,
+      "installed": true,
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 1,
+        "abstained": 5,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 60146,
+        "functions": 5,
+        "calls": 2286561,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [
+          {
+            "name": "ExitError",
+            "iterations": 460823,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "GitError",
+            "iterations": 485424,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "InternalError",
+            "iterations": 470493,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "PreEnterButInPreModeError",
+            "iterations": 330656,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "PreExitButNotInPreModeError",
+            "iterations": 539165,
+            "stoppedBy": "time",
+            "found": []
+          }
+        ],
+        "reach": {
+          "from": "entry",
+          "imported": [
+            "src/index.ts"
+          ],
+          "failed": [],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "timings": {
+        "probesMs": 825,
+        "fuzzMs": 60146
+      }
+    },
+    {
+      "path": "packages/git",
+      "name": "@changesets/git",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/errors",
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 10,
+        "proven": 0,
+        "clean": 4,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 211,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts)",
+        "reach": {
+          "from": "modules",
+          "imported": [],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts)"
+        }
+      ],
+      "timings": {
+        "probesMs": 2072,
+        "fuzzMs": 211
+      }
+    },
+    {
+      "path": "packages/should-skip-package",
+      "name": "@changesets/should-skip-package",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": true,
+      "installed": true,
+      "linked": [
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 1,
+        "abstained": 5,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 27104,
+        "functions": 1,
+        "calls": 1000000,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [
+          {
+            "name": "shouldSkipPackage",
+            "iterations": 1000000,
+            "stoppedBy": "iterations",
+            "found": []
+          }
+        ],
+        "reach": {
+          "from": "entry",
+          "imported": [
+            "src/index.ts"
+          ],
+          "failed": [],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "timings": {
+        "probesMs": 878,
+        "fuzzMs": 27104
+      }
+    },
+    {
+      "path": "packages/get-dependents-graph",
+      "name": "@changesets/get-dependents-graph",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 8,
+        "proven": 0,
+        "clean": 2,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 187,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts); src/get-dependency-graph.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts)",
+        "reach": {
+          "from": "modules",
+          "imported": [],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts"
+            },
+            {
+              "module": "src/get-dependency-graph.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 2,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts); src/get-dependency-graph.ts (ERR_MODULE_NOT_FOUND: Cannot find package '@changesets/color' imported from /w/src/get-dependency-graph.ts)"
+        }
+      ],
+      "timings": {
+        "probesMs": 1173,
+        "fuzzMs": 187
+      }
+    },
+    {
+      "path": "packages/pre",
+      "name": "@changesets/pre",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/errors",
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 237,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts)",
+        "reach": {
+          "from": "modules",
+          "imported": [],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts)"
+        }
+      ],
+      "timings": {
+        "probesMs": 2037,
+        "fuzzMs": 237
+      }
+    },
+    {
+      "path": "packages/read",
+      "name": "@changesets/read",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/errors",
+        "packages/git",
+        "packages/parse",
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 9,
+        "proven": 0,
+        "clean": 3,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 220,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported from /w/src/index.ts)",
+        "reach": {
+          "from": "modules",
+          "imported": [],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported from /w/src/index.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/git/dist/index.mjs' imported from /w/src/index.ts)"
+        }
+      ],
+      "timings": {
+        "probesMs": 2351,
+        "fuzzMs": 220
+      }
+    },
+    {
+      "path": "packages/assemble-release-plan",
+      "name": "@changesets/assemble-release-plan",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": true,
+      "installed": true,
+      "linked": [
+        "packages/errors",
+        "packages/get-dependents-graph",
+        "packages/should-skip-package",
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 12,
+        "proven": 0,
+        "clean": 7,
+        "abstained": 5,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 26390,
+        "functions": 1,
+        "calls": 1000000,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [
+          {
+            "name": "test-utils.FakeFullState",
+            "iterations": 1000000,
+            "stoppedBy": "iterations",
+            "found": []
+          }
+        ],
+        "reach": {
+          "from": "modules",
+          "imported": [
+            "src/test-utils.ts",
+            "src/types.ts"
+          ],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/index.ts"
+            },
+            {
+              "module": "src/apply-links.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/utils.ts"
+            },
+            {
+              "module": "src/determine-dependents.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/should-skip-package/dist/index.mjs' imported from /w/src/determine-dependents.ts"
+            },
+            {
+              "module": "src/flatten-releases.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/should-skip-package/dist/index.mjs' imported from /w/src/flatten-releases.ts"
+            },
+            {
+              "module": "src/increment.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/utils.ts"
+            },
+            {
+              "module": "src/match-fixed-constraint.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/should-skip-package/dist/index.mjs' imported from /w/src/match-fixed-constraint.ts"
+            },
+            {
+              "module": "src/utils.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/errors/dist/index.mjs' imported from /w/src/utils.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 9,
+          "node": "v22.23.5"
+        }
+      },
+      "timings": {
+        "probesMs": 1442,
+        "fuzzMs": 26390
+      }
+    },
+    {
+      "path": "packages/apply-release-plan",
+      "name": "@changesets/apply-release-plan",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": true,
+      "installed": true,
+      "linked": [
+        "packages/config",
+        "packages/errors",
+        "packages/get-dependents-graph",
+        "packages/git",
+        "packages/should-skip-package",
+        "packages/types"
+      ],
+      "summary": {
+        "attempted": 11,
+        "proven": 0,
+        "clean": 6,
+        "abstained": 5,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 60168,
+        "functions": 6,
+        "calls": 1479042,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [
+          {
+            "name": "edit-json.editJson",
+            "iterations": 185276,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "get-changelog-entry.generateMarkdownForVersionType",
+            "iterations": 198652,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "get-changelog-entry.getChangelogEntry",
+            "iterations": 215768,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "utils.capitalize",
+            "iterations": 290691,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "utils.shouldUpdateDependencyBasedOnConfig",
+            "iterations": 294748,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "version-package.getDependencyVersionEdits",
+            "iterations": 293907,
+            "stoppedBy": "time",
+            "found": []
+          }
+        ],
+        "reach": {
+          "from": "modules",
+          "imported": [
+            "src/edit-json.ts",
+            "src/get-changelog-entry.ts",
+            "src/test-utils/failing-functions.ts",
+            "src/utils.ts",
+            "src/version-package.ts"
+          ],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@changesets/config/dist/index.mjs' imported from /w/src/index.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 6,
+          "node": "v22.23.5"
+        }
+      },
+      "timings": {
+        "probesMs": 2812,
+        "fuzzMs": 60168
+      }
+    },
+    {
+      "path": ".",
+      "name": "@changesets/repository",
+      "scope": "regex-only",
+      "scopeReason": "a workspace root with no code of its own: its package.json names no main, module, exports, bin or browser, and it has no Python manifest",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "packages/changelog-git",
+      "name": "@changesets/changelog-git",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "packages/cli",
+      "name": "@changesets/cli",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 8,
+        "proven": 0,
+        "clean": 8,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 261,
+        "fuzzMs": 0
+      }
+    },
+    {
+      "path": "packages/get-github-info",
+      "name": "@changesets/get-github-info",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 1,
+        "proven": 0,
+        "clean": 1,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 164,
+        "fuzzMs": 0
+      }
+    },
+    {
+      "path": "packages/parse",
+      "name": "@changesets/parse",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 1,
+        "proven": 0,
+        "clean": 1,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 241,
+        "fuzzMs": 0
+      }
+    },
+    {
+      "path": "packages/write",
+      "name": "@changesets/write",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "packages/changelog-github",
+      "name": "@changesets/changelog-github",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 2,
+        "proven": 0,
+        "clean": 2,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 170,
+        "fuzzMs": 0
+      }
+    },
+    {
+      "path": "packages/get-release-plan",
+      "name": "@changesets/get-release-plan",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "packages/get-version-range-type",
+      "name": "@changesets/get-version-range-type",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "packages/logger",
+      "name": "@changesets/logger",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "packages/release-utils",
+      "name": "@changesets/release-utils",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 4,
+        "proven": 0,
+        "clean": 4,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 214,
+        "fuzzMs": 0
+      }
+    },
+    {
+      "path": "scripts/test-utils",
+      "name": "@changesets/test-utils",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "docs",
+      "name": "@changesets/docs",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 7,
+        "proven": 0,
+        "clean": 7,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 236,
+        "fuzzMs": 0
+      }
+    },
+    {
+      "path": "packages/color",
+      "name": "@changesets/color",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": []
+    },
+    {
+      "path": "scripts/e2e",
+      "name": "@changesets/e2e",
+      "scope": "regex-only",
+      "scopeReason": "over the cap of 10 packages",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "summary": {
+        "attempted": 1,
+        "proven": 0,
+        "clean": 1,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "timings": {
+        "probesMs": 158,
+        "fuzzMs": 0
+      }
+    }
+  ]
+}

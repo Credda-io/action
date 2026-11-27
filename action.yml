@@ -685,9 +685,12 @@ outputs:
     description: >-
       In security mode, one line of JSON: limited (true when the run proved
       nothing and could not exercise the code), functions (exported functions
-      fuzzed), probes (counts by verdict) and sourceFiles (loaded and failed, when
-      the engine loaded the package from source). A field the engine did not
-      write is null. The job never fails on it; gate on it yourself.
+      fuzzed), probes (counts by verdict), sourceFiles (loaded and failed, when
+      the engine loaded the package from source), partial (true when part of
+      what was in scope was not exercised, such as a workspace package not
+      tested or over the cap) and packages (a workspace's package counts, or
+      null). A field the engine did not write is null. The job never fails on
+      it; gate on it yourself.
     value: ${{ steps.credda.outputs.security-reach }}
   security-report-path:
     description: >-

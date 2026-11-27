@@ -128,10 +128,25 @@ export function securityFixBody({ attempt, findings, engineVersion, baseBranch, 
 }
 
 /** The "Fixes" section of the job summary. */
-export function fixesSummary({ fixes, usable, broken, delivery, openPullRequest, patchDir, baseRefusal }) {
+export function fixesSummary({ fixes, usable, broken, delivery, openPullRequest, patchDir, baseRefusal, workspace = false }) {
   const lines = ['### Fixes', ''];
   if (fixes === undefined || fixes === null || typeof fixes !== 'object') {
     lines.push('The engine wrote no fix record, so no fix was attempted. The findings above are unchanged.', '');
+    return lines.join('\n');
+  }
+  // On a workspace (monorepo) report the engine attempts no fix and records one
+  // NOT_ATTEMPTED per package and class. That is said once, not once per entry.
+  const all = Array.isArray(fixes.attempts) ? fixes.attempts : [];
+  if (workspace && all.every((a) => a?.status === 'NOT_ATTEMPTED')) {
+    const n = new Set(all.flatMap((a) => (Array.isArray(a?.findings) ? a.findings.map(String) : []))).size;
+    lines.push(
+      all.length === 0
+        ? 'No finding was proven, so there was nothing to fix.'
+        : `No fix was attempted for ${n === 1 ? 'the proven finding' : `the ${n} proven findings`} above. This is a workspace (monorepo) ` +
+          'report, and Credda attempts fixes on one package at a time. To have one attempted, scan that package on its own: ' +
+          'see *Monorepos* in the Credda action README. The findings above are unchanged.',
+      '',
+    );
     return lines.join('\n');
   }
   if (fixes.modelBacked !== true) {

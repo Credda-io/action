@@ -105,6 +105,7 @@ try {
           fuzzed: loaded?.fuzzed ?? 0,
           reach: loaded?.reach ?? '',
           warning: loaded?.warning ?? null,
+          workspace: loaded?.workspace ?? null,
         });
         say((await sendSlack({ webhookUrl: url, message, fetch: globalThis.fetch })).line);
       }

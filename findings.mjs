@@ -231,10 +231,121 @@ function probeVerdicts(result) {
 const fuzzRecords = (result) =>
   [['Fuzzing', result?.fuzz], ['Python fuzzing', result?.pythonFuzz]].filter(([, z]) => z !== null && typeof z === 'object');
 
+/* ------------------------------ workspace reports ------------------------------ */
+
+/** The most packages named on one line of the job summary or in Slack before "and K more". */
+export const MAX_NAMED_PACKAGES = 5;
+
+/** A list of strings the engine wrote, or [] when it wrote none. */
+const strings = (v) => (Array.isArray(v) ? v.map((s) => String(s ?? '')) : []);
+
+/** Why the engine did not exercise one scanned package: its own first reason, untrusted, or a sentence of ours. */
+function notTestedReason(p) {
+  const u = Array.isArray(p?.untested) ? p.untested.find((x) => typeof x?.reason === 'string' && x.reason !== '') : undefined;
+  if (u !== undefined) return oneLine(u.reason);
+  if (typeof p?.unsupported?.reason === 'string') return `nothing was scanned, because ${oneLine(p.unsupported.reason)}`;
+  if (typeof p?.installError === 'string' && p.installError !== '') return `it did not install: ${oneLine(p.installError)}`;
+  return 'the engine gave no reason';
+}
+
+/**
+ * A workspace (monorepo) report's reach, or null for a report of one package.
+ * Engines after v0.1.19 write `workspaceScan` and `packages` when the root
+ * declares a workspace. Counts the engine did not write are null. `missed` is
+ * every package in scope that was not exercised, the not tested ones first,
+ * each with the engine's reason (untrusted text: escape it for the format).
+ */
+export function workspaceReach(result) {
+  const ws = result?.workspaceScan;
+  if (ws === null || typeof ws !== 'object' || Array.isArray(ws)) return null;
+  const packages = Array.isArray(result?.packages) ? result.packages.filter((p) => p !== null && typeof p === 'object') : [];
+  const byPath = new Map(packages.map((p) => [String(p.path), p]));
+  const cap = whole(ws.cap);
+  const notTested = strings(ws.notTested);
+  const overCap = strings(ws.overCap);
+  const missed = [
+    ...notTested.map((path) => ({ path, reason: notTestedReason(byPath.get(path)) })),
+    ...overCap.map((path) => {
+      const said = byPath.get(path)?.scopeReason;
+      return { path, reason: typeof said === 'string' && said !== '' ? oneLine(said) : `over the cap${cap === null ? '' : ` of ${cap}`} packages` };
+    }),
+  ];
+  return {
+    found: whole(ws.total),
+    considered: whole(ws.considered),
+    scanned: whole(ws.scanned),
+    exercised: whole(ws.exercised),
+    cap,
+    notTested: Array.isArray(ws.notTested) ? notTested : null,
+    overCap: Array.isArray(ws.overCap) ? overCap : null,
+    missed,
+    packages,
+  };
+}
+
+/** "3 of 30 packages", with "?" for a count the engine did not write. */
+const ofPackages = (w) => `${w.exercised ?? '?'} of ${w.considered ?? '?'} package${w.considered === 1 ? '' : 's'}`;
+
+/** "Credda exercised 3 of 30 packages." */
+export const exercisedSentence = (w) => `Credda exercised ${ofPackages(w)}.`;
+
+/**
+ * The packages in scope that were not exercised, as one line: "`a` (why); `b`
+ * (why); and 4 more". `name` and `text` escape the path and the reason for the
+ * format, so nothing the repository or the engine wrote forms markup.
+ */
+export function missedText(missed, name, text, max = MAX_NAMED_PACKAGES) {
+  const shown = missed.slice(0, max).map((m) => `${name(oneLine(m.path).slice(0, 200))} (${text(m.reason, 160)})`);
+  return `${shown.join('; ')}${missed.length > max ? `; and ${missed.length - max} more` : ''}`;
+}
+
+/**
+ * The package a finding of a workspace report belongs to: the longest package
+ * path its id starts with, or `.` (the root, whose ids the engine does not
+ * prefix). '' on a report of one package. The id is the source of truth, not
+ * the finding's `package` field.
+ */
+export function findingPackage(finding, result) {
+  // Without the packages list there is nothing to read a prefix against, so no label rather than a wrong one.
+  if (workspaceReach(result) === null || !Array.isArray(result?.packages)) return '';
+  const id = String(finding?.id ?? '');
+  const hits = result.packages
+    .map((p) => String(p?.path ?? ''))
+    .filter((path) => path !== '' && path !== '.' && id.startsWith(`${path}/`))
+    .sort((a, b) => b.length - a.length);
+  return hits[0] ?? '.';
+}
+
+/** How a finding's package reads in a sentence: "in package `a`" or "in the workspace root". `name` wraps the path for the format. */
+export const packageWords = (pkg, name = (s) => s) => (pkg === '' ? '' : pkg === '.' ? 'in the workspace root' : `in package ${name(pkg)}`);
+
+/**
+ * Whether part of what was in scope was not exercised, as `security-reach`'s
+ * `partial` gives it. On a workspace report: at least one package was not
+ * tested or was over the cap. On a report of one package: the engine listed a
+ * language as NOT TESTED (`untested`, v0.1.19 and later), found nothing it
+ * could scan (`unsupported`), or scanned only the root of a workspace
+ * (`workspace`, v0.1.19). A field that is absent is not evidence either way.
+ */
+export function partialReach(result) {
+  const w = workspaceReach(result);
+  if (w !== null) return (w.notTested?.length ?? 0) + (w.overCap?.length ?? 0) > 0;
+  return (Array.isArray(result?.untested) && result.untested.length > 0) ||
+    (result?.unsupported !== null && typeof result?.unsupported === 'object') ||
+    (whole(result?.workspace?.total) ?? 0) > 0;
+}
+
 /**
  * Why a run that proved nothing reached too little to mean anything, as reasons
  * this action wrote, plus `said`, the engine's own words (untrusted) when it gave
  * any. Empty `reasons` means reach was not limited.
+ *
+ * ON A WORKSPACE REPORT the rule is about the workspace: reach is limited when
+ * no finding was proven and no package was exercised (`workspaceScan.exercised`
+ * is 0). The rules below are about one package, and a workspace's top-level
+ * `installed` is false when any one package failed to install, so they do not
+ * apply to it. A workspace where some packages were exercised is partial
+ * (partialReach), never limited.
  *
  * THE RULE. Reach is limited when no finding was proven AND any of:
  *   1. `installed` is false: the package did not install.
@@ -251,6 +362,13 @@ const fuzzRecords = (result) =>
 export function limitedReach(result) {
   const findings = Array.isArray(result?.findings) ? result.findings : [];
   if (findings.length > 0) return { reasons: [], said: '' };
+  const w = workspaceReach(result);
+  if (w !== null) {
+    if (w.exercised !== 0) return { reasons: [], said: '' };
+    const n = w.considered;
+    const why = n === null ? 'no package of the workspace was exercised' : n === 1 ? 'the one package in scope was not exercised' : `none of the ${n} packages in scope was exercised`;
+    return { reasons: [why], said: '' };
+  }
   const reasons = [];
   if (result?.installed === false) reasons.push('the package did not install');
   const records = fuzzRecords(result);
@@ -287,19 +405,23 @@ export function reachWarning(result) {
 }
 
 /**
- * The `security-reach` output: numbers and one boolean, nothing from the
- * repository. A field the engine did not write is null, never 0.
+ * The `security-reach` output: numbers and two booleans, nothing from the
+ * repository. A field the engine did not write is null, never 0. `packages` is
+ * null on a report of one package.
  */
 export function reachRecord(result) {
   const v = probeVerdicts(result);
   const records = fuzzRecords(result);
   const fns = records.map(([, z]) => whole(z.functions));
   const r = result?.fuzz?.reach;
+  const w = workspaceReach(result);
   return {
     limited: limitedReach(result).reasons.length > 0,
     functions: fns.length > 0 && fns.every((n) => n !== null) ? fns.reduce((a, b) => a + b, 0) : null,
     probes: v === null ? null : { proven: v.proven, clean: v.clean, abstained: v.abstained, timedOut: v.timedOut, crashed: v.crashed, notRun: v.notRun },
     sourceFiles: r && typeof r === 'object' ? { loaded: whole(r.filesLoaded), failed: Array.isArray(r.failed) ? r.failed.length : null } : null,
+    partial: partialReach(result),
+    packages: w === null ? null : { found: w.found, scanned: w.scanned, exercised: w.exercised, notTested: w.notTested?.length ?? null, overCap: w.overCap?.length ?? null },
   };
 }
 
@@ -366,6 +488,92 @@ function probesSentence(v) {
   return `Probes: ${v.attempted} attempted${where.length > 0 ? ` (${where.join(', ')})` : ''}. ${parts.join(', ')}.`;
 }
 
+/** The most packages listed under each heading of a workspace's reach before "K more not shown". */
+const MAX_PACKAGE_LINES = 10;
+
+/** "Packages: 30 found, 10 scanned, 3 exercised, 7 not tested, 20 over the cap of 10." */
+function packagesSentence(w) {
+  const n = (v) => (v === null ? '?' : String(v));
+  const listed = (a) => (a === null ? '?' : String(a.length));
+  return `Packages: ${n(w.found)} found, ${n(w.scanned)} scanned, ${n(w.exercised)} exercised, ${listed(w.notTested)} not tested, ` +
+    `${listed(w.overCap)} over the cap${w.cap === null ? '' : ` of ${w.cap}`}.`;
+}
+
+/** One exercised package's counts: "55 probes (1 proven, 49 clean, 5 abstained); 4 functions fuzzed". */
+function packageCounts(p) {
+  const s = p?.summary ?? {};
+  const parts = [];
+  const attempted = whole(s.attempted);
+  if (attempted !== null) {
+    const by = VERDICTS.map(([, k]) => [whole(s[k]), VERDICT_WORDS[k]]).filter(([c]) => c !== null && c > 0).map(([c, word]) => `${c} ${word}`);
+    parts.push(`${attempted} probe${attempted === 1 ? '' : 's'}${by.length > 0 ? ` (${by.join(', ')})` : ''}`);
+  }
+  const fns = [p?.fuzz, p?.pythonFuzz].filter((z) => z !== null && typeof z === 'object').map((z) => whole(z.functions));
+  if (fns.length > 0 && fns.every((f) => f !== null)) {
+    const total = fns.reduce((a, b) => a + b, 0);
+    parts.push(`${total} function${total === 1 ? '' : 's'} fuzzed`);
+  }
+  return parts.length > 0 ? parts.join('; ') : 'security.json records no counts for it';
+}
+
+/** How many more there were, and where the full list is. */
+const notShown = (n, what) => `- ${n} more ${what} not shown. security.json lists every package: set \`keep-report: 'true'\` to keep it.`;
+
+/** A workspace's packages: the exercised ones with their counts, then the not tested and over-the-cap ones with the engine's reasons. */
+function workspaceLines(w, name, text) {
+  const lines = [];
+  const notTested = new Set(w.notTested ?? []);
+  const exercised = w.packages.filter((p) => p.exercised === true && p.scope === 'full');
+  if (exercised.length > 0) {
+    lines.push('Exercised packages:', '');
+    for (const p of exercised.slice(0, MAX_PACKAGE_LINES)) lines.push(`- ${name(oneLine(p.path).slice(0, 200))}: ${packageCounts(p)}.`);
+    if (exercised.length > MAX_PACKAGE_LINES) lines.push(notShown(exercised.length - MAX_PACKAGE_LINES, 'exercised packages'));
+    lines.push('');
+  }
+  const missedTested = w.missed.filter((m) => notTested.has(m.path));
+  if (missedTested.length > 0) {
+    lines.push('Not tested: scanned, but no probe or fuzz call reached the code. This run says nothing about them.', '');
+    for (const m of missedTested.slice(0, MAX_PACKAGE_LINES)) lines.push(`- ${name(oneLine(m.path).slice(0, 200))}: ${text(m.reason, 300)}`);
+    if (missedTested.length > MAX_PACKAGE_LINES) lines.push(notShown(missedTested.length - MAX_PACKAGE_LINES, 'not tested packages'));
+    lines.push('');
+  }
+  const over = w.overCap ?? [];
+  if (over.length > 0) {
+    lines.push(
+      `Over the cap${w.cap === null ? '' : ` of ${w.cap}`}: only their regular expressions were read. They were not installed, loaded or fuzzed.`,
+      '',
+      `- ${over.slice(0, MAX_PACKAGE_LINES).map((p) => name(oneLine(p).slice(0, 200))).join(', ')}${over.length > MAX_PACKAGE_LINES ? `, and ${over.length - MAX_PACKAGE_LINES} more` : ''}.`,
+      '',
+    );
+  }
+  return lines;
+}
+
+/**
+ * What a report of one package says was not tested: each `untested` language
+ * with the engine's reason, `unsupported`, and a v0.1.19 scan of a workspace
+ * root that scanned only the root (`workspace`). Empty when it says none.
+ */
+function notTestedItems(result, name, text) {
+  const items = [];
+  if (result?.unsupported !== null && typeof result?.unsupported === 'object') {
+    items.push(`Not tested: nothing was scanned, because ${text(result.unsupported.reason, 300)}.`);
+  }
+  for (const u of Array.isArray(result?.untested) ? result.untested : []) {
+    const lang = u?.language === 'python' ? 'Python' : 'JavaScript';
+    items.push(`Not tested: the ${lang} package was never loaded, so no probe or fuzz call reached its code. Why: ${text(u?.reason, 400)}`);
+  }
+  const ws = result?.workspace;
+  const total = whole(ws?.total);
+  if (total !== null && total > 0) {
+    const listed = Array.isArray(ws.packages) ? ws.packages.map((p) => oneLine(p?.path).slice(0, 200)) : [];
+    const shown = listed.slice(0, MAX_NAMED_PACKAGES).map(name);
+    const more = total - shown.length;
+    items.push(`Not tested: this is a workspace of ${total} package${total === 1 ? '' : 's'}, and only the root was scanned${shown.length > 0 ? `. Not scanned: ${shown.join(', ')}${more > 0 ? `, and ${more} more` : ''}` : ''}.`);
+  }
+  return items;
+}
+
 /**
  * The job summary's "What this run reached" section, built only from fields the
  * engine wrote. Every path, module name, error and note is the scanned
@@ -378,6 +586,9 @@ export function reachSection(result) {
   const v = probeVerdicts(result);
   const lines = ['### What this run reached', ''];
   const items = [];
+  const w = workspaceReach(result);
+  if (w !== null) items.push(packagesSentence(w));
+  else items.push(...notTestedItems(result, name, text));
   const probes = probesSentence(v);
   if (probes) items.push(probes);
   for (const [label, z] of fuzzRecords(result)) {
@@ -402,6 +613,7 @@ export function reachSection(result) {
   if (left.length > MAX_FAILED) items.push(`${left.length - MAX_FAILED} more temp directories were left behind. security.json lists them.`);
   if (items.length === 0) items.push('security.json records nothing about what this run reached.');
   lines.push(...items.map((i) => `- ${i}`), '');
+  if (w !== null) lines.push(...workspaceLines(w, name, text));
   const seen = v === null ? [] : VERDICTS.map(([, k]) => k).filter((k) => v[k] > 0);
   if (seen.length > 0) lines.push('What each result means:', '', ...seen.map((k) => `- ${VERDICT_MEANING[k]}`), '');
   return lines;

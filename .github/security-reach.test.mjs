@@ -99,9 +99,9 @@ describe('What this run reached', () => {
 });
 
 describe('security-reach and the Slack line', () => {
-  it('numbers and one boolean, on one line', () => {
+  it('numbers and two booleans, on one line', () => {
     const value = JSON.stringify(reachRecord(fixture('ts-loaded')));
-    assert.equal(value, '{"limited":false,"functions":36,"probes":{"proven":0,"clean":18,"abstained":5,"timedOut":0,"crashed":0,"notRun":0},"sourceFiles":{"loaded":12,"failed":0}}');
+    assert.equal(value, '{"limited":false,"functions":36,"probes":{"proven":0,"clean":18,"abstained":5,"timedOut":0,"crashed":0,"notRun":0},"sourceFiles":{"loaded":12,"failed":0},"partial":false,"packages":null}');
   });
   it('the Slack line counts what ran', () => {
     assert.equal(reachSummaryText(fixture('flat-clean')), 'Reached: 6 probes (1 clean, 5 abstained); 2 exported functions fuzzed, 638010 calls.');
