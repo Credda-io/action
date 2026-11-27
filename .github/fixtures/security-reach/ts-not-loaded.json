@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "tool": "credda security",
+  "engineVersion": "1.2.0",
+  "generatedAt": "2026-11-27T07:43:51.285Z",
+  "checkout": "/home/runner/work/_temp/tsload/toolshed",
+  "copy": {
+    "filesCopied": 77,
+    "skippedLarge": [],
+    "skippedLinks": 0
+  },
+  "installed": true,
+  "summary": {
+    "attempted": 23,
+    "proven": 0,
+    "clean": 17,
+    "abstained": 6,
+    "timedOut": 0,
+    "crashed": 0,
+    "notRun": 0
+  },
+  "probes": [
+    {
+      "id": "PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w'\nRequire stack:\n- /w/credda-path-traversal-probe.cjs)."
+    },
+    {
+      "id": "PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (Cannot find module '/w'\nRequire stack:\n- /w/credda-prototype-pollution-probe.cjs). Install its dependencies and re-run."
+    },
+    {
+      "id": "ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w'\nRequire stack:\n- /w/credda-archive-traversal-probe.cjs)."
+    },
+    {
+      "id": "REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w'\nRequire stack:\n- /w/credda-redirect-leak-probe.cjs)."
+    },
+    {
+      "id": "SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w'\nRequire stack:\n- /w/credda-signature-bypass-probe.cjs)."
+    },
+    {
+      "id": "CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w'\nRequire stack:\n- /w/credda-certificate-chain-probe.cjs)."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-repro-red.mjs:93",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-repro-red.mjs",
+        "line": 93
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:56",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 56
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:75",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 75
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:88",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 88
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:121",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 121
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:156",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 156
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:172",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 172
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:174",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 174
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:177",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 177
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:222",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 222
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:223",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 223
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:224",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 224
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/csv.ts:17",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/csv.ts",
+        "line": 17
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/csv.ts:50",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/csv.ts",
+        "line": 50
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/csv.ts:50",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/csv.ts",
+        "line": 50
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/dates.ts:10",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/dates.ts",
+        "line": 10
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/portal.ts:121",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/portal.ts",
+        "line": 121
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    }
+  ],
+  "findings": [],
+  "fuzz": {
+    "fuzzer": "credda-seeded-fuzzer 2",
+    "seed": 1,
+    "budgetMs": 60000,
+    "iterationsPerTarget": null,
+    "elapsedMs": 169,
+    "functions": 0,
+    "calls": 0,
+    "hits": 0,
+    "proven": 0,
+    "dropped": [],
+    "targets": [],
+    "note": "the package could not be loaded for fuzzing: Cannot find module '/w'\nRequire stack:\n- /fuzz/worker.cjs"
+  },
+  "unproven": [],
+  "timings": {
+    "probesMs": 1030,
+    "fuzzMs": 169,
+    "totalMs": 178704
+  }
+}

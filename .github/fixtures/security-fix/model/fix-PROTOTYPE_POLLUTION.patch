@@ -1,0 +1,14 @@
+diff --git a/index.js b/index.js
+index eb6721d..22d6a3d 100644
+--- a/index.js
++++ b/index.js
+@@ -121,6 +121,9 @@ function unflatten (target, opts) {
+     let recipient = result
+ 
+     while (key2 !== undefined) {
++      if (key1 === '__proto__' || key1 === 'constructor' || key1 === 'prototype') {
++        return
++      }
+ 
+       const type = Object.prototype.toString.call(recipient[key1])
+       const isobject = (

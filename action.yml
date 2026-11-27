@@ -229,6 +229,23 @@ inputs:
       one run -- a hard cap on the pull requests a single sweep can open.
       Ignored by the other modes.
     default: "3"
+  extra-probes:
+    # Security mode only. The engine keeps three probe classes behind
+    # environment variables, each off unless set: CREDDA_INJECTION_PROBE,
+    # CREDDA_SSRF_PROBE and CREDDA_XSS_PROBE. This input sets the ones it names
+    # for the `credda security` run only, and unsets the others. An unknown name
+    # fails the job. A class the engine does not have is reported on the job
+    # summary as not available in this engine, never as a clean result.
+    description: >-
+      In security mode, a comma-separated list of extra probe classes to run:
+      injection (injection to execution, JavaScript and Python), ssrf
+      (server-side request forgery, JavaScript and Python) and xss (reflected
+      cross-site scripting, JavaScript). These classes are newer. Each still
+      reports only what an exploit proved. injection and ssrf need engine
+      v0.1.18 or later, and xss needs v0.1.19 or later; a class the engine does
+      not have is shown as not available in this engine. An unknown name fails
+      the job. Empty (the default) runs none of them. Ignored by the other modes.
+    default: ''
   upload-sarif:
     # Security mode only. The findings are uploaded as SARIF to GitHub code
     # scanning, so they appear under the repository's Security tab with GitHub's
@@ -240,6 +257,35 @@ inputs:
       In security mode, upload proven findings to GitHub code scanning as SARIF.
       'false' keeps them on the job summary only. Ignored by the other modes.
     default: "true"
+  fix:
+    # Security mode only, and off by default. Passes --fix to `credda security`:
+    # for each class an exploit proved, your own model (anthropic-api-key, or
+    # model-api-key with model-base-url) is asked for one patch, the patch is
+    # applied to a temp copy and never to your checkout, and the check-fix gates
+    # judge it. Only a FIX_PROVEN patch is kept. Without a model key nothing is
+    # attempted, the summary says so, and the job ends exactly as it would
+    # without this input. A proven patch is attached as `fix-patches`; it becomes
+    # a pull request only with `open-pull-request: true` and the two write scopes,
+    # through the same delivery code investigate and sweep use. Needs engine
+    # v0.1.18 or later.
+    description: >-
+      In security mode, ask your own model for a patch per proven finding class
+      and keep only a patch the check-fix gates prove. Needs a model key. With
+      open-pull-request on, opens a pull request for each fix the gates proved.
+      Credda never merges. Ignored by the other modes.
+    default: "false"
+  keep-report:
+    # Security mode only, and off by default. Copies the engine's own report
+    # files to a directory of their own and names it in `security-report-path`,
+    # for the caller's actions/upload-artifact step. This action does not upload
+    # anything itself: pinning a third-party action inside this composite is a
+    # supply-chain choice left to the workflow that uses it.
+    description: >-
+      In security mode, copy security.json, security.md and the SARIF files to
+      a directory named in the security-report-path output, so your workflow can
+      upload them with actions/upload-artifact. They hold the exploit programs.
+      Ignored by the other modes.
+    default: "false"
   max-files:
     # Discover mode only. The walk is over a customer's whole checkout and a
     # monorepo can be very large, so there is a cap; the engine has its own
@@ -560,6 +606,56 @@ inputs:
       nothing reaches Credda. Never carries the report, issue text, code or
       paths. A failure cannot fail your job. Empty (the default) sends nothing.
     default: ''
+  slack-webhook-url:
+    description: >-
+      Opt-in. A Slack incoming-webhook URL, mapped from a secret. Posts one
+      Block Kit message with the repository, the outcome and the count of proven
+      findings. In security mode it lists up to 5 proven findings and links the
+      run. Unproven patterns appear only as a count. Sent from your runner to
+      Slack. Nothing is sent to Credda. A failure is reported on the job summary
+      and cannot fail your job. Empty (the default) sends nothing.
+    default: ''
+  notify-on:
+    description: >-
+      When the Slack message is sent. 'findings' (the default) sends only when
+      the run proved or stated something. 'always' sends every run, and a run
+      that proved nothing says so. Applies to slack-webhook-url only.
+    default: 'findings'
+  linear-api-key:
+    description: >-
+      Opt-in. A Linear API key, mapped from a secret. With linear-team-id,
+      security mode files one Linear issue per proven finding and skips any
+      already open. Unproven patterns never become issues. Sent from your runner
+      to Linear. Nothing is sent to Credda. Empty (the default) sends nothing.
+    default: ''
+  linear-team-id:
+    description: The Linear team id the issues are created in. Required with linear-api-key.
+    default: ''
+  jira-base-url:
+    description: >-
+      Opt-in. Your Jira Cloud site, such as https://acme.atlassian.net. It must
+      be https on a public host. Needs jira-email, jira-api-token and
+      jira-project-key. Security mode files one issue per proven finding and
+      skips any already open. Sent from your runner to Jira. Nothing is sent to
+      Credda. Empty (the default) sends nothing.
+    default: ''
+  jira-email:
+    description: The Atlassian account email the API token belongs to, mapped from a secret.
+    default: ''
+  jira-api-token:
+    description: A Jira API token, mapped from a secret. Used for Basic auth over https.
+    default: ''
+  jira-project-key:
+    description: The Jira project key the issues are created in, such as SEC.
+    default: ''
+  jira-issue-type:
+    description: The Jira issue type to create.
+    default: 'Bug'
+  max-issues:
+    description: >-
+      The most Linear issues, and the most Jira issues, one run may create. Each
+      destination has its own cap. Findings beyond it are left on the job summary.
+    default: '10'
 
 outputs:
   security-findings:
@@ -571,6 +667,34 @@ outputs:
   sarif-path:
     description: In security mode, absolute path of the SARIF file on the runner.
     value: ${{ steps.credda.outputs.sarif-path }}
+  security-fixes:
+    description: >-
+      In security mode with fix on, how many fixes the check-fix gates proved
+      (FIX_PROVEN). Empty when fix is off.
+    value: ${{ steps.credda.outputs.security-fixes }}
+  fix-patches:
+    description: >-
+      In security mode with fix on, absolute path of a directory on the runner
+      holding each proven patch and its pull request body, for
+      actions/upload-artifact. Empty when no fix was proven.
+    value: ${{ steps.credda.outputs.fix-patches }}
+  security-json-path:
+    description: In security mode, absolute path of security.json on the runner, holding the proven findings in full.
+    value: ${{ steps.credda.outputs.security-json-path }}
+  security-reach:
+    description: >-
+      In security mode, one line of JSON: limited (true when the run proved
+      nothing and could not exercise the code), functions (exported functions
+      fuzzed), probes (counts by verdict) and sourceFiles (loaded and failed, when
+      the engine loaded the package from source). A field the engine did not
+      write is null. The job never fails on it; gate on it yourself.
+    value: ${{ steps.credda.outputs.security-reach }}
+  security-report-path:
+    description: >-
+      In security mode with keep-report on, absolute path of a directory on the
+      runner holding security.json, security.md and the SARIF files, for
+      actions/upload-artifact. They hold the exploit programs. Empty otherwise.
+    value: ${{ steps.credda.outputs.security-report-path }}
   engine-version:
     description: >-
       The engine version this run verified and executed, from engine.lock.json.
@@ -689,7 +813,7 @@ runs:
     # install rather than caching it, so none of that has to be traded off --
     # and the step below fetches ONE verified artifact, not a dependency tree,
     # so there is still nothing here worth a cache.
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: '24'
 
@@ -750,7 +874,8 @@ runs:
         CREDDA_SANDBOX: ${{ inputs.sandbox }}
         # Sweep opens its pull requests from THIS step, in-process, because a
         # composite action cannot loop the separate delivery step over an unknown
-        # number of candidates. `gh` reads this token from the environment; no
+        # number of candidates. Security mode with `fix` does the same for its
+        # proven fixes. `gh` reads this token from the environment; no
         # script reads it by name. The other modes ignore it (investigate's
         # single proposal is still opened by the dedicated delivery step below,
         # which sets its own GH_TOKEN). The branch is pushed with the credential
@@ -766,6 +891,15 @@ runs:
         # reads. The step re-derives no part of it, for the same reason the
         # posting step does not.
         CREDDA_OPEN_PULL_REQUEST: ${{ inputs.open-pull-request }}
+        # Security mode's --fix. Its proven fixes are proposed from this step,
+        # in-process, as sweep's are, through the same delivery code.
+        CREDDA_FIX: ${{ inputs.fix }}
+        # Security mode's extra-probes; run.mjs checks each name and maps it to
+        # the engine's flag for the `credda security` run only.
+        CREDDA_EXTRA_PROBES: ${{ inputs.extra-probes }}
+        # Security mode's keep-report; run.mjs copies the report files and names
+        # the directory in security-report-path.
+        CREDDA_KEEP_REPORT: ${{ inputs.keep-report }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         # Your own OpenAI-compatible model. See the comment above model-base-url
         # for why any of the three names the provider outright.
@@ -851,3 +985,54 @@ runs:
         CREDDA_STATED_FINDINGS: ${{ steps.credda.outputs.stated-findings }}
         CREDDA_ESTABLISHED: ${{ steps.credda.outputs.established }}
       run: node "$GITHUB_ACTION_PATH/notify.mjs"
+
+    # Slack, Linear and Jira. Each step runs only when its own inputs are set, so a
+    # default install makes none of these requests. All three run after everything
+    # that delivers the report; `integrate.mjs` exits 0 on every failure and
+    # continue-on-error covers a crash of Node itself.
+    # Secrets are read only from the inputs the caller mapped from their own
+    # secrets, and the script masks each one before printing anything.
+    - name: Post to Slack
+      if: inputs.slack-webhook-url != ''
+      continue-on-error: true
+      shell: bash
+      env:
+        CREDDA_SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
+        CREDDA_NOTIFY_ON: ${{ inputs.notify-on }}
+        CREDDA_MODE: ${{ inputs.mode }}
+        CREDDA_SECURITY_JSON: ${{ steps.credda.outputs.security-json-path }}
+        CREDDA_FIX_DELIVERY: ${{ steps.credda.outputs.fix-delivery-path }}
+        CREDDA_SECURITY_FINDINGS: ${{ steps.credda.outputs.security-findings }}
+        CREDDA_OUTCOME: ${{ steps.credda.outputs.outcome }}
+        CREDDA_STATED_FINDINGS: ${{ steps.credda.outputs.stated-findings }}
+        CREDDA_ESTABLISHED: ${{ steps.credda.outputs.established }}
+      run: node "$GITHUB_ACTION_PATH/integrate.mjs" slack
+
+    - name: File proven findings in Linear
+      if: inputs.mode == 'security' && inputs.linear-api-key != '' && inputs.linear-team-id != ''
+      continue-on-error: true
+      shell: bash
+      env:
+        CREDDA_LINEAR_API_KEY: ${{ inputs.linear-api-key }}
+        CREDDA_LINEAR_TEAM_ID: ${{ inputs.linear-team-id }}
+        CREDDA_MAX_ISSUES: ${{ inputs.max-issues }}
+        CREDDA_MODE: ${{ inputs.mode }}
+        CREDDA_SECURITY_JSON: ${{ steps.credda.outputs.security-json-path }}
+        CREDDA_FIX_DELIVERY: ${{ steps.credda.outputs.fix-delivery-path }}
+      run: node "$GITHUB_ACTION_PATH/integrate.mjs" linear
+
+    - name: File proven findings in Jira
+      if: inputs.mode == 'security' && inputs.jira-base-url != '' && inputs.jira-email != '' && inputs.jira-api-token != '' && inputs.jira-project-key != ''
+      continue-on-error: true
+      shell: bash
+      env:
+        CREDDA_JIRA_BASE_URL: ${{ inputs.jira-base-url }}
+        CREDDA_JIRA_EMAIL: ${{ inputs.jira-email }}
+        CREDDA_JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
+        CREDDA_JIRA_PROJECT_KEY: ${{ inputs.jira-project-key }}
+        CREDDA_JIRA_ISSUE_TYPE: ${{ inputs.jira-issue-type }}
+        CREDDA_MAX_ISSUES: ${{ inputs.max-issues }}
+        CREDDA_MODE: ${{ inputs.mode }}
+        CREDDA_SECURITY_JSON: ${{ steps.credda.outputs.security-json-path }}
+        CREDDA_FIX_DELIVERY: ${{ steps.credda.outputs.fix-delivery-path }}
+      run: node "$GITHUB_ACTION_PATH/integrate.mjs" jira

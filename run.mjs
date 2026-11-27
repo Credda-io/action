@@ -93,11 +93,30 @@
 // written against, and this is the caller refusing to be the hole in it.
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
+import {
+  codeSpan,
+  exploitLanguage,
+  extraProbeEnv,
+  extraProbesLines,
+  fenceFor,
+  LINE_BREAK,
+  NOTHING_PROVEN,
+  oneLine,
+  parseExtraProbes,
+  plain,
+  ranText,
+  reachRecord,
+  reachSection,
+  reachWarning,
+  securityCounts,
+  siteText,
+} from './findings.mjs';
+import { deliverSecurityFixes, deliveryRecord, fixesSummary } from './security-fix.mjs';
 import { sweep } from './sweep.mjs';
 
 function env(name, fallback = null) {
@@ -239,7 +258,7 @@ function requireIssueEvent() {
 const work = join(env('RUNNER_TEMP'), 'credda');
 const home = join(work, 'home');
 
-function credda(args, stdio) {
+function credda(args, stdio, extraEnv = {}) {
   // Plain `node`, no loader. `cwd` is the verified engine's own directory so
   // that a relative path the CLI resolves resolves under the engine and never
   // under the repository being investigated; every path this script passes is
@@ -250,6 +269,8 @@ function credda(args, stdio) {
     env: {
       ...process.env,
       CREDDA_HOME: home,
+      // A key set to undefined is left out of the child's environment.
+      ...extraEnv,
     },
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -272,7 +293,7 @@ function credda(args, stdio) {
  * The first line goes to `::error::` because that is all an annotation takes.
  */
 function die(message) {
-  console.log(`::error::${message.split('\n')[0]}`);
+  console.log(`::error::${oneLine(message)}`);
   console.error(message);
   writeSummary(`### Credda did not finish\n\n${message}\n`);
   process.exit(1);
@@ -1023,9 +1044,22 @@ function discoverSummary(stated, proposed, finished) {
  * reads exactly like a clean repository.
  */
 async function security() {
+  // `extra-probes`: the engine's flagged classes, for this run only. A name this
+  // action does not know stops the job rather than probing less than was asked.
+  const extra = parseExtraProbes(env('CREDDA_EXTRA_PROBES', ''));
+  if (extra.error !== null) die(extra.error);
   const out = join(work, 'security');
   mkdirSync(out, { recursive: true });
-  const ran = credda(['security', workspace, '--out', out], 'inherit');
+  // `fix: true` adds --fix: the customer's own model writes a patch per proven
+  // class and the check-fix gates judge it. The engine never changes the
+  // checkout, and the scan's exit code is the same with or without it.
+  const fix = env('CREDDA_FIX', 'false').trim() === 'true';
+  // With --fix the engine prints decline reasons a model wrote, so its output
+  // cannot issue workflow commands, exactly as investigate brackets its own.
+  const guard = `credda-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  console.log(`::stop-commands::${guard}`);
+  const ran = credda(['security', workspace, '--out', out, ...(fix ? ['--fix'] : [])], 'inherit', extraProbeEnv(extra.names));
+  console.log(`::${guard}::`);
 
   if (ran.error !== undefined || ran.status === null) {
     die(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
@@ -1041,13 +1075,40 @@ async function security() {
   } catch (error) {
     die(`Credda security wrote a result that could not be read: ${error.message}`);
   }
-  const findings = Array.isArray(result.findings) ? result.findings : [];
-  // A fuzz finding is also listed as a probe (id `CLASS@fuzz:fn`); count it under fuzzing instead.
-  const probes = Array.isArray(result.probes) ? result.probes.filter((p) => !String(p.id).includes('@fuzz:')) : [];
-  const fuzzed = (result.fuzz?.functions ?? 0) + (result.pythonFuzz?.functions ?? 0);
+  const { findings, probes, fuzzed } = securityCounts(result);
   const sarif = join(out, 'security.sarif');
 
-  writeSummary(securitySummary(findings, probes.length, fuzzed));
+  writeSummary(securitySummary(findings, probes, fuzzed, result));
+  if (extra.names.length > 0) {
+    writeSummary(['### Extra probe classes', '', ...extraProbesLines(extra.names, result), '', ''].join('\n'));
+  }
+
+  let fixed = null;
+  let fixDelivery = '';
+  if (fix) {
+    // The scanned branch is the base a proposal goes to. A pull_request event
+    // checks out a merge commit GitHub made, and a branch cut from it would
+    // carry that merge, so a fix found there is attached and not proposed.
+    const baseBranch = process.env['GITHUB_HEAD_REF'] ? '' : process.env['GITHUB_REF_TYPE'] === 'branch' ? (process.env['GITHUB_REF_NAME'] ?? '') : '';
+    const baseRefusal = process.env['GITHUB_HEAD_REF']
+      ? 'this run scanned the merge commit of a pull request, so a branch cut from it would carry that merge. Run security on push to the branch to have fixes proposed.'
+      : baseBranch === ''
+        ? 'this run did not scan a branch, so there is no branch to propose against.'
+        : '';
+    const openPullRequest = env('CREDDA_OPEN_PULL_REQUEST', 'false').trim() === 'true';
+    const patchDir = join(work, 'security-fixes');
+    fixed = deliverSecurityFixes({
+      result, outDir: out, patchDir, workspace, repository: env('GITHUB_REPOSITORY'), baseBranch, baseRefusal, openPullRequest, runUrl,
+    });
+    writeSummary(fixesSummary({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal }));
+    // What delivery did, for the Slack, Linear and Jira steps that run after this one.
+    fixDelivery = join(out, 'fix-delivery.json');
+    writeFileSync(fixDelivery, JSON.stringify(deliveryRecord({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal })), 'utf8');
+    for (const b of fixed.broken) {
+      const cls = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(b.attempt.class)) ? b.attempt.class : 'an unnamed class';
+      console.log(`::error::The engine said FIX_PROVEN for ${cls} but ${b.why}. Nothing was proposed for it. This is a Credda failure.`);
+    }
+  }
 
   output('skipped', 'false');
   output('issue-number', '');
@@ -1058,48 +1119,71 @@ async function security() {
   output('body-path', '');
   output('security-findings', String(findings.length));
   output('sarif-path', existsSync(sarif) ? sarif : '');
+  // Counted off the engine's own status; empty when `fix` is off.
+  const proven = Array.isArray(result.fixes?.attempts) ? result.fixes.attempts.filter((a) => a?.status === 'FIX_PROVEN').length : 0;
+  output('security-fixes', fix ? String(proven) : '');
+  output('fix-patches', fixed?.patchDir ?? '');
+  // The proven findings in full, for the Slack, Linear and Jira steps.
+  output('security-json-path', resultPath);
+  output('fix-delivery-path', fixDelivery);
+  // Numbers and one boolean only, so the value is one line with no repository text.
+  output('security-reach', JSON.stringify(reachRecord(result)));
+  // `keep-report`: the engine's own files in a directory of their own, for the
+  // caller's actions/upload-artifact step. Nothing is uploaded from here.
+  let kept = '';
+  if (env('CREDDA_KEEP_REPORT', 'false').trim() === 'true') {
+    kept = join(work, 'security-report');
+    mkdirSync(kept, { recursive: true });
+    for (const name of ['security.json', 'security.md', 'security.sarif', 'unproven.sarif']) {
+      if (existsSync(join(out, name))) copyFileSync(join(out, name), join(kept, name));
+    }
+  }
+  output('security-report-path', kept);
 }
 
 /** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
 const SUMMARY_EXPLOIT_BUDGET = 512 * 1024;
 
-/** The job summary: each proven finding with the exploit that proved it. */
-function securitySummary(findings, attempted, fuzzed) {
+/** The job summary: each proven finding with the exploit that proved it, then what the run reached. */
+function securitySummary(findings, attempted, fuzzed, result) {
   const lines = ['## Credda security', ''];
-  const fuzzText = fuzzed > 0 ? ` and fuzzed ${fuzzed} exported function${fuzzed === 1 ? '' : 's'}` : '';
+  // A run that proved nothing and reached little says so first, so "No exploit
+  // succeeded" below cannot be read as a pass. The rule is limitedReach in findings.mjs.
+  const warning = reachWarning(result);
+  if (warning !== null) {
+    lines.push(`**${warning.lead}** ${warning.why}${warning.said ? ` The engine said: ${plain(warning.said, 300)}` : ''}`, '');
+  }
   lines.push(
-    `Ran ${attempted} exploit probe${attempted === 1 ? '' : 's'}${fuzzText} against this repository, ` +
+    `${ranText(attempted, fuzzed)} against this repository, ` +
       'each in a container with no network. Only findings an exploit proved are listed.',
     '',
   );
   let budget = SUMMARY_EXPLOIT_BUDGET;
   if (findings.length === 0) {
-    lines.push(
-      'No exploit succeeded. That is not an audit: it says the probes Credda has did not prove a ' +
-        'finding in the code they reached.',
-      '',
-    );
+    lines.push(NOTHING_PROVEN, '');
   } else {
     lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
     for (const one of findings) {
-      const site = one.site?.kind === 'package'
-        ? ` in the package (through \`${one.site.file}\`)`
-        : one.site?.file
-          ? ` at \`${one.site.file}${one.site.line ? `:${one.site.line}` : ''}\``
-          : '';
-      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${site}`);
-      if (one.sentence) lines.push(`  ${String(one.sentence).split('\n')[0].slice(0, 300)}`);
+      // The site's file name and the sentence come from the scanned repository,
+      // so neither can form markup here: the path is a code span it cannot
+      // close and the sentence is escaped. The class and CWE are engine tokens.
+      const site = siteText(one.site, codeSpan);
+      const cls = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(one.class)) ? one.class : 'UNNAMED_CLASS';
+      const cwe = /^CWE-[0-9]{1,5}$/.test(String(one.cwe)) ? one.cwe : '';
+      lines.push(`- **${cls}**${cwe ? ` (${cwe})` : ''}${site ? ` ${site}` : ''}`);
+      // The whole sentence: it is the finding. A thrown probe error arrives with an `Error: ` prefix that says nothing.
+      if (one.sentence) lines.push(`  ${plain(String(one.sentence).replace(/^Error: /, ''), 1200)}`);
       const program = one.program ? String(one.program) : '';
       if (program && program.length <= budget) {
         budget -= program.length;
-        // A fence longer than any backtick run in the program, so the program cannot close it.
-        const fence = '`'.repeat(Math.max(3, ...(program.match(/`+/g) ?? []).map((run) => run.length + 1)));
+        const fence = fenceFor(program);
         lines.push(
           '',
           '  <details><summary>The exploit that proved it</summary>',
           '',
-          `  ${fence}${one.language === 'python' ? 'python' : 'js'}`,
-          ...program.split('\n').map((line) => `  ${line}`),
+          `  ${fence}${exploitLanguage(one)}`,
+          // Every line ending, so no line of the program escapes the list item's indentation.
+          ...program.split(LINE_BREAK).map((line) => `  ${line}`),
           `  ${fence}`,
           '',
           '  </details>',
@@ -1110,6 +1194,7 @@ function securitySummary(findings, attempted, fuzzed) {
       lines.push('');
     }
   }
+  lines.push(...reachSection(result));
   lines.push(`[Action run](${runUrl()})`, '');
   return lines.join('\n');
 }

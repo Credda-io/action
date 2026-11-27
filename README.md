@@ -73,7 +73,7 @@ Actions minutes are the other cost, and `investigate` spends more of them than
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
-| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package in a container, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts |
+| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package in a container, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts. With `fix` and your own model key, a patch per proven class that the check-fix gates proved, and -- if you asked for it -- a pull request for each |
 | `discover` | **a push. Nobody has to file anything** | one download and one Node process, seconds | a job summary listing the defects Credda found in your code |
 | `sweep` | **a push. Nobody has to file anything** | a runner, Docker, and a reproduction per candidate, minutes | a job summary, and -- if you asked for it -- a pull request per verified fix |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
@@ -136,12 +136,16 @@ written into it.
 
 Each finding on the job summary carries the exploit program that proved it, so
 anyone can run it again. Results that were not proven (clean, no verdict, or a
-probe of ours that crashed) stay in `security.json` on the runner and are never
-called findings.
+probe of ours that crashed) are never called findings. Their counts are on the
+job summary under *What this run reached*, and the rest stays in
+`security.json` on the runner.
 
-The findings are also uploaded as SARIF to GitHub code scanning and appear
-under the repository's Security tab. Credda stores none of them. Set
-`upload-sarif: 'false'` to keep them on the job summary only.
+The proven findings are also uploaded as SARIF to GitHub code scanning and
+appear under the repository's Security tab. Credda stores none of them. The
+file uploaded is `security.sarif`, which holds proven findings only. Unproven
+patterns, when the CLI's unproven tier is on, are written to a separate
+`unproven.sarif` that this action does not upload. Set `upload-sarif: 'false'`
+to keep the findings on the job summary only.
 
 ```yaml
 on:
@@ -167,6 +171,157 @@ The job stays green whatever is found. The `security-findings` output counts
 only proven findings, so it is safe to gate a merge on. The job goes red only
 when the probes could not run, because a count of zero from a run that never
 happened would read exactly like a clean repository.
+
+#### What this run reached
+
+Under the findings, the job summary has a *What this run reached* section. It is
+built only from what the engine wrote in `security.json`: the probes and how
+each ended, the functions fuzzed and the calls made, how the package was loaded
+from source and which modules failed and why (engine v0.1.19 or later), the
+engine's notes, and any temp directory Credda could not delete. A line the
+engine wrote nothing for is left out.
+
+- *Clean* means the probe ran against code it could drive and no exploit
+  succeeded.
+- *Abstained* means the probe had nothing it could drive or measure, so it says
+  nothing about that class.
+- *Timed out*, *crashed* and *not run* also say nothing about that class. A
+  crash is Credda's failure.
+
+When a run proved nothing and reached too little to mean anything, the summary
+opens with *Credda could not exercise this repository's code*, says why, and
+quotes the engine. The Slack message says the same. Reach is limited when no
+finding was proven and any of these holds:
+
+1. `installed` is `false`: the package did not install.
+2. there is a fuzz record and it fuzzed 0 functions.
+3. at least one probe calls the package's exports (`site.kind` is `package`)
+   and none of them ended clean.
+4. the engine loaded the package from source and imported no module.
+5. no probe ran and no function was fuzzed.
+
+The same facts are in the `security-reach` output as one line of JSON:
+
+```json
+{"limited":false,"functions":36,"probes":{"proven":0,"clean":18,"abstained":5,"timedOut":0,"crashed":0,"notRun":0},"sourceFiles":{"loaded":12,"failed":0}}
+```
+
+`limited` is the rule above. A field the engine did not write is `null`. The job
+does not fail on limited reach. To fail it yourself:
+
+```yaml
+      - uses: Credda-io/action@v1
+        id: credda
+        with:
+          mode: security
+      - if: fromJSON(steps.credda.outputs.security-reach).limited
+        run: |
+          echo "::error::Credda could not exercise this repository's code. See the job summary."
+          exit 1
+```
+
+#### Keeping the report: `keep-report`
+
+`security.json` and the rest of the engine's report are deleted with the job.
+`keep-report: 'true'` copies `security.json`, `security.md`, `security.sarif` and
+`unproven.sarif` (when written) to a directory named in the
+`security-report-path` output. This action uploads nothing itself; add the step
+to your workflow:
+
+```yaml
+      - uses: Credda-io/action@v1
+        id: credda
+        with:
+          mode: security
+          keep-report: 'true'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: credda-security-report
+          path: ${{ steps.credda.outputs.security-report-path }}
+```
+
+These files hold the exploit programs that proved each finding. Anyone who can
+download the run's artifacts can read and run them.
+
+#### Extra probe classes: `extra-probes`
+
+The engine keeps three newer probe classes behind flags, each off by default.
+`extra-probes` turns on the ones you name, for the `credda security` run only:
+
+| Name | Class | Languages | Engine |
+| --- | --- | --- | --- |
+| `injection` | injection to execution (CWE-94, CWE-77, CWE-78, CWE-1336) | JavaScript, Python | v0.1.18 or later |
+| `ssrf` | server-side request forgery (CWE-918) | JavaScript, Python | v0.1.18 or later |
+| `xss` | reflected cross-site scripting (CWE-79) | JavaScript | v0.1.19 or later |
+
+```yaml
+      - uses: Credda-io/action@v1
+        with:
+          mode: security
+          extra-probes: injection, ssrf
+```
+
+These classes are newer than the others. Each still reports only what an
+exploit proved. The job summary gets an *Extra probe classes* section with one
+line per name: how many of its probes ran, or that no probe of the class applied
+to this repository. When the engine is older than the class, the line says it is
+not available in this engine, so a missing class never reads as a clean result.
+An unknown name fails the job.
+
+#### Proposing fixes: `fix`
+
+`fix: 'true'` asks your own model for a patch for each class of finding an
+exploit proved. It needs a model key: `anthropic-api-key`, or `model-api-key`
+with `model-base-url` (see *Using your own model*). The patch is applied to a
+temp copy, never to your checkout, and judged by the check-fix gates: the
+exploit again, a fixed list of its variants, a fuzz of the patched functions, a
+functional control, and your test suite. Only a patch the engine marks
+`FIX_PROVEN` is kept. It needs engine v0.1.18 or later.
+
+The job summary gets a *Fixes* section: per class, whether the fix was proven,
+rejected (and at which gate) or not attempted (and why). With no model key,
+nothing is attempted, the summary says so, and the job ends exactly as it would
+without `fix`.
+
+Each proven patch is written to the directory in the `fix-patches` output, with
+the pull request body beside it. With `open-pull-request: 'true'` and the two
+write scopes, Credda opens one pull request per proven fix against the branch it
+scanned, through the same delivery code `investigate` and `sweep` use: one
+branch per class (`credda/security-fix-<class>`), no force-push, an open
+proposal met with "already proposed", and the same refusals. The body states the
+finding, the CWE, that the exploit fired before the patch and not after, each
+gate as the engine reported it, and the engine version. A person should review
+it before merging. Credda never merges. A run on a `pull_request` event scans a
+merge commit, so its fixes are attached and not proposed.
+
+```yaml
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write          # push the fix branch
+  pull-requests: write     # open the proposal
+  id-token: write
+  security-events: write
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        id: credda
+        with:
+          mode: security
+          fix: 'true'
+          open-pull-request: 'true'
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Without open-pull-request, keep the proven patches as an artifact.
+      - if: steps.credda.outputs.fix-patches != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: credda-fixes
+          path: ${{ steps.credda.outputs.fix-patches }}
+```
 
 ### Sweep mode
 
@@ -513,6 +668,9 @@ trigger.
 | --- | --- | --- |
 | `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one; `discover` reads the repository and reports what nobody filed; `sweep` discovers, reproduces, and opens a pull request per verified fix; `security` runs exploit probes and reports only proven findings. |
 | `upload-sarif` | `'true'` | **Security mode only.** Uploads proven findings to GitHub code scanning. Needs `security-events: write`. A refused upload does not fail the job. |
+| `extra-probes` | `''` | **Security mode only, opt-in.** A comma-separated list of `injection`, `ssrf` and `xss`, the probe classes the engine keeps behind flags. An unknown name fails the job. See *Extra probe classes*. |
+| `fix` | `'false'` | **Security mode only, opt-in.** Asks your own model for a patch per proven finding class and keeps only a patch the check-fix gates prove. Needs a model key. With `open-pull-request` on, opens a pull request for each fix the gates proved. See *Proposing fixes*. |
+| `keep-report` | `'false'` | **Security mode only, opt-in.** Copies `security.json`, `security.md` and the SARIF files to the directory in `security-report-path`, for your own `actions/upload-artifact` step. They hold the exploit programs. See *Keeping the report*. |
 | `max-files` | `'4000'` | In `discover` and `sweep` mode, the most source files to read. Ignored by the other modes. |
 | `max-candidates` | `'3'` | **Sweep mode only.** The most discovered candidates one sweep reproduces and proposes -- a hard cap on the pull requests a single run can open. Never unbounded. |
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
@@ -525,6 +683,12 @@ trigger.
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
 | `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
 | `notify-url` | `''` | **Opt-in, off by default.** A URL to POST the run's facts to when it established something or stated a finding. A `hooks.slack.com` URL gets one sentence in Slack's `{text}` shape. Sent from your runner to your URL; nothing reaches Credda, and the report itself is never sent. A failure cannot fail your job. See *Notifying a channel*. |
+| `slack-webhook-url` | `''` | **Opt-in, off by default.** A Slack incoming-webhook URL, mapped from a secret. Posts one Block Kit message. See *Slack, Linear and Jira*. |
+| `notify-on` | `'findings'` | When the Slack message is sent: `findings` (only when the run proved or stated something) or `always`. |
+| `linear-api-key`, `linear-team-id` | `''` | **Opt-in.** Security mode files one Linear issue per proven finding. Both are required. |
+| `jira-base-url`, `jira-email`, `jira-api-token`, `jira-project-key` | `''` | **Opt-in.** Security mode files one Jira Cloud issue per proven finding. All four are required. The URL must be https on a public host. |
+| `jira-issue-type` | `'Bug'` | The Jira issue type to create. |
+| `max-issues` | `'10'` | The most issues one run may create in Linear, and the most in Jira (each has its own cap). |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://backend.credda.io/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
 | `engine-url` | `https://backend.credda.io/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
@@ -567,6 +731,11 @@ If you have pinned either input explicitly, nothing here affects you.
 | --- | --- | --- |
 | `security-findings` | security | How many findings an exploit proved. Only proven findings are counted. |
 | `sarif-path` | security | Absolute path of the SARIF file on the runner. |
+| `security-fixes` | security | With `fix` on, how many fixes the check-fix gates proved (`FIX_PROVEN`). Empty when `fix` is off. |
+| `fix-patches` | security | With `fix` on, a directory on the runner holding each proven patch and its pull request body, for `actions/upload-artifact`. Empty when no fix was proven. |
+| `security-json-path` | security | Absolute path of `security.json` on the runner: the proven findings in full. |
+| `security-reach` | security | One line of JSON: `limited`, `functions`, `probes` by verdict and `sourceFiles`. `limited` is true when the run proved nothing and could not exercise the code. A field the engine did not write is `null`. See *What this run reached*. |
+| `security-report-path` | security | With `keep-report` on, a directory on the runner holding `security.json`, `security.md` and the SARIF files, for `actions/upload-artifact`. Empty otherwise. |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
 | `candidates` | discover, sweep | How many candidates the run produced. In `sweep`, how many discovery wrote before the `max-candidates` cap. |
@@ -718,10 +887,116 @@ location in Settings, and telling you the branch is there to open by hand. A
 missing write scope, a branch protection rule and a patch that no longer
 applies each get their own named message rather than the API's.
 
+**What no patch may change, in any mode.** Before git sees a patch, Credda
+refuses it if it touches `.github/` or any other CI configuration, a registry
+file such as `.npmrc`, `.gitmodules` or `.gitattributes`, a path outside the
+repository, a symbolic link or a submodule, or adds a URL to a lockfile. It also
+refuses a file named without the `a/` and `b/` prefixes git writes, because git
+would read that name as another path. Nothing is pushed and the summary names
+the path.
+
 **What has not been proven about this feature.** It has not been run against a
 real repository from this checkout. The gate, the branch naming and the refusal
 messages are covered by tests; the push, the `gh pr create` call and the
 permission errors they produce are not, and cannot be from here.
+
+### Slack, Linear and Jira
+
+**All three are off by default, and each is opt-in on its own.** A step runs
+only when its own inputs are set, so a default install makes none of these
+requests. Every request goes from your runner to the service you named.
+Nothing is sent to Credda.
+
+Pass credentials only as inputs mapped from your own secrets. The action masks
+each one before it prints anything. No log line and no job summary line carries
+a webhook URL, key, token or Authorization header.
+
+Each request is one attempt with a ten-second timeout, and redirects are not
+followed. A destination that fails, answers 4xx or 5xx, or times out does not
+fail the job and does not stop the others. Its result, with the status code,
+is one line in the log and one in the job summary.
+
+Each URL must be https on a public host. Loopback, private and link-local
+addresses are refused, as are single-label names such as `https://jira`. This
+checks the address you typed, not what a public name resolves to.
+
+```yaml
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  credda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        with:
+          mode: security
+          # Slack: one message when something was proven.
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          notify-on: findings          # or 'always'
+          # Linear: one issue per proven finding.
+          linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+          linear-team-id: ${{ vars.LINEAR_TEAM_ID }}
+          # Jira Cloud: one issue per proven finding.
+          jira-base-url: https://acme.atlassian.net
+          jira-email: ${{ secrets.JIRA_EMAIL }}
+          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
+          jira-project-key: SEC
+          max-issues: '10'
+```
+
+**Slack.** One Block Kit message with the repository, the outcome and the
+count of proven findings. In security mode it lists up to 5 proven findings
+(class, CWE, where, one sentence) and links the run. It never carries an
+exploit program. Unproven patterns appear only as a count labelled unproven.
+With `notify-on: findings` (the default) a run that proved nothing sends
+nothing. With `always` that run sends one message saying no exploit succeeded,
+and that this is not an audit. Outside security mode the message follows the
+same rule as `notify-url`.
+
+**Linear.** Security mode only. One issue per proven finding. The description
+holds the sentence, the CWE, the site, the finding id, a fingerprint and the
+run link, then the exploit program in a fenced block.
+
+**Jira.** Security mode only. The same content as a `Bug` (or
+`jira-issue-type`) through Jira Cloud's REST v3, in Atlassian Document Format.
+Jira Server and Data Center do not have this API, so they are not supported.
+
+**With `fix`.** When `fix` is on, the Slack message and each Linear or Jira
+issue say what happened to the fix for that finding's class: fix proven by the
+check-fix gates, with the pull request URL when one was opened; fix rejected,
+with the engine's verdict or the step it stopped at; or not attempted. This
+comes from the engine's fix record in `security.json` and from what delivery
+reported. A model's own words are never sent. An issue that is already open is
+skipped, so it does not get the outcome of a later run.
+
+**De-duplication.** The fingerprint is a hash of the repository, the language
+and the engine's finding id. The id has no seed in it, so the same finding
+has the same fingerprint on every run. Before it files, each step searches for
+the fingerprint among open issues: Linear in the description, Jira in a label
+it also writes. A finding already open is skipped. A closed one is filed again
+if it comes back. A finding at a file and line gets a new fingerprint when its
+line moves.
+
+**Sizes.** Text from the scanned repository is escaped for each format, so a
+file name or sentence cannot form a link or a mention. Slack text is cut to
+Slack's limits with a note that says so. An issue description is kept under
+30,000 characters. An exploit program that does not fit is left out whole,
+with a note that points to the run's job summary. A program is never cut.
+
+`max-issues` caps how many issues one run creates in each tracker. Findings
+beyond it stay on the job summary, and the log line says how many were not
+filed.
+
+**What has not been proven.** These steps were tested against a local HTTP
+server standing in for each API, with request shapes written from the vendors'
+public documentation. No real Slack, Linear or Jira account was used.
 
 ### Notifying a channel
 
@@ -923,21 +1198,29 @@ and a second or so of work.
 
 ```
 action.yml                 the action metadata (root, so it can be listed)
-run.mjs                    the runner: event in, report out. Dispatches the four
-                           modes; imports sweep.mjs for the sweep branch
+run.mjs                    the runner: event in, report out. Dispatches the five
+                           modes; imports sweep.mjs for the sweep branch and
+                           security-fix.mjs for security mode's fix input
+security-fix.mjs           security mode with fix on: writes the engine's fix
+                           verdicts to the job summary and proposes each
+                           FIX_PROVEN patch through deliver-core.mjs, then records
+                           what delivery did for the Slack, Linear and Jira steps.
+                           Imported by run.mjs; never a step of its own
 sweep.mjs                  the sweep orchestration: discover, reproduce each
                            candidate up to max-candidates, and open a pull request
                            per verified fix through the shared delivery code.
                            Imported by run.mjs; never a step of its own
 delivery.mjs               the pure decisions: the single predicate that decides
-                           whether a run has a verified fix to deliver, and the
-                           branch names for both the issue and the sweep paths.
-                           Imported by run.mjs, deliver-pr.mjs, deliver-core.mjs
-                           and sweep.mjs; never executed as a step of its own
+                           whether a run has a verified fix to deliver, the
+                           branch names for the issue, sweep and security paths,
+                           and the paths no patch may touch (CI, registry
+                           configuration, outside the repository). Imported by
+                           run.mjs, deliver-pr.mjs, deliver-core.mjs, sweep.mjs
+                           and security-fix.mjs; never executed as a step of its own
 deliver-core.mjs           the git-and-gh machinery that pushes a branch and opens
-                           one pull request, reading no environment so both the
-                           single-investigate path and the sweep loop share it. It
-                           never force-pushes and never merges
+                           one pull request, reading no environment so the
+                           single-investigate path, the sweep loop and security
+                           fixes share it. It never force-pushes and never merges
 deliver-pr.mjs             the single-investigate entry: reads this run's one
                            patch, issue and body from the environment, names the
                            branch from the issue number, and delivers it through
@@ -946,6 +1229,20 @@ deliver-pr.mjs             the single-investigate entry: reads this run's one
 notification.mjs           the decision, the body and the one bounded POST behind
                            notify-url, with fetch handed in so it can be tested
                            with no network. Imported by notify.mjs; never a step
+findings.mjs               how security.json is read: the counts, the site text, the
+                           exploit fence, each finding's fix outcome, and what the
+                           run reached with the limited-reach rule. Imported by run.mjs,
+                           integrations.mjs and security-fix.mjs, so the job
+                           summary, a tracker issue and a fix pull request
+                           describe a finding the same way
+integrations.mjs           the Slack message, the Linear and Jira issue bodies, the
+                           de-duplication searches and the bounded requests, with
+                           fetch handed in so they can be tested with no network.
+                           Imported by integrate.mjs; never a step of its own
+integrate.mjs              delivers proven findings to Slack, Linear or Jira, one
+                           destination per step. Reached only when that
+                           destination's inputs are set; it masks each secret and
+                           never fails the job
 notify.mjs                 POSTs the run's facts to the URL in notify-url, from the
                            customer's runner. Reached only when that input is set;
                            it never opens the report and never fails the job
@@ -974,9 +1271,32 @@ LICENSE                    Apache-2.0
 .github/check-manifest.rb  proves action.yml is valid YAML and would install, and
                            that every name its expressions, and its steps'
                            scripts, reach for is one that exists
+test/integrations.test.mjs  node:test over integrations.mjs and integrate.mjs, against
+                           a local HTTP server standing in for Slack, Linear and
+                           Jira. No dependency; `node --test` runs it
+test/fake-fetch.mjs        loaded only by that test with `--import`: sends each
+                           request integrate.mjs makes to the local server. No
+                           step loads it, so a real run cannot be redirected
 .github/notify.test.mjs    node:test over notification.mjs: the body, the Slack
                            shape, silence with nothing to say, and a failed POST
                            that fails nothing. No dependency; `node --test` runs it
+.github/security-fix.test.mjs  node:test over security-fix.mjs and the patch
+                           refusals in delivery.mjs, with security.json files the
+                           engine wrote, a local bare repository as origin and a
+                           gh stub. No network; `node --test` runs it
+.github/security-mode.test.mjs  node:test over security mode in run.mjs: the
+                           extra-probes names, the engine flags they set, the
+                           summary line per class, and hostile text in
+                           security.json, with run.mjs run against a stand-in
+                           engine. No network; `node --test` runs it
+.github/security-reach.test.mjs  node:test over what a security run reached: the
+                           summary section, the limited-reach rule, the
+                           security-reach output, keep-report and the Slack line,
+                           on engine outputs and on hostile module names and notes.
+                           No network; `node --test` runs it
+.github/fixtures/security-fix/  those engine outputs, and where they came from
+.github/fixtures/security-reach/  real engine outputs for that test, and where they
+                           came from
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong
 .github/PULL_REQUEST_TEMPLATE.md

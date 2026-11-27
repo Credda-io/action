@@ -146,13 +146,7 @@ export function branchNameForFinding(provenance) {
   const raw = String(provenance ?? '');
   // Drop a single trailing extension (`.md`, `.json`) so two spellings of one
   // candidate cannot become two branches, then slug the rest.
-  const base = raw.replace(/\.[^./]*$/, '');
-  const slug = base
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-    .replace(/-+$/g, '');
+  const slug = refSlug(raw.replace(/\.[^./]*$/, ''));
   if (slug === '') {
     throw new Error(
       `A sweep pull request branch needs a candidate provenance, and got '${String(provenance)}'. ` +
@@ -160,6 +154,145 @@ export function branchNameForFinding(provenance) {
     );
   }
   return `credda/sweep-${slug}`;
+}
+
+/** A bounded `[a-z0-9-]` slug, safe inside a branch ref. */
+function refSlug(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/g, '');
+}
+
+/**
+ * The branch a `security` fix is pushed to: one per proven class and language,
+ * which is what the engine makes one fix attempt for. Deterministic, so a re-run
+ * meets its own branch and the shared delivery says "already proposed" or
+ * refuses, exactly as for sweep. The class is an engine token and is still
+ * checked here rather than trusted.
+ *
+ * @param {string} cls the probe class, e.g. PROTOTYPE_POLLUTION
+ * @param {string} language 'javascript' or 'python'
+ * @returns {string}
+ */
+export function branchNameForSecurityFix(cls, language) {
+  if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(String(cls))) {
+    throw new Error(`A security fix branch needs a probe class, and got '${String(cls)}'. Nothing was pushed.`);
+  }
+  return `credda/security-fix-${refSlug(cls)}${language === 'python' ? '-python' : ''}`;
+}
+
+/**
+ * The pull request title for a security fix. The class and CWE are engine
+ * tokens, checked by shape; nothing from the repository is interpolated, and
+ * there is no closing keyword, for the same reasons as `pullRequestTitle`.
+ *
+ * @param {string} cls
+ * @param {string} cwe
+ * @returns {string}
+ */
+export function pullRequestTitleForSecurityFix(cls, cwe) {
+  const c = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(cls)) ? String(cls) : 'a proven finding';
+  const w = /^CWE-[0-9]{1,5}$/.test(String(cwe)) ? ` (${String(cwe)})` : '';
+  return `Credda: a proven fix for ${c}${w}`;
+}
+
+/** Paths a proposal may never change: CI and workflow configuration. */
+const CI_PATH = /^(?:\.github\/|\.gitlab-ci\.ya?ml$|\.gitlab\/|\.circleci\/|\.buildkite\/|\.travis\.ya?ml$|azure-pipelines\.ya?ml$|\.azure-pipelines\/|Jenkinsfile$|bitbucket-pipelines\.yml$|\.drone\.ya?ml$|\.woodpecker\/|\.woodpecker\.ya?ml$|appveyor\.ya?ml$|\.appveyor\.ya?ml$|\.pre-commit-config\.ya?ml$|\.husky\/)/i;
+/** Files that choose where packages are downloaded from. Never changed by a proposal. */
+const REGISTRY_CONFIG = /(?:^|\/)(?:\.npmrc|\.yarnrc|\.yarnrc\.yml|\.pypirc|pip\.conf|pip\.ini|\.pnpmfile\.cjs)$/i;
+/** Files that tell git how to fetch or show the tree: a submodule URL, or attributes that hide a diff in review. */
+const GIT_CONFIG = /(?:^|\/)\.git(?:modules|attributes)$|(?:^|\/)\.git(?:\/|$)/i;
+/** Lockfiles. A proposal may change one only if it adds no URL to it. */
+const LOCKFILE = /(?:^|\/)(?:package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|poetry\.lock|Pipfile\.lock|uv\.lock|pdm\.lock|requirements[^/]*\.txt)$/;
+
+/**
+ * Why a patch must not be committed, or null when it may be.
+ *
+ * Read from the diff text before git sees it. Every path a diff header names is
+ * checked: nothing absolute, no `..`, `.` or empty segment, nothing under
+ * `.github/` or any other CI configuration (in any case), no registry
+ * configuration, no `.gitmodules` or `.gitattributes`, no name without the a/
+ * and b/ prefixes git writes (git apply strips the first component of any
+ * name, so `z/.github/x` is `.github/x` to it), no symbolic link or
+ * submodule, and no lockfile line that adds a URL (a changed registry is how a
+ * lockfile edit installs someone else's package). `git apply` already refuses a
+ * path outside the checkout; this says so in a sentence before it is asked.
+ *
+ * @param {string} diff a unified diff, as `git diff` writes it
+ * @returns {string|null}
+ */
+export function patchRefusal(diff) {
+  const text = String(diff ?? '');
+  const paths = new Map();
+  let current = null;
+  let unprefixed = null;
+  // Lines left in the current hunk, counted from its `@@` header the way git
+  // apply counts them, so a header-shaped line inside a hunk is read as content
+  // and a header after one is read as a header.
+  let oldLeft = 0;
+  let newLeft = 0;
+  for (const line of text.split('\n')) {
+    let named = null;
+    if (oldLeft > 0 || newLeft > 0) {
+      if (line.startsWith('\\')) continue;
+      if (line.startsWith('-')) oldLeft -= 1;
+      else if (line.startsWith('+')) newLeft -= 1;
+      else {
+        oldLeft -= 1;
+        newLeft -= 1;
+      }
+      if (current !== null && LOCKFILE.test(current) && line.startsWith('+') && /[a-z][a-z0-9+.-]*:\/\//i.test(line)) {
+        return `the patch adds a URL to the lockfile \`${current}\`, and a proposal never changes where packages come from.`;
+      }
+      continue;
+    }
+    const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+    const header = /^diff --git a\/(.+) b\/(.+)$/.exec(line);
+    if (line.startsWith('diff --git ') && header === null) {
+      return 'the patch names a path git had to quote, and a proposal only changes plainly named files.';
+    }
+    if (hunk !== null) {
+      oldLeft = hunk[1] === undefined ? 1 : Number(hunk[1]);
+      newLeft = hunk[2] === undefined ? 1 : Number(hunk[2]);
+    } else if (header !== null) {
+      current = header[2];
+      named = [header[1], header[2]];
+    } else if (/^(?:---|\+\+\+) /.test(line)) {
+      const p = line.slice(4).replace(/\t.*$/, '');
+      if (p !== '/dev/null') {
+        // git apply strips the first component of any name, so a name without
+        // the a/ or b/ git writes is read here under the name git will use.
+        if (!/^[ab]\//.test(p) && !p.startsWith('/')) unprefixed = unprefixed ?? p;
+        named = [p.replace(/^[^/]*\//, (m) => (p.startsWith('/') ? m : ''))];
+        if (line.startsWith('+++ ')) current = named[0];
+      }
+    } else if (/^(?:rename|copy) (?:from|to) /.test(line)) {
+      named = [line.replace(/^(?:rename|copy) (?:from|to) /, '')];
+    } else if (/^(?:new file mode|new mode|old mode|deleted file mode) (?:120000|160000)$/.test(line)) {
+      return `the patch makes \`${current ?? '?'}\` a symbolic link or a submodule, and a proposal may only change file contents.`;
+    }
+    for (const p of named ?? []) paths.set(p, true);
+  }
+  if (paths.size === 0) return 'the patch names no file, so there is nothing to propose.';
+  for (const p of paths.keys()) {
+    if (p.startsWith('"')) return 'the patch names a path git had to quote, and a proposal only changes plainly named files.';
+    if (p.startsWith('/') || /^[A-Za-z]:/.test(p) || p.split('/').includes('..') || p.includes('\\')) {
+      return `the patch names \`${p}\`, which is outside the repository.`;
+    }
+    if (p.split('/').some((seg) => seg === '' || seg === '.')) {
+      return 'the patch names a path with an empty or `.` segment, and a proposal only changes plainly named files.';
+    }
+    if (GIT_CONFIG.test(p)) return `the patch changes \`${p}\`, and a proposal never changes git's own configuration files.`;
+    if (CI_PATH.test(p)) return `the patch changes \`${p}\`, and a proposal never changes CI or workflow configuration.`;
+    if (REGISTRY_CONFIG.test(p)) return `the patch changes \`${p}\`, and a proposal never changes where packages come from.`;
+  }
+  if (unprefixed !== null) {
+    return 'the patch names a file without the a/ and b/ prefixes git writes, so git would read it under another name.';
+  }
+  return null;
 }
 
 /**
