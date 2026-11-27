@@ -4,26 +4,36 @@
 //   * The customer's data goes only to destinations the customer configured. Nothing
 //     here sends anything to Credda.
 //   * Opt-in and off by default: action.yml skips each step unless its inputs are set.
-//   * It can never fail the job. One attempt per request, a 10 s timeout, and every
-//     failure is one log line. Nothing in this file throws to its caller.
+//   * It can never fail the job. One attempt per request, a 10 s timeout, no
+//     redirects, and every failure is one line. Nothing in this file throws to its caller.
 //   * Secrets arrive only as inputs the customer mapped from their own secrets. They
 //     are masked by integrate.mjs and scrubbed from every line this file returns.
 //
 // What is sent is what security.json already holds for each PROVEN finding: class,
 // CWE, site, the probe's sentence and the exploit program. Unproven patterns are a
-// count, labelled unproven, and never an issue.
+// count, labelled unproven, and never an issue. The sentence and the site come from
+// the scanned repository, so each format escapes them.
 //
 // Everything here is a function of values plus a `fetch` handed in, so
 // test/integrations.test.mjs runs it against a local HTTP server.
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { isIP } from 'node:net';
 
+import { exploitLanguage, fenceFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
 import { decideNotification } from './notification.mjs';
 
 const TIMEOUT_MS = 10_000;
-const PROGRAM_LIMIT = 8000;
 export const LINEAR_API = 'https://api.linear.app/graphql';
+/** Slack's limit on a section's text. */
+export const SLACK_TEXT_LIMIT = 3000;
+/**
+ * The largest issue description sent. Jira Cloud refuses a field over 32,767
+ * characters; this is measured on the JSON sent, which is longer than the text.
+ * Linear gets the same cap.
+ */
+export const DESCRIPTION_LIMIT = 30_000;
 
 /** Replaces every secret in a line, so no failure message can carry one. */
 export function scrub(text, secrets) {
@@ -34,29 +44,57 @@ export function scrub(text, secrets) {
   return out;
 }
 
-/** https, or http on a loopback host (so a local test server can stand in). */
-export function allowedUrl(value) {
-  try {
-    const url = new URL(value);
-    if (url.protocol === 'https:') return true;
-    return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
-  } catch {
-    return false;
+/** Whether a host name or address is loopback, private, link-local or a bare intranet name. */
+export function privateHost(hostname) {
+  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase().replace(/\.$/, '');
+  if (isIP(host) === 4) {
+    const [a, b] = host.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
   }
+  if (isIP(host) === 6) {
+    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(host);
+    if (mapped) return privateHost(mapped[1]);
+    return host === '::' || host === '::1' || /^f[cd]/.test(host) || /^fe[89ab]/.test(host) || host.startsWith('::ffff:');
+  }
+  return !host.includes('.') || /\.(localhost|local|internal|lan|home\.arpa)$/.test(host);
 }
-
-export function siteText(site) {
-  if (site === null || site === undefined) return '';
-  if (typeof site === 'string') return site;
-  if (site.kind === 'package') return 'package (through package.json)';
-  return `${site.file}${site.line ? `:${site.line}` : ''}`;
-}
-
-const oneLine = (text, max) => String(text ?? '').split('\n')[0].trim().slice(0, max);
 
 /**
- * The proven findings and the unproven count out of a security.json. Returns null
- * when the file is missing or unreadable, so a caller can say so in one line.
+ * An https URL on a public host, or the reason it is not one. Literal addresses
+ * and names are checked; what a public name resolves to is not.
+ */
+export function checkUrl(value, input) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return `${input} is not a URL`;
+  }
+  if (url.protocol !== 'https:') return `${input} must be an https URL`;
+  if (url.username !== '' || url.password !== '') return `${input} must not carry a user name or password`;
+  if (privateHost(url.hostname)) return `${input} must name a public host, not a loopback or private one`;
+  return null;
+}
+
+const firstLine = (text) => String(text ?? '').split('\n')[0].trim();
+
+/**
+ * Cuts text to `max` characters with a stated note, at a space when one is near,
+ * so nothing is shortened without saying so.
+ */
+export function cap(text, max, note = ' [cut; the full text is on the run page]') {
+  const s = String(text);
+  if (s.length <= max) return s;
+  const room = Math.max(0, max - note.length);
+  const space = s.lastIndexOf(' ', room);
+  return `${s.slice(0, space > room * 0.8 ? space : room)}${note}`;
+}
+
+/**
+ * The proven findings and the run's counts out of a security.json, through the
+ * same reader the job summary uses. Returns null when the file is missing or
+ * unreadable, so a caller can say so in one line.
  */
 export function readFindings(path) {
   let parsed;
@@ -65,19 +103,32 @@ export function readFindings(path) {
   } catch {
     return null;
   }
-  const proven = (Array.isArray(parsed.findings) ? parsed.findings : []).map((f) => {
-    const site = siteText(f.site);
-    return {
-      id: String(f.id ?? `${f.class}@${site}`),
-      class: String(f.class ?? 'UNKNOWN'),
-      cwe: f.cwe ? String(f.cwe) : '',
-      site,
-      sentence: oneLine(f.sentence, 300),
-      program: typeof f.program === 'string' ? f.program : '',
-    };
-  });
-  return { proven, unproven: Array.isArray(parsed.unproven) ? parsed.unproven.length : 0 };
+  const { findings, probes, fuzzed } = securityCounts(parsed);
+  const proven = findings.map((f) => ({
+    id: String(f.id ?? f.class),
+    class: String(f.class ?? 'UNKNOWN'),
+    cwe: f.cwe ? String(f.cwe) : '',
+    language: exploitLanguage(f),
+    site: firstLine(siteText(f.site)),
+    fuzzFunction: typeof f.fuzz?.function === 'string' ? firstLine(f.fuzz.function) : '',
+    sentence: firstLine(f.sentence),
+    program: typeof f.program === 'string' ? f.program : '',
+  }));
+  return { proven, unproven: Array.isArray(parsed.unproven) ? parsed.unproven.length : 0, probes, fuzzed };
 }
+
+/**
+ * The de-duplication key: one hex token from the repository, the language and the
+ * engine's finding id. The id carries no seed (`CLASS@fuzz:fn`, `CLASS@file:line`
+ * or the probe name), so it is the same on every run of the same code. The
+ * repository is in it because one Linear team or Jira project can serve many.
+ */
+export function fingerprint(repository, f) {
+  return `creddafp${createHash('sha256').update(`${repository}\n${f.language}\n${f.id}`).digest('hex').slice(0, 20)}`;
+}
+
+/** "PROTOTYPE_POLLUTION through unflatten (fuzzing)" or "PROTOTYPE_POLLUTION at src/a.js:3". */
+const findingWords = (f) => (f.fuzzFunction ? `${f.class} through ${f.fuzzFunction} (fuzzing)` : `${f.class}${f.site ? ` ${f.site}` : ''}`);
 
 /* ---------------------------------- Slack ---------------------------------- */
 
@@ -100,29 +151,50 @@ export function decideSlack({ notifyOn, mode, provenFindings, statedFindings, es
   return { notify: d.notify, reason: prefix + d.reason };
 }
 
-const mrkdwn = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/**
+ * Text for a Slack mrkdwn field. `&`, `<` and `>` are Slack's control characters,
+ * so `<!channel>` and `<url|text>` arrive as text; a bare @channel, @here or
+ * @everyone gets a zero-width space so no client reads it as a mention.
+ */
+export const mrkdwn = (text) =>
+  String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/@(?=(channel|here|everyone)\b)/gi, '@​');
+
+/** Escaped mrkdwn cut to fit `max` after escaping, with the note. */
+const slackText = (raw, max) => {
+  let room = max;
+  let out = mrkdwn(cap(raw, room));
+  while (out.length > max) out = mrkdwn(cap(raw, (room -= out.length - max)));
+  return out;
+};
 
 /** Block Kit message. At most 5 proven findings; unproven only as a labelled count. */
-export function slackMessage({ repository, mode, outcome, runUrl, findings, unprovenCount, statedFindings }) {
+export function slackMessage({ repository, mode, outcome, runUrl, findings, unprovenCount, statedFindings, probes = 0, fuzzed = 0 }) {
   const security = mode === 'security';
   const count = security ? findings.length : statedFindings;
   const headline = security
-    ? `Credda proved ${count} finding${count === 1 ? '' : 's'} in ${repository}`
+    ? count > 0
+      ? `Credda proved ${count} finding${count === 1 ? '' : 's'} in ${repository}`
+      : `No exploit succeeded in ${repository}`
     : `Credda ${outcome === '' ? 'ran' : `reached ${outcome}`} in ${repository}`;
   const blocks = [
-    { type: 'header', text: { type: 'plain_text', text: headline.slice(0, 150) } },
+    { type: 'header', text: { type: 'plain_text', text: cap(headline, 150, '...') } },
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Repository*\n${mrkdwn(repository)}` },
-        { type: 'mrkdwn', text: `*Outcome*\n${mrkdwn(security ? (count > 0 ? 'findings proven by exploit' : 'nothing proven') : outcome || 'established a result')}` },
+        { type: 'mrkdwn', text: `*Repository*\n${slackText(repository, 1900)}` },
+        { type: 'mrkdwn', text: `*Outcome*\n${slackText(security ? (count > 0 ? 'findings proven by exploit' : 'nothing proven') : outcome || 'established a result', 1900)}` },
         { type: 'mrkdwn', text: `*${security ? 'Proven findings' : 'Stated findings'}*\n${count}` },
       ],
     },
   ];
+  if (security && count === 0) {
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: slackText(`${ranText(probes, fuzzed)}. ${NOTHING_PROVEN}`, SLACK_TEXT_LIMIT) } });
+  }
   for (const f of findings.slice(0, 5)) {
-    const head = `*${mrkdwn(f.class)}*${f.cwe ? ` (${mrkdwn(f.cwe)})` : ''} at \`${f.site.replace(/`/g, "'")}\``;
-    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `${head}\n${mrkdwn(f.sentence)}` } });
+    const head = `*${mrkdwn(f.class)}*${f.cwe ? ` (${mrkdwn(f.cwe)})` : ''}`;
+    const where = f.fuzzFunction ? ` through ${f.fuzzFunction} (fuzzing)` : f.site ? ` ${f.site}` : '';
+    const room = SLACK_TEXT_LIMIT - head.length - 1;
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `${head}${slackText(`${where}\n${f.sentence}`, room)}` } });
   }
   if (findings.length > 5) {
     blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `${findings.length - 5} more proven finding(s) on the job summary.` }] });
@@ -133,11 +205,11 @@ export function slackMessage({ repository, mode, outcome, runUrl, findings, unpr
   if (runUrl) {
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `<${runUrl}|View the run>` } });
   }
-  return { text: headline, blocks };
+  return { text: mrkdwn(headline), blocks };
 }
 
 async function request(fetch, url, init, timeoutMs) {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  const response = await fetch(url, { ...init, redirect: 'error', signal: AbortSignal.timeout(timeoutMs) });
   const raw = await response.text().catch(() => '');
   let json = null;
   try {
@@ -151,12 +223,18 @@ async function request(fetch, url, init, timeoutMs) {
 function failure(label, error, secrets) {
   const code = error?.cause?.code ?? error?.code;
   const said = error instanceof Error ? `${error.name}${code ? ` ${code}` : ''}: ${error.message}` : String(error);
-  return `${label} was not delivered: ${scrub(said, secrets)}. This run is unaffected.`;
+  return `${label} was not delivered: ${firstLine(scrub(said, secrets))}. This run is unaffected.`;
 }
 
 /** Posts the Slack message. Never throws; the URL is never in the returned line. */
 export async function sendSlack({ webhookUrl, message, fetch, timeoutMs = TIMEOUT_MS }) {
-  const secrets = [webhookUrl];
+  let path = '';
+  try {
+    path = new URL(webhookUrl).pathname;
+  } catch {
+    path = '';
+  }
+  const secrets = [webhookUrl, path];
   try {
     const r = await request(fetch, webhookUrl, {
       method: 'POST',
@@ -170,18 +248,62 @@ export async function sendSlack({ webhookUrl, message, fetch, timeoutMs = TIMEOU
   }
 }
 
-/* ---------------------------------- Linear ---------------------------------- */
+/* ------------------------------ issue bodies ------------------------------ */
 
-const issueTitle = (f) => `Credda: ${f.class} in ${f.site}`;
-const programFor = (f) =>
-  f.program.length > PROGRAM_LIMIT ? `${f.program.slice(0, PROGRAM_LIMIT)}\n// ...truncated; the full program is in security.json` : f.program;
+const issueTitle = (f) => cap(`Credda: ${findingWords(f)}`, 255, '...');
 
-export function linearDescription(f, runUrl) {
-  const lines = [f.sentence, '', `CWE: ${f.cwe || 'n/a'}`, `Site: ${f.site}`, `Credda finding id: ${f.id}`, ''];
-  if (f.program) lines.push('The exploit program that proved it:', '', '```js', programFor(f), '```', '');
-  if (runUrl) lines.push(`Run: ${runUrl}`);
-  return lines.join('\n');
+/** Says where the exploit is when it does not fit. */
+const programNote = (f, runUrl) =>
+  `The exploit program (${f.program.length} characters) is too long for this description. ` +
+  `It is on the run's job summary${runUrl ? ` (${runUrl})` : ''} and in the SARIF file, under this result's exploitProgram.`;
+
+/** Markdown text from the scanned repository: every ASCII punctuation mark escaped, so no link, mention or markup forms. */
+export const markdownText = (text) => String(text).replace(/[!-/:-@[-`{-~]/g, '\\$&');
+
+export function linearDescription(f, runUrl, fp) {
+  const head = [
+    markdownText(f.sentence),
+    '',
+    `CWE: ${markdownText(f.cwe || 'n/a')}`,
+    `Site: ${markdownText(f.site || 'not stated')}`,
+    `Credda finding id: ${markdownText(f.id)}`,
+    `Credda fingerprint: ${fp}`,
+    '',
+  ];
+  const tail = runUrl ? [`Run: ${runUrl}`] : [];
+  if (f.program) {
+    const fence = fenceFor(f.program);
+    const full = [...head, 'The exploit program that proved it:', '', `${fence}${f.language}`, f.program, fence, '', ...tail].join('\n');
+    if (full.length <= DESCRIPTION_LIMIT) return full;
+    head.push(markdownText(programNote(f, null)), '');
+  }
+  return cap([...head, ...tail].join('\n'), DESCRIPTION_LIMIT);
 }
+
+const p = (...content) => ({ type: 'paragraph', content });
+// ADF text nodes may not be empty, so an empty value becomes a dash.
+const t = (text, marks) => ({ type: 'text', text: String(text) === '' ? '-' : String(text), ...(marks ? { marks } : {}) });
+
+/** The issue description in Atlassian Document Format. Text nodes are plain text, so no markup forms. */
+export function jiraDescription(f, runUrl, fp) {
+  const content = [
+    p(t(cap(f.sentence || f.class, 2000))),
+    p(t(`CWE: ${f.cwe || 'n/a'}`)),
+    p(t(`Site: ${cap(f.site || 'not stated', 2000)}`)),
+    p(t(`Credda finding id: ${cap(f.id, 2000)}`)),
+    p(t(`Credda fingerprint: ${fp}`)),
+  ];
+  const run = runUrl ? [p(t('Run: '), t(runUrl, [{ type: 'link', attrs: { href: runUrl } }]))] : [];
+  if (f.program) {
+    const code = { type: 'codeBlock', attrs: { language: f.language === 'python' ? 'python' : 'javascript' }, content: [t(f.program)] };
+    const full = { type: 'doc', version: 1, content: [...content, p(t('The exploit program that proved it:')), code, ...run] };
+    if (JSON.stringify(full).length <= DESCRIPTION_LIMIT) return full;
+    content.push(p(t(programNote(f, null))));
+  }
+  return { type: 'doc', version: 1, content: [...content, ...run] };
+}
+
+/* ---------------------------------- Linear ---------------------------------- */
 
 const LINEAR_SEARCH =
   'query($teamId: ID!, $fp: String!) { issues(first: 1, filter: { team: { id: { eq: $teamId } }, ' +
@@ -189,19 +311,22 @@ const LINEAR_SEARCH =
 const LINEAR_CREATE =
   'mutation($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url } } }';
 
+const issueLine = (name, created, skipped, capped, max) =>
+  `${name}: ${created} issue(s) created, ${skipped} already open${capped > 0 ? `, ${capped} not filed (max-issues ${max})` : ''}.`;
+
 /**
- * One Linear issue per proven finding, skipping any whose finding id already
+ * One Linear issue per proven finding, skipping any whose fingerprint already
  * appears in an open issue's description, capped at `max` created. Stops at the
  * first failure with one line. Unproven patterns are never passed in.
  */
-export async function deliverLinear({ apiKey, teamId, findings, runUrl, max, fetch, apiUrl = LINEAR_API, timeoutMs = TIMEOUT_MS }) {
+export async function deliverLinear({ apiKey, teamId, repository, findings, runUrl, max, fetch, apiUrl = LINEAR_API, timeoutMs = TIMEOUT_MS }) {
   const secrets = [apiKey];
   const headers = { 'content-type': 'application/json', authorization: apiKey };
   const gql = async (query, variables) => {
     const r = await request(fetch, apiUrl, { method: 'POST', headers, body: JSON.stringify({ query, variables }) }, timeoutMs);
     if (!r.ok) throw new Error(`Linear answered ${r.status}`);
     if (r.json === null || (Array.isArray(r.json.errors) && r.json.errors.length > 0)) {
-      throw new Error(`Linear returned errors: ${oneLine(r.json?.errors?.[0]?.message ?? 'no JSON body', 120)}`);
+      throw new Error(`Linear returned errors: ${cap(firstLine(r.json?.errors?.[0]?.message ?? 'no JSON body'), 120, '...')}`);
     }
     return r.json.data;
   };
@@ -210,13 +335,14 @@ export async function deliverLinear({ apiKey, teamId, findings, runUrl, max, fet
   try {
     for (const f of findings) {
       if (created >= max) break;
-      const found = await gql(LINEAR_SEARCH, { teamId, fp: f.id });
+      const fp = fingerprint(repository, f);
+      const found = await gql(LINEAR_SEARCH, { teamId, fp });
       if ((found?.issues?.nodes?.length ?? 0) > 0) {
         skipped += 1;
         continue;
       }
       const made = await gql(LINEAR_CREATE, {
-        input: { teamId, title: issueTitle(f), description: linearDescription(f, runUrl) },
+        input: { teamId, title: issueTitle(f), description: linearDescription(f, runUrl, fp) },
       });
       if (made?.issueCreate?.success !== true) throw new Error('Linear did not confirm issueCreate');
       created += 1;
@@ -224,40 +350,10 @@ export async function deliverLinear({ apiKey, teamId, findings, runUrl, max, fet
   } catch (error) {
     return { created, skipped, line: failure('Linear', error, secrets) };
   }
-  const capped = findings.length - skipped - created;
-  return {
-    created,
-    skipped,
-    line: `Linear: ${created} issue(s) created, ${skipped} already open${capped > 0 ? `, ${capped} not filed (max-issues ${max})` : ''}.`,
-  };
+  return { created, skipped, line: issueLine('Linear', created, skipped, findings.length - skipped - created, max) };
 }
 
 /* ----------------------------------- Jira ----------------------------------- */
-
-/** A single-token, label-safe fingerprint of the finding id. */
-export function jiraFingerprint(id) {
-  return `creddafp${createHash('sha256').update(id).digest('hex').slice(0, 20)}`;
-}
-
-const p = (...content) => ({ type: 'paragraph', content });
-const t = (text, marks) => ({ type: 'text', text, ...(marks ? { marks } : {}) });
-
-/** The issue description in Atlassian Document Format. */
-export function jiraDescription(f, runUrl) {
-  const content = [
-    p(t(f.sentence || f.class)),
-    p(t(`CWE: ${f.cwe || 'n/a'}`)),
-    p(t(`Site: ${f.site}`)),
-    p(t(`Credda finding id: ${f.id}`)),
-    p(t(`Credda fingerprint: ${jiraFingerprint(f.id)}`)),
-  ];
-  if (f.program) {
-    content.push(p(t('The exploit program that proved it:')));
-    content.push({ type: 'codeBlock', attrs: { language: 'javascript' }, content: [t(programFor(f))] });
-  }
-  if (runUrl) content.push(p(t('Run: '), t(runUrl, [{ type: 'link', attrs: { href: runUrl } }])));
-  return { type: 'doc', version: 1, content };
-}
 
 const jqlString = (s) => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
@@ -266,9 +362,10 @@ const jqlString = (s) => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"
  * search for the finding's fingerprint, which is also set as a label so the
  * match is exact rather than a text-index guess.
  */
-export async function deliverJira({ baseUrl, email, apiToken, projectKey, issueType, findings, runUrl, max, fetch, timeoutMs = TIMEOUT_MS }) {
-  const auth = `Basic ${Buffer.from(`${email}:${apiToken}`).toString('base64')}`;
-  const secrets = [apiToken, email, auth, Buffer.from(`${email}:${apiToken}`).toString('base64')];
+export async function deliverJira({ baseUrl, email, apiToken, projectKey, issueType, repository, findings, runUrl, max, fetch, timeoutMs = TIMEOUT_MS }) {
+  const basic = Buffer.from(`${email}:${apiToken}`).toString('base64');
+  const auth = `Basic ${basic}`;
+  const secrets = [apiToken, email, auth, basic];
   const headers = { 'content-type': 'application/json', accept: 'application/json', authorization: auth };
   const base = baseUrl.replace(/\/+$/, '');
   let created = 0;
@@ -276,7 +373,7 @@ export async function deliverJira({ baseUrl, email, apiToken, projectKey, issueT
   try {
     for (const f of findings) {
       if (created >= max) break;
-      const fp = jiraFingerprint(f.id);
+      const fp = fingerprint(repository, f);
       const jql = `project = ${jqlString(projectKey)} AND statusCategory != Done AND labels = ${jqlString(fp)}`;
       const search = await request(fetch, `${base}/rest/api/3/search/jql`, {
         method: 'POST',
@@ -295,8 +392,8 @@ export async function deliverJira({ baseUrl, email, apiToken, projectKey, issueT
           fields: {
             project: { key: projectKey },
             issuetype: { name: issueType },
-            summary: issueTitle(f).slice(0, 255),
-            description: jiraDescription(f, runUrl),
+            summary: issueTitle(f),
+            description: jiraDescription(f, runUrl, fp),
             labels: ['credda', fp],
           },
         }),
@@ -307,10 +404,5 @@ export async function deliverJira({ baseUrl, email, apiToken, projectKey, issueT
   } catch (error) {
     return { created, skipped, line: failure('Jira', error, secrets) };
   }
-  const capped = findings.length - skipped - created;
-  return {
-    created,
-    skipped,
-    line: `Jira: ${created} issue(s) created, ${skipped} already open${capped > 0 ? `, ${capped} not filed (max-issues ${max})` : ''}.`,
-  };
+  return { created, skipped, line: issueLine('Jira', created, skipped, findings.length - skipped - created, max) };
 }

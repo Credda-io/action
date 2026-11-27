@@ -562,39 +562,42 @@ inputs:
     default: ''
   slack-webhook-url:
     description: >-
-      Opt-in. A Slack incoming-webhook URL (map it from a secret). Posts one
+      Opt-in. A Slack incoming-webhook URL, mapped from a secret. Posts one
       Block Kit message with the repository, the outcome and the count of proven
-      findings; in security mode it lists up to 5 proven findings and links the
-      run, and unproven patterns appear only as a count labelled unproven. Sent
-      from your runner to Slack; nothing reaches Credda. A failure cannot fail
-      your job. Empty (the default) sends nothing.
+      findings. In security mode it lists up to 5 proven findings and links the
+      run. Unproven patterns appear only as a count. Sent from your runner to
+      Slack. Nothing is sent to Credda. A failure is reported on the job summary
+      and cannot fail your job. Empty (the default) sends nothing.
     default: ''
   notify-on:
     description: >-
       When the Slack message is sent. 'findings' (the default) sends only when
-      the run proved or stated something; 'always' sends every run. Applies to
-      slack-webhook-url only.
+      the run proved or stated something. 'always' sends every run, and a run
+      that proved nothing says so. Applies to slack-webhook-url only.
     default: 'findings'
   linear-api-key:
     description: >-
-      Opt-in. A Linear API key (map it from a secret). With linear-team-id,
-      security mode files one Linear issue per proven finding, skipping any
-      whose finding id is already in an open issue. Unproven patterns never
-      become issues. Empty (the default) sends nothing.
+      Opt-in. A Linear API key, mapped from a secret. With linear-team-id,
+      security mode files one Linear issue per proven finding and skips any
+      already open. Unproven patterns never become issues. Sent from your runner
+      to Linear. Nothing is sent to Credda. Empty (the default) sends nothing.
     default: ''
   linear-team-id:
     description: The Linear team id the issues are created in. Required with linear-api-key.
     default: ''
   jira-base-url:
     description: >-
-      Opt-in. Your Jira Cloud site, such as https://acme.atlassian.net (https
-      only). Needs jira-email, jira-api-token and jira-project-key.
+      Opt-in. Your Jira Cloud site, such as https://acme.atlassian.net. It must
+      be https on a public host. Needs jira-email, jira-api-token and
+      jira-project-key. Security mode files one issue per proven finding and
+      skips any already open. Sent from your runner to Jira. Nothing is sent to
+      Credda. Empty (the default) sends nothing.
     default: ''
   jira-email:
-    description: The Atlassian account email the API token belongs to (map it from a secret).
+    description: The Atlassian account email the API token belongs to, mapped from a secret.
     default: ''
   jira-api-token:
-    description: A Jira API token (map it from a secret). Used for Basic auth over https.
+    description: A Jira API token, mapped from a secret. Used for Basic auth over https.
     default: ''
   jira-project-key:
     description: The Jira project key the issues are created in, such as SEC.
@@ -904,11 +907,13 @@ runs:
 
     # Slack, Linear and Jira. Each step runs only when its own inputs are set, so a
     # default install makes none of these requests. All three run after everything
-    # that delivers the report, and `integrate.mjs` exits 0 on every failure.
+    # that delivers the report; `integrate.mjs` exits 0 on every failure and
+    # continue-on-error covers a crash of Node itself.
     # Secrets are read only from the inputs the caller mapped from their own
     # secrets, and the script masks each one before printing anything.
     - name: Post to Slack
       if: inputs.slack-webhook-url != ''
+      continue-on-error: true
       shell: bash
       env:
         CREDDA_SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
@@ -923,6 +928,7 @@ runs:
 
     - name: File proven findings in Linear
       if: inputs.mode == 'security' && inputs.linear-api-key != '' && inputs.linear-team-id != ''
+      continue-on-error: true
       shell: bash
       env:
         CREDDA_LINEAR_API_KEY: ${{ inputs.linear-api-key }}
@@ -934,6 +940,7 @@ runs:
 
     - name: File proven findings in Jira
       if: inputs.mode == 'security' && inputs.jira-base-url != '' && inputs.jira-email != '' && inputs.jira-api-token != '' && inputs.jira-project-key != ''
+      continue-on-error: true
       shell: bash
       env:
         CREDDA_JIRA_BASE_URL: ${{ inputs.jira-base-url }}
