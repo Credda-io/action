@@ -139,9 +139,12 @@ anyone can run it again. Results that were not proven (clean, no verdict, or a
 probe of ours that crashed) stay in `security.json` on the runner and are never
 called findings.
 
-The findings are also uploaded as SARIF to GitHub code scanning and appear
-under the repository's Security tab. Credda stores none of them. Set
-`upload-sarif: 'false'` to keep them on the job summary only.
+The proven findings are also uploaded as SARIF to GitHub code scanning and
+appear under the repository's Security tab. Credda stores none of them. The
+file uploaded is `security.sarif`, which holds proven findings only. Unproven
+patterns, when the CLI's unproven tier is on, are written to a separate
+`unproven.sarif` that this action does not upload. Set `upload-sarif: 'false'`
+to keep the findings on the job summary only.
 
 ```yaml
 on:
@@ -581,6 +584,12 @@ trigger.
 | `comment` | `'true'` | `true` comments when something was established, `always` comments regardless, `false` never. |
 | `open-pull-request` | `'false'` | **Opt-in, off by default.** `true` commits a *verified* fix to a branch and opens a pull request. Requires you to grant `contents: write` and `pull-requests: write` on your own `GITHUB_TOKEN`. A run that did not produce a verified fix opens nothing. See *Opening a pull request*. |
 | `notify-url` | `''` | **Opt-in, off by default.** A URL to POST the run's facts to when it established something or stated a finding. A `hooks.slack.com` URL gets one sentence in Slack's `{text}` shape. Sent from your runner to your URL; nothing reaches Credda, and the report itself is never sent. A failure cannot fail your job. See *Notifying a channel*. |
+| `slack-webhook-url` | `''` | **Opt-in, off by default.** A Slack incoming-webhook URL, mapped from a secret. Posts one Block Kit message. See *Slack, Linear and Jira*. |
+| `notify-on` | `'findings'` | When the Slack message is sent: `findings` (only when the run proved or stated something) or `always`. |
+| `linear-api-key`, `linear-team-id` | `''` | **Opt-in.** Security mode files one Linear issue per proven finding. Both are required. |
+| `jira-base-url`, `jira-email`, `jira-api-token`, `jira-project-key` | `''` | **Opt-in.** Security mode files one Jira Cloud issue per proven finding. All four are required. The URL must be https on a public host. |
+| `jira-issue-type` | `'Bug'` | The Jira issue type to create. |
+| `max-issues` | `'10'` | The most issues one run may create in Linear, and the most in Jira (each has its own cap). |
 | `license` | `''` | **Required on a private repository**, which will not start without one; never asked for and never read on a public one. It also enables decline replies on a private repository. Pass a secret, never a literal. |
 | `metering-url` | `https://backend.credda.io/v1/runs` | Where one run receipt goes. Set to `''` for no request of any kind. |
 | `engine-url` | `https://backend.credda.io/v1/engine` | Where the engine is fetched from. Whatever it returns is still checked against the digest in this repository's `engine.lock.json`, so pointing it somewhere hostile produces a failed job, not a compromised one. |
@@ -625,6 +634,7 @@ If you have pinned either input explicitly, nothing here affects you.
 | `sarif-path` | security | Absolute path of the SARIF file on the runner. |
 | `security-fixes` | security | With `fix` on, how many fixes the check-fix gates proved (`FIX_PROVEN`). Empty when `fix` is off. |
 | `fix-patches` | security | With `fix` on, a directory on the runner holding each proven patch and its pull request body, for `actions/upload-artifact`. Empty when no fix was proven. |
+| `security-json-path` | security | Absolute path of `security.json` on the runner: the proven findings in full. |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
 | `candidates` | discover, sweep | How many candidates the run produced. In `sweep`, how many discovery wrote before the `max-candidates` cap. |
@@ -786,6 +796,96 @@ the path.
 real repository from this checkout. The gate, the branch naming and the refusal
 messages are covered by tests; the push, the `gh pr create` call and the
 permission errors they produce are not, and cannot be from here.
+
+### Slack, Linear and Jira
+
+**All three are off by default, and each is opt-in on its own.** A step runs
+only when its own inputs are set, so a default install makes none of these
+requests. Every request goes from your runner to the service you named.
+Nothing is sent to Credda.
+
+Pass credentials only as inputs mapped from your own secrets. The action masks
+each one before it prints anything. No log line and no job summary line carries
+a webhook URL, key, token or Authorization header.
+
+Each request is one attempt with a ten-second timeout, and redirects are not
+followed. A destination that fails, answers 4xx or 5xx, or times out does not
+fail the job and does not stop the others. Its result, with the status code,
+is one line in the log and one in the job summary.
+
+Each URL must be https on a public host. Loopback, private and link-local
+addresses are refused, as are single-label names such as `https://jira`. This
+checks the address you typed, not what a public name resolves to.
+
+```yaml
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  credda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        with:
+          mode: security
+          # Slack: one message when something was proven.
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          notify-on: findings          # or 'always'
+          # Linear: one issue per proven finding.
+          linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+          linear-team-id: ${{ vars.LINEAR_TEAM_ID }}
+          # Jira Cloud: one issue per proven finding.
+          jira-base-url: https://acme.atlassian.net
+          jira-email: ${{ secrets.JIRA_EMAIL }}
+          jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
+          jira-project-key: SEC
+          max-issues: '10'
+```
+
+**Slack.** One Block Kit message with the repository, the outcome and the
+count of proven findings. In security mode it lists up to 5 proven findings
+(class, CWE, where, one sentence) and links the run. It never carries an
+exploit program. Unproven patterns appear only as a count labelled unproven.
+With `notify-on: findings` (the default) a run that proved nothing sends
+nothing. With `always` that run sends one message saying no exploit succeeded,
+and that this is not an audit. Outside security mode the message follows the
+same rule as `notify-url`.
+
+**Linear.** Security mode only. One issue per proven finding. The description
+holds the sentence, the CWE, the site, the finding id, a fingerprint and the
+run link, then the exploit program in a fenced block.
+
+**Jira.** Security mode only. The same content as a `Bug` (or
+`jira-issue-type`) through Jira Cloud's REST v3, in Atlassian Document Format.
+Jira Server and Data Center do not have this API, so they are not supported.
+
+**De-duplication.** The fingerprint is a hash of the repository, the language
+and the engine's finding id. The id has no seed in it, so the same finding
+has the same fingerprint on every run. Before it files, each step searches for
+the fingerprint among open issues: Linear in the description, Jira in a label
+it also writes. A finding already open is skipped. A closed one is filed again
+if it comes back. A finding at a file and line gets a new fingerprint when its
+line moves.
+
+**Sizes.** Text from the scanned repository is escaped for each format, so a
+file name or sentence cannot form a link or a mention. Slack text is cut to
+Slack's limits with a note that says so. An issue description is kept under
+30,000 characters. An exploit program that does not fit is left out whole,
+with a note that points to the run's job summary. A program is never cut.
+
+`max-issues` caps how many issues one run creates in each tracker. Findings
+beyond it stay on the job summary, and the log line says how many were not
+filed.
+
+**What has not been proven.** These steps were tested against a local HTTP
+server standing in for each API, with request shapes written from the vendors'
+public documentation. No real Slack, Linear or Jira account was used.
 
 ### Notifying a channel
 
@@ -1017,6 +1117,18 @@ deliver-pr.mjs             the single-investigate entry: reads this run's one
 notification.mjs           the decision, the body and the one bounded POST behind
                            notify-url, with fetch handed in so it can be tested
                            with no network. Imported by notify.mjs; never a step
+findings.mjs               how security.json is read: the counts, the site text and
+                           the exploit fence. Imported by run.mjs and
+                           integrations.mjs, so the job summary and a tracker issue
+                           describe a finding the same way
+integrations.mjs           the Slack message, the Linear and Jira issue bodies, the
+                           de-duplication searches and the bounded requests, with
+                           fetch handed in so they can be tested with no network.
+                           Imported by integrate.mjs; never a step of its own
+integrate.mjs              delivers proven findings to Slack, Linear or Jira, one
+                           destination per step. Reached only when that
+                           destination's inputs are set; it masks each secret and
+                           never fails the job
 notify.mjs                 POSTs the run's facts to the URL in notify-url, from the
                            customer's runner. Reached only when that input is set;
                            it never opens the report and never fails the job
@@ -1045,6 +1157,12 @@ LICENSE                    Apache-2.0
 .github/check-manifest.rb  proves action.yml is valid YAML and would install, and
                            that every name its expressions, and its steps'
                            scripts, reach for is one that exists
+test/integrations.test.mjs  node:test over integrations.mjs and integrate.mjs, against
+                           a local HTTP server standing in for Slack, Linear and
+                           Jira. No dependency; `node --test` runs it
+test/fake-fetch.mjs        loaded only by that test with `--import`: sends each
+                           request integrate.mjs makes to the local server. No
+                           step loads it, so a real run cannot be redirected
 .github/notify.test.mjs    node:test over notification.mjs: the body, the Slack
                            shape, silence with nothing to say, and a failed POST
                            that fails nothing. No dependency; `node --test` runs it

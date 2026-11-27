@@ -98,6 +98,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
+import { exploitLanguage, fenceFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
 import { deliverSecurityFixes, fixesSummary } from './security-fix.mjs';
 import { sweep } from './sweep.mjs';
 
@@ -1051,13 +1052,10 @@ async function security() {
   } catch (error) {
     die(`Credda security wrote a result that could not be read: ${error.message}`);
   }
-  const findings = Array.isArray(result.findings) ? result.findings : [];
-  // A fuzz finding is also listed as a probe (id `CLASS@fuzz:fn`); count it under fuzzing instead.
-  const probes = Array.isArray(result.probes) ? result.probes.filter((p) => !String(p.id).includes('@fuzz:')) : [];
-  const fuzzed = (result.fuzz?.functions ?? 0) + (result.pythonFuzz?.functions ?? 0);
+  const { findings, probes, fuzzed } = securityCounts(result);
   const sarif = join(out, 'security.sarif');
 
-  writeSummary(securitySummary(findings, probes.length, fuzzed));
+  writeSummary(securitySummary(findings, probes, fuzzed));
 
   let fixed = null;
   if (fix) {
@@ -1094,6 +1092,8 @@ async function security() {
   const proven = Array.isArray(result.fixes?.attempts) ? result.fixes.attempts.filter((a) => a?.status === 'FIX_PROVEN').length : 0;
   output('security-fixes', fix ? String(proven) : '');
   output('fix-patches', fixed?.patchDir ?? '');
+  // The proven findings in full, for the Slack, Linear and Jira steps.
+  output('security-json-path', resultPath);
 }
 
 /** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
@@ -1102,39 +1102,29 @@ const SUMMARY_EXPLOIT_BUDGET = 512 * 1024;
 /** The job summary: each proven finding with the exploit that proved it. */
 function securitySummary(findings, attempted, fuzzed) {
   const lines = ['## Credda security', ''];
-  const fuzzText = fuzzed > 0 ? ` and fuzzed ${fuzzed} exported function${fuzzed === 1 ? '' : 's'}` : '';
   lines.push(
-    `Ran ${attempted} exploit probe${attempted === 1 ? '' : 's'}${fuzzText} against this repository, ` +
+    `${ranText(attempted, fuzzed)} against this repository, ` +
       'each in a container with no network. Only findings an exploit proved are listed.',
     '',
   );
   let budget = SUMMARY_EXPLOIT_BUDGET;
   if (findings.length === 0) {
-    lines.push(
-      'No exploit succeeded. That is not an audit: it says the probes Credda has did not prove a ' +
-        'finding in the code they reached.',
-      '',
-    );
+    lines.push(NOTHING_PROVEN, '');
   } else {
     lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
     for (const one of findings) {
-      const site = one.site?.kind === 'package'
-        ? ` in the package (through \`${one.site.file}\`)`
-        : one.site?.file
-          ? ` at \`${one.site.file}${one.site.line ? `:${one.site.line}` : ''}\``
-          : '';
-      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${site}`);
+      const site = siteText(one.site, (s) => `\`${s}\``);
+      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${site ? ` ${site}` : ''}`);
       if (one.sentence) lines.push(`  ${String(one.sentence).split('\n')[0].slice(0, 300)}`);
       const program = one.program ? String(one.program) : '';
       if (program && program.length <= budget) {
         budget -= program.length;
-        // A fence longer than any backtick run in the program, so the program cannot close it.
-        const fence = '`'.repeat(Math.max(3, ...(program.match(/`+/g) ?? []).map((run) => run.length + 1)));
+        const fence = fenceFor(program);
         lines.push(
           '',
           '  <details><summary>The exploit that proved it</summary>',
           '',
-          `  ${fence}${one.language === 'python' ? 'python' : 'js'}`,
+          `  ${fence}${exploitLanguage(one)}`,
           ...program.split('\n').map((line) => `  ${line}`),
           `  ${fence}`,
           '',
