@@ -408,7 +408,7 @@ describe('hostile package paths, names and reasons', () => {
     const r = runSecurity(hostile());
     assert.equal(r.status, 0, r.stderr);
     assert.doesNotMatch(r.summary, /^::/m);
-    assert.doesNotMatch(r.summary, /<script>/, 'the package name is never shown');
+    assert.ok(!r.summary.toLowerCase().includes('<script'), 'the package name is never shown');
     // The path is cut at its first line, and it ends in a backtick, so the span is padded.
     const span = `\`\` packages/\`<img src=${EVIL}/p.png>\` \`\``;
     assert.match(r.summary, literal(`${span} (\\[click\\]\\(https\\:\\/\\/evil\\.test\\) \\<\\!channel\\> \\<b\\>x\\<\\/b\\> \\@everyone)`));
