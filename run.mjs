@@ -98,6 +98,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
+import { deliverSecurityFixes, fixesSummary } from './security-fix.mjs';
 import { sweep } from './sweep.mjs';
 
 function env(name, fallback = null) {
@@ -1025,7 +1026,16 @@ function discoverSummary(stated, proposed, finished) {
 async function security() {
   const out = join(work, 'security');
   mkdirSync(out, { recursive: true });
-  const ran = credda(['security', workspace, '--out', out], 'inherit');
+  // `fix: true` adds --fix: the customer's own model writes a patch per proven
+  // class and the check-fix gates judge it. The engine never changes the
+  // checkout, and the scan's exit code is the same with or without it.
+  const fix = env('CREDDA_FIX', 'false').trim() === 'true';
+  // With --fix the engine prints decline reasons a model wrote, so its output
+  // cannot issue workflow commands, exactly as investigate brackets its own.
+  const guard = `credda-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  console.log(`::stop-commands::${guard}`);
+  const ran = credda(['security', workspace, '--out', out, ...(fix ? ['--fix'] : [])], 'inherit');
+  console.log(`::${guard}::`);
 
   if (ran.error !== undefined || ran.status === null) {
     die(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
@@ -1049,6 +1059,28 @@ async function security() {
 
   writeSummary(securitySummary(findings, probes.length, fuzzed));
 
+  let fixed = null;
+  if (fix) {
+    // The scanned branch is the base a proposal goes to. A pull_request event
+    // checks out a merge commit GitHub made, and a branch cut from it would
+    // carry that merge, so a fix found there is attached and not proposed.
+    const baseBranch = process.env['GITHUB_HEAD_REF'] ? '' : process.env['GITHUB_REF_TYPE'] === 'branch' ? (process.env['GITHUB_REF_NAME'] ?? '') : '';
+    const baseRefusal = process.env['GITHUB_HEAD_REF']
+      ? 'this run scanned the merge commit of a pull request, so a branch cut from it would carry that merge. Run security on push to the branch to have fixes proposed.'
+      : baseBranch === ''
+        ? 'this run did not scan a branch, so there is no branch to propose against.'
+        : '';
+    const openPullRequest = env('CREDDA_OPEN_PULL_REQUEST', 'false').trim() === 'true';
+    const patchDir = join(work, 'security-fixes');
+    fixed = deliverSecurityFixes({
+      result, outDir: out, patchDir, workspace, repository: env('GITHUB_REPOSITORY'), baseBranch, baseRefusal, openPullRequest, runUrl,
+    });
+    writeSummary(fixesSummary({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal }));
+    for (const b of fixed.broken) {
+      console.log(`::error::The engine said FIX_PROVEN for ${String(b.attempt.class)} but ${b.why}. Nothing was proposed for it. This is a Credda failure.`);
+    }
+  }
+
   output('skipped', 'false');
   output('issue-number', '');
   output('deliver', 'false');
@@ -1058,6 +1090,10 @@ async function security() {
   output('body-path', '');
   output('security-findings', String(findings.length));
   output('sarif-path', existsSync(sarif) ? sarif : '');
+  // Counted off the engine's own status; empty when `fix` is off.
+  const proven = Array.isArray(result.fixes?.attempts) ? result.fixes.attempts.filter((a) => a?.status === 'FIX_PROVEN').length : 0;
+  output('security-fixes', fix ? String(proven) : '');
+  output('fix-patches', fixed?.patchDir ?? '');
 }
 
 /** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
