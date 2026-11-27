@@ -927,6 +927,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   security-events: write
 
 jobs:
