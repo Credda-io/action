@@ -1208,10 +1208,11 @@ test/fake-fetch.mjs        loaded only by that test with `--import`: sends each
                            refusals in delivery.mjs, with security.json files the
                            engine wrote, a local bare repository as origin and a
                            gh stub. No network; `node --test` runs it
-.github/extra-probes.test.mjs  node:test over the extra-probes names, the engine
-                           flags they set and the summary line per class, with
-                           run.mjs run against a stand-in engine. No network;
-                           `node --test` runs it
+.github/security-mode.test.mjs  node:test over security mode in run.mjs: the
+                           extra-probes names, the engine flags they set, the
+                           summary line per class, and hostile text in
+                           security.json, with run.mjs run against a stand-in
+                           engine. No network; `node --test` runs it
 .github/fixtures/security-fix/  those engine outputs, and where they came from
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong

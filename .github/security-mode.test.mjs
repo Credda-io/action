@@ -1,13 +1,16 @@
 /*
- * `extra-probes`: the names it takes, the engine flags it sets for the
- * `credda security` run, and the summary line per class. The end-to-end cases
+ * Security mode in run.mjs. `extra-probes`: the names it takes, the engine
+ * flags it sets for the `credda security` run, and the summary line per class.
+ * And what the job summary and the log do with hostile text in security.json:
+ * a file name, a sentence or an exploit program from the scanned repository,
+ * or an engine field shaped like a workflow command. The end-to-end cases
  * run run.mjs with a stand-in engine (a script in a temp directory that records
  * its environment and writes a security.json), so no engine, Docker or network
  * is used. The class names, env vars and the `probes[].class` field are the
  * engine's own (core apps/cli/src/security.ts and
  * packages/repository/src/security-probes.ts).
  *
- * Run with `node --test .github/extra-probes.test.mjs`. Nothing is installed.
+ * Run with `node --test .github/security-mode.test.mjs`. Nothing is installed.
  */
 
 import assert from 'node:assert/strict';
@@ -69,7 +72,7 @@ describe('extraProbesLines', () => {
 });
 
 /** run.mjs in security mode against a stand-in engine. */
-function runSecurity({ extra, engineVersion = '0.1.18', probes = [], inherited = {} }) {
+function runSecurity({ extra = '', engineVersion = '0.1.18', probes = [], inherited = {}, report = {}, fix = false }) {
   const root = mkdtempSync(join(tmpdir(), 'credda-extra-'));
   roots.push(root);
   const engine = join(root, 'engine');
@@ -81,7 +84,7 @@ function runSecurity({ extra, engineVersion = '0.1.18', probes = [], inherited =
     'const args = process.argv.slice(2);',
     `writeFileSync(${JSON.stringify(seen)}, JSON.stringify({ args, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => /_PROBE$/.test(k))) }));`,
     "const out = args[args.indexOf('--out') + 1];",
-    `writeFileSync(join(out, 'security.json'), JSON.stringify({ schemaVersion: 1, engineVersion: ${JSON.stringify(engineVersion)}, probes: ${JSON.stringify(probes)}, findings: [] }));`,
+    `writeFileSync(join(out, 'security.json'), JSON.stringify(${JSON.stringify({ schemaVersion: 1, engineVersion, probes, findings: [], ...report })}));`,
     '',
   ].join('\n'));
   const ws = join(root, 'ws');
@@ -97,6 +100,7 @@ function runSecurity({ extra, engineVersion = '0.1.18', probes = [], inherited =
       ...inherited,
       CREDDA_MODE: 'security',
       CREDDA_EXTRA_PROBES: extra,
+      CREDDA_FIX: fix ? 'true' : 'false',
       CREDDA_ACTION_ROOT: ROOT,
       CREDDA_ENGINE_ROOT: engine,
       GITHUB_WORKSPACE: ws,
@@ -146,5 +150,58 @@ describe('run.mjs with extra-probes', () => {
     assert.equal(r.engineSaw, null, 'the engine never started');
     assert.match(r.stdout, /^::error::extra-probes names "sqli", which is not a probe class this action knows\./m);
     assert.match(r.summary, /Credda did not finish/);
+  });
+});
+
+describe('run.mjs with hostile text in security.json', () => {
+  const EVIL = 'https://evil.test';
+  const hostile = {
+    id: 'PROTOTYPE_POLLUTION@x',
+    language: 'javascript',
+    class: 'PROTOTYPE_POLLUTION',
+    cwe: 'CWE-1321',
+    site: { kind: 'source', file: `a\`<img src=${EVIL}/p.png>\`](${EVIL}).js`, line: 3 },
+    sentence: `<img src=${EVIL}/x.png> [click](${EVIL}) ${EVIL}/autolink`,
+    program: `console.log(1);\r# Injected heading\r<img src=${EVIL}/y.png>\rconsole.log(2);`,
+  };
+
+  it('a file name, a sentence and an exploit program cannot form markup in the job summary', () => {
+    const r = runSecurity({ report: { findings: [hostile], probes: [{ id: 'PROTOTYPE_POLLUTION@x', class: 'PROTOTYPE_POLLUTION' }] } });
+    assert.equal(r.status, 0, r.stderr);
+    const lines = r.summary.split(/\r\n|\r|\n/);
+    const item = lines.find((l) => l.startsWith('- **PROTOTYPE_POLLUTION**'));
+    // The path is one code span whose fence is longer than any backtick run in it.
+    assert.ok(item.endsWith(`at \`\`a\`<img src=${EVIL}/p.png>\`](${EVIL}).js:3\`\``), item);
+    const sentence = lines[lines.indexOf(item) + 1];
+    assert.ok(!/(^|[^\\])[<[]/.test(sentence), sentence);
+    assert.ok(!sentence.includes('https://'), 'no bare URL left to autolink');
+    // Every line of the program stays inside the list item.
+    const open = lines.findIndex((l) => /^  ```+js$/.test(l));
+    const close = lines.findIndex((l, i) => i > open && /^  ```+$/.test(l));
+    assert.ok(open > 0 && close > open);
+    for (const l of lines.slice(open, close + 1)) assert.ok(l.startsWith('  '), JSON.stringify(l));
+    assert.ok(lines.slice(open, close).includes('  # Injected heading'));
+  });
+
+  it('a class shaped like a workflow command never reaches the log as one', () => {
+    const report = {
+      fixes: {
+        provider: 'openai-compatible',
+        modelBacked: true,
+        counts: { proven: 1, rejected: 0, notAttempted: 0 },
+        attempts: [{ class: 'PP\n::warning::pwned', language: 'javascript', findings: [], status: 'FIX_PROVEN', verdict: 'FIX_PROVEN', gates: [] }],
+      },
+    };
+    const r = runSecurity({ report, fix: true });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^::error::The engine said FIX_PROVEN for an unnamed class but it records no passing exploit gate\./m);
+    assert.doesNotMatch(r.stdout, /^::warning::pwned/m);
+  });
+
+  it('an engine version with markup in it is not printed', () => {
+    const r = runSecurity({ extra: 'xss', engineVersion: `0.1.19<img src=${EVIL}/v.png>` });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.summary, /This engine may not have it/);
+    assert.doesNotMatch(r.summary, /<img/);
   });
 });

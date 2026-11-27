@@ -25,14 +25,9 @@ import { isAbsolute, join, relative, sep } from 'node:path';
 
 import { deliverPullRequest } from './deliver-core.mjs';
 import { branchNameForSecurityFix, pullRequestTitleForSecurityFix } from './delivery.mjs';
-import { securityCounts, siteText } from './findings.mjs';
+import { codeSpan, engineVersionText, plain, pullRequestUrl, securityCounts, siteText } from './findings.mjs';
 
-/** One line of untrusted text, short and with nothing markdown or HTML can act on. */
-export function plain(text, max = 300) {
-  const first = String(text ?? '').split('\n')[0];
-  const line = first.length > max ? `${first.slice(0, max)}...` : first;
-  return line.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]).replace(/([\\`*_[\]|#@!])/g, '\\$1');
-}
+export { plain };
 
 /** An engine token (a status, class, gate or verdict) as is, or '?' when it is not shaped like one. */
 function token(text) {
@@ -95,7 +90,7 @@ export function securityFixBody({ attempt, findings, engineVersion, baseBranch, 
   const lines = [
     `## ${pullRequestTitleForSecurityFix(attempt.class, cwe)}`,
     '',
-    `Credda security ran an exploit against \`${baseBranch}\` at ${baseSha.slice(0, 12)} and it proved ` +
+    `Credda security ran an exploit against ${codeSpan(baseBranch)} at ${plain(baseSha.slice(0, 12), 12)} and it proved ` +
       `${own.length === 1 ? 'this finding' : `these ${String(own.length)} findings`}` +
       `${/^CWE-[0-9]+$/.test(cwe) ? ` (${cwe})` : ''}:`,
     '',
@@ -121,7 +116,7 @@ export function securityFixBody({ attempt, findings, engineVersion, baseBranch, 
     lines.push('Files changed:', '', ...fenced(attempt.filesChanged.map(String).join('\n')), '');
   }
   lines.push(
-    `Engine: Credda ${plain(engineVersion, 40)}.`,
+    `Engine: Credda ${engineVersionText(engineVersion) || 'of an unstated version'}.`,
     '',
     'The patch was written by your own model and checked by the gates above. A person should review it before ' +
       'merging. Credda does not merge.',
@@ -149,9 +144,10 @@ export function fixesSummary({ fixes, usable, broken, delivery, openPullRequest,
     return lines.join('\n');
   }
   const c = fixes.counts ?? {};
+  const n = (v) => (Number.isInteger(v) && v >= 0 ? String(v) : '?');
   lines.push(
-    `Provider ${plain(fixes.provider, 60)}. ${String(c.proven ?? 0)} proven by the check-fix gates, ` +
-      `${String(c.rejected ?? 0)} rejected, ${String(c.notAttempted ?? 0)} not attempted. Only a fix the gates ` +
+    `Provider ${plain(fixes.provider, 60)}. ${n(c.proven ?? 0)} proven by the check-fix gates, ` +
+      `${n(c.rejected ?? 0)} rejected, ${n(c.notAttempted ?? 0)} not attempted. Only a fix the gates ` +
       'proved is offered as a patch.',
     '',
   );
@@ -170,8 +166,9 @@ export function fixesSummary({ fixes, usable, broken, delivery, openPullRequest,
           'is off. Set it to `true` and grant `contents: write` and `pull-requests: write` to have one opened.';
       } else if (baseRefusal !== '') note = `No pull request was opened: ${baseRefusal} The patch is in \`fix-patches\`.`;
       else if (d === undefined) note = 'No pull request was attempted.';
-      else if (d.outcome === 'opened') note = `Pull request opened${d.url === '' ? '' : `: ${d.url}`}. A person should review it before merging.`;
-      else if (d.outcome === 'already-proposed' || d.outcome === 'not-attempted') note = d.message;
+      else if (d.outcome === 'opened') note = `Pull request opened${pullRequestUrl(d.url) === '' ? '' : `: ${pullRequestUrl(d.url)}`}. A person should review it before merging.`;
+      else if (d.outcome === 'already-proposed') note = `Credda already proposed this fix${pullRequestUrl(d.url) === '' ? '' : `: ${pullRequestUrl(d.url)}`}. This run pushed nothing over it.`;
+      else if (d.outcome === 'not-attempted') note = d.message;
       else note = `No pull request was opened. ${d.message} ${plain(d.detail, 400)}`.trim();
       lines.push(`${head}. Gates: ${gates}.`, `  ${note}`, '');
     } else if (a.status === 'FIX_REJECTED') {

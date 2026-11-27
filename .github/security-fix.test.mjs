@@ -251,6 +251,37 @@ describe('the pull request body', () => {
   });
 });
 
+describe('hostile text in the summary and the pull request body', () => {
+  it('a branch name and an engine version cannot form markup in the body', () => {
+    const { result } = fixture('model');
+    const attempt = result.fixes.attempts.find((x) => x.status === 'FIX_PROVEN');
+    const body = securityFixBody({ attempt, findings: result.findings, engineVersion: '0.1.18<img src=https://evil.test/p.png>', baseBranch: 'x`<img src=https://evil.test/q.png>`', baseSha: 'abcdef1234567890', runUrl });
+    assert.ok(body.includes('against `` x`<img src=https://evil.test/q.png>` `` at'), body.slice(0, 400));
+    assert.match(body, /Engine: Credda of an unstated version\./);
+    assert.doesNotMatch(body, /0\.1\.18<img/);
+  });
+
+  it('a delivery URL not shaped like a pull request and engine counts that are not numbers are not printed', () => {
+    const { result, out } = fixture('model');
+    const { usable, broken } = provenFixes(result.fixes, out);
+    const delivery = new Map([[usable[0], { outcome: 'opened', url: 'https://evil.test/x)<img src=y>', message: '', detail: '' }]]);
+    const fixes = { ...result.fixes, counts: { proven: '<img src=https://evil.test/c.png>', rejected: 1, notAttempted: 0 } };
+    const text = fixesSummary({ fixes, usable, broken, delivery, openPullRequest: true, patchDir: '', baseRefusal: '' });
+    assert.match(text, /Pull request opened\. A person should review it/);
+    assert.match(text, /Provider openai\\-compatible\. \? proven by the check-fix gates/);
+    assert.doesNotMatch(text, /<img|evil\.test/);
+  });
+
+  it('an already-proposed note carries only a URL shaped like a pull request', () => {
+    const { result, out } = fixture('model');
+    const { usable, broken } = provenFixes(result.fixes, out);
+    const delivery = new Map([[usable[0], { outcome: 'already-proposed', url: 'https://github.com/a/b/pull/3', message: 'raw [x](https://evil.test)', detail: '' }]]);
+    const text = fixesSummary({ fixes: result.fixes, usable, broken, delivery, openPullRequest: true, patchDir: '', baseRefusal: '' });
+    assert.match(text, /Credda already proposed this fix: https:\/\/github\.com\/a\/b\/pull\/3\. This run pushed nothing over it\./);
+    assert.doesNotMatch(text, /evil/);
+  });
+});
+
 describe('delivery through deliver-core.mjs', () => {
   const ctx = (s, extra = {}) => {
     const { result, out } = fixture('model');

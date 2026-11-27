@@ -467,6 +467,13 @@ describe('Linear', () => {
     assert.ok(!r.line.includes(SECRET));
   });
 
+  it('a GraphQL error message cannot carry a line break, a link or markup into the log or the job summary', async () => {
+    const s = await make((req, res) => json(res, 200, { errors: [{ message: 'nope\r::add-mask::x [click](https://evil.test) <img src=https://evil.test/p.png> www.evil.test' }] }));
+    const r = await deliverLinear(linear(s));
+    assert.ok(!/[\r\n]/.test(r.line));
+    assert.ok(!/[[\]<>]|https:|www\.evil/.test(r.line.replace('Linear was not delivered: Error: Linear returned errors: ', '').replace(/\. This run is unaffected\.$/, '')), r.line);
+  });
+
   it('500, refusal and timeout all return one line without throwing', async () => {
     const five = await make((req, res) => json(res, 500, {}));
     const r1 = await deliverLinear(linear(five));
@@ -597,6 +604,23 @@ describe('checkUrl', () => {
       assert.notEqual(checkUrl(bad, 'x'), null, bad);
     }
     assert.equal(checkUrl('https://203.0.113.9', 'x'), null);
+  });
+  it('refuses the encodings and ranges that also reach a private address', () => {
+    for (const bad of [
+      'https://2130706433', // 127.0.0.1 as one number; URL normalises it
+      'https://0x7f.1',
+      'https://127.1',
+      'https://[64:ff9b::7f00:1]', // NAT64 of 127.0.0.1
+      'https://[64:ff9b::a9fe:a9fe]', // NAT64 of 169.254.169.254
+      'https://224.0.0.1',
+      'https://255.255.255.255',
+      'https://198.18.0.1',
+      'https://192.0.0.8',
+      'https://[ff02::1]',
+      'https://localhost.',
+    ]) {
+      assert.notEqual(checkUrl(bad, 'x'), null, bad);
+    }
   });
 });
 
@@ -749,6 +773,17 @@ describe('integrate.mjs, run as the action runs it', () => {
       for (const secret of ALL_SECRETS) assert.ok(!readable(r).includes(secret), `${name} printed ${secret}`);
       assert.ok(!/authorization/i.test(readable(r)), `${name} printed a header`);
     }
+  });
+
+  it('a secret with a line break is masked and scrubbed line by line', async () => {
+    const s = await make((req, res) => json(res, 401, { message: 'TOKENPARTTWO denied' }));
+    const token = 'TOKENPARTONE\nTOKENPARTTWO';
+    const r = await run('jira', { ...jiraEnv(writeJson(realShaped())), CREDDA_JIRA_API_TOKEN: token }, s.url);
+    assert.equal(r.code, 0);
+    const masks = r.stdout.split('\n').filter((l) => l.startsWith('::add-mask::'));
+    assert.ok(masks.includes('::add-mask::TOKENPARTONE') && masks.includes('::add-mask::TOKENPARTTWO'), masks.join('|'));
+    assert.ok(!masks.some((l) => l.includes('\n')));
+    assert.ok(!readable(r).includes('TOKENPART'), readable(r));
   });
 
   it('refuses a non-https, loopback or private destination without sending', async () => {

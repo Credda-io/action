@@ -8,6 +8,8 @@
 
 import { appendFileSync } from 'node:fs';
 
+import { LINE_BREAK } from './findings.mjs';
+
 import {
   checkUrl,
   decideSlack,
@@ -38,7 +40,13 @@ if (destination === 'slack' && secrets.length === 1) {
 }
 if (destination === 'jira' && secrets.length === 2) secrets.push(Buffer.from(`${secrets[0]}:${secrets[1]}`).toString('base64'));
 // Masked first, before anything else can be printed.
-for (const s of secrets) if (s.length >= 4) console.log(`::add-mask::${s}`);
+// One mask per line: a mask command is one line, so a secret with a line break is masked line by line.
+for (const part of secrets.flatMap((s) => s.split(LINE_BREAK))) {
+  if (part.length >= 4) {
+    console.log(`::add-mask::${part}`);
+    if (!secrets.includes(part)) secrets.push(part);
+  }
+}
 
 const names = { slack: 'Slack', linear: 'Linear', jira: 'Jira' };
 const say = (line) => {

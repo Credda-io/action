@@ -3,6 +3,32 @@
 // security-fix.mjs writes the fix pull request body from them, so the summary, a
 // tracker issue and a pull request cannot describe one finding two ways.
 
+/** Every line ending markdown and the runner's log reader honour. */
+export const LINE_BREAK = /\r\n|\r|\n/;
+
+/** The first line of a text, cut at any line ending, so it cannot start a second line or a workflow command. */
+export const oneLine = (text) => String(text ?? '').split(LINE_BREAK)[0];
+
+/** Markdown text from the scanned repository: every ASCII punctuation mark escaped, so no link, image, HTML or markup forms. */
+export const markdownText = (text) => String(text).replace(/[!-/:-@[-`{-~]/g, '\\$&');
+
+/** One line of untrusted text for a job summary or a pull request body: first line, cut to `max`, escaped. */
+export function plain(text, max = 300) {
+  const first = oneLine(text);
+  return markdownText(first.length > max ? `${first.slice(0, max)}...` : first);
+}
+
+/** A code span that its text cannot close, on one line. */
+export function codeSpan(text) {
+  const body = String(text ?? '').replace(/[\r\n]+/g, ' ');
+  const tick = '`'.repeat(Math.max(1, ...(body.match(/`+/g) ?? []).map((run) => run.length + 1)));
+  const pad = body.startsWith('`') || body.endsWith('`') || body.startsWith(' ') ? ' ' : '';
+  return `${tick}${pad}${body}${pad}${tick}`;
+}
+
+/** An engine version such as 0.1.18, or '' when the text is not one. */
+export const engineVersionText = (v) => (/^v?\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[A-Za-z0-9.]{1,40})?$/.test(String(v ?? '')) ? String(v) : '');
+
 /** What a clean run says, on the job summary and in Slack. */
 export const NOTHING_PROVEN =
   'No exploit succeeded. That is not an audit: it says the probes Credda has did not prove a ' +
@@ -143,7 +169,7 @@ function compareVersions(a, b) {
  */
 export function extraProbesLines(names, result) {
   const probes = Array.isArray(result?.probes) ? result.probes : [];
-  const version = /^v?\d+\.\d+\.\d+/.test(String(result?.engineVersion ?? '')) ? String(result.engineVersion) : '';
+  const version = engineVersionText(result?.engineVersion);
   return names.map((name) => {
     const p = EXTRA_PROBES[name];
     const head = `- \`${name}\` (${p.cls}):`;

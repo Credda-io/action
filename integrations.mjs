@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 
-import { exploitLanguage, fenceFor, fixFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
+import { exploitLanguage, fenceFor, fixFor, markdownText, NOTHING_PROVEN, oneLine, ranText, securityCounts, siteText } from './findings.mjs';
 import { decideNotification } from './notification.mjs';
 
 const TIMEOUT_MS = 10_000;
@@ -50,12 +50,15 @@ export function privateHost(hostname) {
   if (isIP(host) === 4) {
     const [a, b] = host.split('.').map(Number);
     return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 192 && b === 0) ||
+      (a === 198 && (b === 18 || b === 19)) || a >= 224;
   }
   if (isIP(host) === 6) {
     const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(host);
     if (mapped) return privateHost(mapped[1]);
-    return host === '::' || host === '::1' || /^f[cd]/.test(host) || /^fe[89ab]/.test(host) || host.startsWith('::ffff:');
+    // 64:ff9b::/96 is NAT64: an IPv4 address, private ones included, inside an IPv6 one.
+    return host === '::' || host === '::1' || /^f[cd]/.test(host) || /^fe[89ab]/.test(host) || host.startsWith('::ffff:') ||
+      host.startsWith('64:ff9b:') || /^ff/.test(host);
   }
   return !host.includes('.') || /\.(localhost|local|internal|lan|home\.arpa)$/.test(host);
 }
@@ -77,7 +80,7 @@ export function checkUrl(value, input) {
   return null;
 }
 
-const firstLine = (text) => String(text ?? '').split('\n')[0].trim();
+const firstLine = (text) => oneLine(text).trim();
 
 /**
  * Cuts text to `max` characters with a stated note, at a space when one is near,
@@ -268,8 +271,7 @@ const programNote = (f, runUrl) =>
   `The exploit program (${f.program.length} characters) is too long for this description. ` +
   `It is on the run's job summary${runUrl ? ` (${runUrl})` : ''} and in the SARIF file, under this result's exploitProgram.`;
 
-/** Markdown text from the scanned repository: every ASCII punctuation mark escaped, so no link, mention or markup forms. */
-export const markdownText = (text) => String(text).replace(/[!-/:-@[-`{-~]/g, '\\$&');
+export { markdownText };
 
 export function linearDescription(f, runUrl, fp) {
   const head = [
@@ -339,7 +341,9 @@ export async function deliverLinear({ apiKey, teamId, repository, findings, runU
     const r = await request(fetch, apiUrl, { method: 'POST', headers, body: JSON.stringify({ query, variables }) }, timeoutMs);
     if (!r.ok) throw new Error(`Linear answered ${r.status}`);
     if (r.json === null || (Array.isArray(r.json.errors) && r.json.errors.length > 0)) {
-      throw new Error(`Linear returned errors: ${cap(firstLine(r.json?.errors?.[0]?.message ?? 'no JSON body'), 120, '...')}`);
+      // The server's own words reach the log and the job summary, so only letters, digits and plain punctuation pass.
+      const said = firstLine(r.json?.errors?.[0]?.message ?? 'no JSON body').replace(/[^A-Za-z0-9 ,'_-]/g, ' ');
+      throw new Error(`Linear returned errors: ${cap(said, 120, '...')}`);
     }
     return r.json.data;
   };

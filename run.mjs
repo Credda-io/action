@@ -99,12 +99,16 @@ import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
 import {
+  codeSpan,
   exploitLanguage,
   extraProbeEnv,
   extraProbesLines,
   fenceFor,
+  LINE_BREAK,
   NOTHING_PROVEN,
+  oneLine,
   parseExtraProbes,
+  plain,
   ranText,
   securityCounts,
   siteText,
@@ -286,7 +290,7 @@ function credda(args, stdio, extraEnv = {}) {
  * The first line goes to `::error::` because that is all an annotation takes.
  */
 function die(message) {
-  console.log(`::error::${message.split('\n')[0]}`);
+  console.log(`::error::${oneLine(message)}`);
   console.error(message);
   writeSummary(`### Credda did not finish\n\n${message}\n`);
   process.exit(1);
@@ -1098,7 +1102,8 @@ async function security() {
     fixDelivery = join(out, 'fix-delivery.json');
     writeFileSync(fixDelivery, JSON.stringify(deliveryRecord({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal })), 'utf8');
     for (const b of fixed.broken) {
-      console.log(`::error::The engine said FIX_PROVEN for ${String(b.attempt.class)} but ${b.why}. Nothing was proposed for it. This is a Credda failure.`);
+      const cls = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(b.attempt.class)) ? b.attempt.class : 'an unnamed class';
+      console.log(`::error::The engine said FIX_PROVEN for ${cls} but ${b.why}. Nothing was proposed for it. This is a Credda failure.`);
     }
   }
 
@@ -1137,9 +1142,14 @@ function securitySummary(findings, attempted, fuzzed) {
   } else {
     lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
     for (const one of findings) {
-      const site = siteText(one.site, (s) => `\`${s}\``);
-      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${site ? ` ${site}` : ''}`);
-      if (one.sentence) lines.push(`  ${String(one.sentence).split('\n')[0].slice(0, 300)}`);
+      // The site's file name and the sentence come from the scanned repository,
+      // so neither can form markup here: the path is a code span it cannot
+      // close and the sentence is escaped. The class and CWE are engine tokens.
+      const site = siteText(one.site, codeSpan);
+      const cls = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(one.class)) ? one.class : 'UNNAMED_CLASS';
+      const cwe = /^CWE-[0-9]{1,5}$/.test(String(one.cwe)) ? one.cwe : '';
+      lines.push(`- **${cls}**${cwe ? ` (${cwe})` : ''}${site ? ` ${site}` : ''}`);
+      if (one.sentence) lines.push(`  ${plain(one.sentence, 300)}`);
       const program = one.program ? String(one.program) : '';
       if (program && program.length <= budget) {
         budget -= program.length;
@@ -1149,7 +1159,8 @@ function securitySummary(findings, attempted, fuzzed) {
           '  <details><summary>The exploit that proved it</summary>',
           '',
           `  ${fence}${exploitLanguage(one)}`,
-          ...program.split('\n').map((line) => `  ${line}`),
+          // Every line ending, so no line of the program escapes the list item's indentation.
+          ...program.split(LINE_BREAK).map((line) => `  ${line}`),
           `  ${fence}`,
           '',
           '  </details>',
