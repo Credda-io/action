@@ -263,39 +263,10 @@ were not, `limited` is `false` and `partial` is `true`.
 
 **Fixes in a monorepo.** The engine attempts no fix on a workspace report. It
 records each proven class as not attempted, and the *Fixes* section says that
-once. Fixes run on one package at a time. This action has no input that points
-it at a subdirectory: it always scans the checkout root. To have fixes
-attempted for one package today, run a separate job where that package is the
-checkout root:
-
-```yaml
-  fix-one-package:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: repo
-      # The package becomes the root this action scans.
-      - run: cp -R repo/packages/a/. . && rm -rf repo
-      - uses: Credda-io/action@v1
-        id: credda
-        with:
-          mode: security
-          fix: 'true'
-          upload-sarif: 'false'
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-      - if: steps.credda.outputs.fix-patches != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: credda-fixes
-          path: ${{ steps.credda.outputs.fix-patches }}
-```
-
-Know what this gives up. The root is no longer a git checkout, so no pull
-request can be opened: a proven patch is kept in `fix-patches`, with paths
-relative to the package. Turn `upload-sarif` off, because those paths would not
-match the repository. A package whose dependencies are other packages of the
-workspace may not install on its own; its report then says *NOT TESTED*.
+once. Proposing fixes for one package of a monorepo is not supported through
+this action yet: it has no input that points it at a subdirectory, and it
+always scans the checkout root. The findings, with their exploits, are still
+reported for every package that was exercised.
 
 #### Keeping the report: `keep-report`
 
