@@ -1,13 +1,13 @@
 {
   "_": "Written by core/scripts/pack-engine.mjs. Do not edit by hand: the digests below are what every customer runner checks downloaded code against, and a hand-edited value is either an outage or a hole. Re-pack instead.",
-  "version": "v0.1.17",
+  "version": "v0.1.19",
   "entry": "reef.mjs",
   "archive": {
-    "bytes": 2753193,
-    "sha256": "b92960fe7764805e2e53b2dbaf1dad5d2e3d51e85b603e87538cf6a5fba26b07"
+    "bytes": 2803559,
+    "sha256": "490a5036f6f4bf25673eefe97adf38ca726e194175c53e3b01ccd68c6ce7bc5a"
   },
   "files": {
-    "reef.mjs": "a0cd24502d6d82b17808d193b5e354ac614a54a3aba338d611c308cb9c4a3d48",
+    "reef.mjs": "c8b742a625e15ea8366938927bedf2e8ece59c505afda62dbf88e7a0a0e019d8",
     "Dockerfile": "de1176b5360e4a93b8ce9cbfde091d0efe3537191d30ced3c6bbdd767c511880",
     "metering.mjs": "fe360ec850e7900376f9d97ae8468d9a3aef0fbfa57261c45cb394ad83304484",
     "sql/002_jobs.sql": "1cefe923d708dbe59ccdc64a0c84b691212eaa4db6907dc8f1f7fef8de63a6ce",
