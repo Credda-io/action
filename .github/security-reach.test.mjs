@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { limitedReach, reachRecord, reachSection, reachSummaryText, reachWarning } from '../findings.mjs';
+import { limitedReach, partialReach, reachRecord, reachSection, reachSummaryText, reachWarning } from '../findings.mjs';
 import { readFindings, slackMessage } from '../integrations.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -245,5 +245,23 @@ describe('run.mjs', () => {
     assert.ok(dir !== '' && existsSync(dir));
     assert.deepEqual(readdirSync(dir).sort(), ['security.json', 'security.md', 'security.sarif']);
     assert.deepEqual(JSON.parse(readFileSync(join(dir, 'security.json'), 'utf8')), fixture('flat-clean'));
+  });
+});
+
+describe('engine v0.1.21 fields', () => {
+  it('names directories no scan read, and counts the run as partial', () => {
+    const result = { findings: [], notScanned: { total: 7, listed: [{ path: 'backend', manifest: 'pyproject.toml' }, { path: 'tools/`x`', manifest: 'package.json' }] } };
+    const line = reachSection(result).find((l) => l.startsWith('- **Not scanned:**'));
+    assert.equal(line, '- **Not scanned:** 7 directories have a manifest of their own that this run did not read: `backend`, `` tools/`x` `` and 5 more. This run says nothing about that code.');
+    assert.equal(partialReach(result), true);
+    assert.equal(reachRecord(result).partial, true);
+    assert.equal(partialReach({ findings: [] }), false);
+    assert.equal(reachSection({ findings: [], notScanned: { total: 1, listed: [{ path: 'api' }] } }).find((l) => l.includes('Not scanned')), '- **Not scanned:** 1 directory has a manifest of its own that this run did not read: `api`. This run says nothing about that code.');
+  });
+
+  it('says where the modules came from, what was compiled and which components were set aside', () => {
+    const reach = { from: 'modules', imported: ['lib/a.ts', 'app/api/x/route.ts'], failed: [{ module: 'app/page.tsx', error: 'css' }], overCap: 0, cap: 32, filesLoaded: 3, node: 'v22.1.0', compiled: 1, components: 2 };
+    const line = reachSection({ findings: [], fuzz: { functions: 1, reach } }).find((l) => l.startsWith('- Loaded from source'));
+    assert.match(line, /loaded the modules under `lib\/`, `app\/`\. 2 imported, 3 source files loaded, cap 32, 1 JSX or decorator file compiled with TypeScript first, 2 React components set aside and not called, /);
   });
 });
