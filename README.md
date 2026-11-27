@@ -73,7 +73,7 @@ Actions minutes are the other cost, and `investigate` spends more of them than
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
-| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package in a container, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts |
+| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package in a container, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts. With `fix` and your own model key, a patch per proven class that the check-fix gates proved, and -- if you asked for it -- a pull request for each |
 | `discover` | **a push. Nobody has to file anything** | one download and one Node process, seconds | a job summary listing the defects Credda found in your code |
 | `sweep` | **a push. Nobody has to file anything** | a runner, Docker, and a reproduction per candidate, minutes | a job summary, and -- if you asked for it -- a pull request per verified fix |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
@@ -167,6 +167,61 @@ The job stays green whatever is found. The `security-findings` output counts
 only proven findings, so it is safe to gate a merge on. The job goes red only
 when the probes could not run, because a count of zero from a run that never
 happened would read exactly like a clean repository.
+
+#### Proposing fixes: `fix`
+
+`fix: 'true'` asks your own model for a patch for each class of finding an
+exploit proved. It needs a model key: `anthropic-api-key`, or `model-api-key`
+with `model-base-url` (see *Using your own model*). The patch is applied to a
+temp copy, never to your checkout, and judged by the check-fix gates: the
+exploit again, a fixed list of its variants, a fuzz of the patched functions, a
+functional control, and your test suite. Only a patch the engine marks
+`FIX_PROVEN` is kept. It needs engine v0.1.18 or later.
+
+The job summary gets a *Fixes* section: per class, whether the fix was proven,
+rejected (and at which gate) or not attempted (and why). With no model key,
+nothing is attempted, the summary says so, and the job ends exactly as it would
+without `fix`.
+
+Each proven patch is written to the directory in the `fix-patches` output, with
+the pull request body beside it. With `open-pull-request: 'true'` and the two
+write scopes, Credda opens one pull request per proven fix against the branch it
+scanned, through the same delivery code `investigate` and `sweep` use: one
+branch per class (`credda/security-fix-<class>`), no force-push, an open
+proposal met with "already proposed", and the same refusals. The body states the
+finding, the CWE, that the exploit fired before the patch and not after, each
+gate as the engine reported it, and the engine version. A person should review
+it before merging. Credda never merges. A run on a `pull_request` event scans a
+merge commit, so its fixes are attached and not proposed.
+
+```yaml
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write          # push the fix branch
+  pull-requests: write     # open the proposal
+  id-token: write
+  security-events: write
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        id: credda
+        with:
+          mode: security
+          fix: 'true'
+          open-pull-request: 'true'
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Without open-pull-request, keep the proven patches as an artifact.
+      - if: steps.credda.outputs.fix-patches != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: credda-fixes
+          path: ${{ steps.credda.outputs.fix-patches }}
+```
 
 ### Sweep mode
 
@@ -513,6 +568,7 @@ trigger.
 | --- | --- | --- |
 | `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one; `discover` reads the repository and reports what nobody filed; `sweep` discovers, reproduces, and opens a pull request per verified fix; `security` runs exploit probes and reports only proven findings. |
 | `upload-sarif` | `'true'` | **Security mode only.** Uploads proven findings to GitHub code scanning. Needs `security-events: write`. A refused upload does not fail the job. |
+| `fix` | `'false'` | **Security mode only, opt-in.** Asks your own model for a patch per proven finding class and keeps only a patch the check-fix gates prove. Needs a model key. With `open-pull-request` on, opens a pull request for each fix the gates proved. See *Proposing fixes*. |
 | `max-files` | `'4000'` | In `discover` and `sweep` mode, the most source files to read. Ignored by the other modes. |
 | `max-candidates` | `'3'` | **Sweep mode only.** The most discovered candidates one sweep reproduces and proposes -- a hard cap on the pull requests a single run can open. Never unbounded. |
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
@@ -567,6 +623,8 @@ If you have pinned either input explicitly, nothing here affects you.
 | --- | --- | --- |
 | `security-findings` | security | How many findings an exploit proved. Only proven findings are counted. |
 | `sarif-path` | security | Absolute path of the SARIF file on the runner. |
+| `security-fixes` | security | With `fix` on, how many fixes the check-fix gates proved (`FIX_PROVEN`). Empty when `fix` is off. |
+| `fix-patches` | security | With `fix` on, a directory on the runner holding each proven patch and its pull request body, for `actions/upload-artifact`. Empty when no fix was proven. |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
 | `candidates` | discover, sweep | How many candidates the run produced. In `sweep`, how many discovery wrote before the `max-candidates` cap. |
@@ -717,6 +775,12 @@ pushed and `gh` refuses the proposal; the job fails naming that setting and its
 location in Settings, and telling you the branch is there to open by hand. A
 missing write scope, a branch protection rule and a patch that no longer
 applies each get their own named message rather than the API's.
+
+**What no patch may change, in any mode.** Before git sees a patch, Credda
+refuses it if it touches `.github/` or any other CI configuration, a registry
+file such as `.npmrc`, a path outside the repository, a symbolic link or a
+submodule, or adds a URL to a lockfile. Nothing is pushed and the summary names
+the path.
 
 **What has not been proven about this feature.** It has not been run against a
 real repository from this checkout. The gate, the branch naming and the refusal
@@ -923,21 +987,28 @@ and a second or so of work.
 
 ```
 action.yml                 the action metadata (root, so it can be listed)
-run.mjs                    the runner: event in, report out. Dispatches the four
-                           modes; imports sweep.mjs for the sweep branch
+run.mjs                    the runner: event in, report out. Dispatches the five
+                           modes; imports sweep.mjs for the sweep branch and
+                           security-fix.mjs for security mode's fix input
+security-fix.mjs           security mode with fix on: writes the engine's fix
+                           verdicts to the job summary and proposes each
+                           FIX_PROVEN patch through deliver-core.mjs. Imported by
+                           run.mjs; never a step of its own
 sweep.mjs                  the sweep orchestration: discover, reproduce each
                            candidate up to max-candidates, and open a pull request
                            per verified fix through the shared delivery code.
                            Imported by run.mjs; never a step of its own
 delivery.mjs               the pure decisions: the single predicate that decides
-                           whether a run has a verified fix to deliver, and the
-                           branch names for both the issue and the sweep paths.
-                           Imported by run.mjs, deliver-pr.mjs, deliver-core.mjs
-                           and sweep.mjs; never executed as a step of its own
+                           whether a run has a verified fix to deliver, the
+                           branch names for the issue, sweep and security paths,
+                           and the paths no patch may touch (CI, registry
+                           configuration, outside the repository). Imported by
+                           run.mjs, deliver-pr.mjs, deliver-core.mjs, sweep.mjs
+                           and security-fix.mjs; never executed as a step of its own
 deliver-core.mjs           the git-and-gh machinery that pushes a branch and opens
-                           one pull request, reading no environment so both the
-                           single-investigate path and the sweep loop share it. It
-                           never force-pushes and never merges
+                           one pull request, reading no environment so the
+                           single-investigate path, the sweep loop and security
+                           fixes share it. It never force-pushes and never merges
 deliver-pr.mjs             the single-investigate entry: reads this run's one
                            patch, issue and body from the environment, names the
                            branch from the issue number, and delivers it through
@@ -977,6 +1048,11 @@ LICENSE                    Apache-2.0
 .github/notify.test.mjs    node:test over notification.mjs: the body, the Slack
                            shape, silence with nothing to say, and a failed POST
                            that fails nothing. No dependency; `node --test` runs it
+.github/security-fix.test.mjs  node:test over security-fix.mjs and the patch
+                           refusals in delivery.mjs, with security.json files the
+                           engine wrote, a local bare repository as origin and a
+                           gh stub. No network; `node --test` runs it
+.github/fixtures/security-fix/  those engine outputs, and where they came from
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong
 .github/PULL_REQUEST_TEMPLATE.md

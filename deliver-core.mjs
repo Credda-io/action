@@ -36,7 +36,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { explainForgeRefusal } from './delivery.mjs';
+import { explainForgeRefusal, patchRefusal } from './delivery.mjs';
 
 /** Runs a command with no shell, in the given checkout, and returns its status. */
 function run(command, args, cwd) {
@@ -84,6 +84,7 @@ function refused(headline, detail, said) {
  *   commitSubject: string,
  *   commitBody: string,
  *   prTitle: string,
+ *   baseBranch?: string,
  * }} input
  * @returns {{ outcome: 'opened'|'already-proposed'|'refused', message: string, detail: string, url: string, forgeRefusal: boolean }}
  */
@@ -96,6 +97,7 @@ export function deliverPullRequest({
   commitSubject,
   commitBody,
   prTitle,
+  baseBranch = '',
 }) {
   if (!existsSync(patchPath)) {
     return refused(
@@ -112,6 +114,16 @@ export function deliverPullRequest({
       'The verified patch is empty, so there is nothing to propose.',
       'An empty document and an empty change are different facts, and opening a pull request ' +
         'containing no change would be a claim with nothing behind it.',
+    );
+  }
+
+  // Before git sees it. A proposal never touches CI, registry configuration or
+  // anything outside the repository, whichever mode produced the patch.
+  const unsafe = patchRefusal(diff);
+  if (unsafe !== null) {
+    return refused(
+      'The patch was not committed because it changes something a proposal never changes.',
+      `Credda refused it before running git: ${unsafe} Nothing was pushed.`,
     );
   }
 
@@ -220,13 +232,16 @@ export function deliverPullRequest({
     );
   }
 
-  // The base branch, asked for rather than assumed; a failure to read it is not
-  // fatal -- the default is then gh's own.
-  const base = run(
-    'gh',
-    ['repo', 'view', repository, '--json', 'defaultBranchRef', '--jq', '.defaultBranchRef.name // ""'],
-    workspace,
-  );
+  // The base branch: the caller's when it names one (security mode proposes
+  // against the branch it scanned), otherwise asked for rather than assumed; a
+  // failure to read it is not fatal -- the default is then gh's own.
+  const base = baseBranch
+    ? { status: 0, out: baseBranch }
+    : run(
+        'gh',
+        ['repo', 'view', repository, '--json', 'defaultBranchRef', '--jq', '.defaultBranchRef.name // ""'],
+        workspace,
+      );
 
   const args = [
     'pr', 'create',
