@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 
-import { exploitLanguage, fenceFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
+import { exploitLanguage, fenceFor, fixFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
 import { decideNotification } from './notification.mjs';
 
 const TIMEOUT_MS = 10_000;
@@ -94,14 +94,22 @@ export function cap(text, max, note = ' [cut; the full text is on the run page]'
 /**
  * The proven findings and the run's counts out of a security.json, through the
  * same reader the job summary uses. Returns null when the file is missing or
- * unreadable, so a caller can say so in one line.
+ * unreadable, so a caller can say so in one line. With `fix` on, `deliveryPath`
+ * is the record run.mjs wrote of what delivery did, and each finding carries
+ * `fix` from fixFor; with `fix` off, `fix` is null.
  */
-export function readFindings(path) {
+export function readFindings(path, deliveryPath = '') {
   let parsed;
   try {
     parsed = JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     return null;
+  }
+  let delivered = [];
+  try {
+    delivered = deliveryPath === '' ? [] : JSON.parse(readFileSync(deliveryPath, 'utf8'));
+  } catch {
+    delivered = [];
   }
   const { findings, probes, fuzzed } = securityCounts(parsed);
   const proven = findings.map((f) => ({
@@ -113,6 +121,7 @@ export function readFindings(path) {
     fuzzFunction: typeof f.fuzz?.function === 'string' ? firstLine(f.fuzz.function) : '',
     sentence: firstLine(f.sentence),
     program: typeof f.program === 'string' ? f.program : '',
+    fix: fixFor(parsed.fixes, delivered, f.id),
   }));
   return { proven, unproven: Array.isArray(parsed.unproven) ? parsed.unproven.length : 0, probes, fuzzed };
 }
@@ -193,8 +202,10 @@ export function slackMessage({ repository, mode, outcome, runUrl, findings, unpr
   for (const f of findings.slice(0, 5)) {
     const head = `*${mrkdwn(f.class)}*${f.cwe ? ` (${mrkdwn(f.cwe)})` : ''}`;
     const where = f.fuzzFunction ? ` through ${f.fuzzFunction} (fuzzing)` : f.site ? ` ${f.site}` : '';
-    const room = SLACK_TEXT_LIMIT - head.length - 1;
-    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `${head}${slackText(`${where}\n${f.sentence}`, room)}` } });
+    // The URL passed pullRequestUrl, so it holds no character mrkdwn acts on.
+    const fix = f.fix ? `\n${mrkdwn(f.fix.text)}${f.fix.url ? ` <${f.fix.url}|${f.fix.url}>` : ''}` : '';
+    const room = SLACK_TEXT_LIMIT - head.length - fix.length - 1;
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `${head}${slackText(`${where}\n${f.sentence}`, room)}${fix}` } });
   }
   if (findings.length > 5) {
     blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `${findings.length - 5} more proven finding(s) on the job summary.` }] });
@@ -268,6 +279,7 @@ export function linearDescription(f, runUrl, fp) {
     `Site: ${markdownText(f.site || 'not stated')}`,
     `Credda finding id: ${markdownText(f.id)}`,
     `Credda fingerprint: ${fp}`,
+    ...(f.fix ? [`${markdownText(f.fix.text)}${f.fix.url ? ` ${f.fix.url}` : ''}`] : []),
     '',
   ];
   const tail = runUrl ? [`Run: ${runUrl}`] : [];
@@ -292,6 +304,7 @@ export function jiraDescription(f, runUrl, fp) {
     p(t(`Site: ${cap(f.site || 'not stated', 2000)}`)),
     p(t(`Credda finding id: ${cap(f.id, 2000)}`)),
     p(t(`Credda fingerprint: ${fp}`)),
+    ...(f.fix ? [f.fix.url ? p(t(`${f.fix.text} `), t(f.fix.url, [{ type: 'link', attrs: { href: f.fix.url } }])) : p(t(f.fix.text))] : []),
   ];
   const run = runUrl ? [p(t('Run: '), t(runUrl, [{ type: 'link', attrs: { href: runUrl } }]))] : [];
   if (f.program) {

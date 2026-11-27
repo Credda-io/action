@@ -43,3 +43,48 @@ export const exploitLanguage = (finding) => (finding?.language === 'python' ? 'p
 /** A backtick fence longer than any backtick run in the program, so the program cannot close it. */
 export const fenceFor = (program) =>
   '`'.repeat(Math.max(3, ...(String(program).match(/`+/g) ?? []).map((run) => run.length + 1)));
+
+/** An engine token (a status, verdict or step) as is, or null when it is not shaped like one. */
+const engineToken = (text) => (/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(String(text ?? '')) ? String(text) : null);
+
+/** A pull request URL as `gh pr create` prints it, or '' for anything else. */
+export const pullRequestUrl = (url) =>
+  /^https:\/\/[A-Za-z0-9.-]+(?::[0-9]{1,5})?\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/[0-9]{1,10}$/.test(String(url ?? '')) ? String(url) : '';
+
+/**
+ * What happened to the fix for one finding, as `{ text, url }`, or null when the
+ * run made no fix record (`fix` off) or no attempt names the finding. The
+ * verdict is the engine's `fixes` record in security.json; whether a pull
+ * request was opened is the delivery record run.mjs wrote (`delivered`, one
+ * entry per FIX_PROVEN attempt). Only engine tokens are used, never the
+ * model's own words, and `url` is '' unless it is shaped like a pull request.
+ */
+export function fixFor(fixes, delivered, findingId) {
+  const attempts = Array.isArray(fixes?.attempts) ? fixes.attempts : [];
+  const a = attempts.find((x) => Array.isArray(x?.findings) && x.findings.includes(findingId));
+  if (a === undefined) return null;
+  if (a.status === 'FIX_PROVEN') {
+    const list = Array.isArray(delivered) ? delivered : [];
+    const d = list.find((x) => x?.class === a.class && x?.language === a.language);
+    const proven = 'Fix proven by the check-fix gates.';
+    if (d === undefined) return { text: proven, url: '' };
+    if (d.outcome === 'not-offered') {
+      return { text: 'The engine reported a proven fix, but the patch failed this action\'s checks, so nothing was proposed.', url: '' };
+    }
+    const url = pullRequestUrl(d.url);
+    if (d.outcome === 'opened') return url ? { text: `${proven} Pull request opened:`, url } : { text: `${proven} A pull request was opened.`, url: '' };
+    if (d.outcome === 'already-proposed') return { text: `${proven} A pull request for it was already open${url ? ':' : '.'}`, url };
+    return { text: `${proven} No pull request was opened. The job summary says why.`, url: '' };
+  }
+  if (a.status === 'FIX_REJECTED') {
+    const verdict = engineToken(a.verdict);
+    const step = engineToken(a.stoppedAt);
+    if (a.stoppedAt === 'check-fix' && verdict) return { text: `Fix rejected by the check-fix gates (${verdict}).`, url: '' };
+    return { text: `Fix rejected${step ? ` (stopped at ${step})` : ''}.`, url: '' };
+  }
+  if (a.status === 'NOT_ATTEMPTED') {
+    return { text: `Fix not attempted.${fixes?.modelBacked === false ? ' The provider is not model-backed.' : ''}`, url: '' };
+  }
+  const status = engineToken(a.status);
+  return { text: `Fix status: ${status ?? 'not stated'}.`, url: '' };
+}

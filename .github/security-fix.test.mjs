@@ -22,7 +22,7 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { branchNameForSecurityFix, patchRefusal, pullRequestTitleForSecurityFix } from '../delivery.mjs';
-import { deliverSecurityFixes, fixesSummary, provenFixes, securityFixBody } from '../security-fix.mjs';
+import { deliverSecurityFixes, deliveryRecord, fixesSummary, provenFixes, securityFixBody } from '../security-fix.mjs';
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/security-fix/', import.meta.url));
 const SOURCE = fileURLToPath(new URL('../security-fix.mjs', import.meta.url));
@@ -307,6 +307,19 @@ describe('delivery through deliver-core.mjs', () => {
     const done = withPath(s.bin, () => deliverSecurityFixes(ctx(s, { baseBranch: '', baseRefusal: 'merge commit' })));
     assert.equal(done.delivery.size, 0);
     assert.equal(s.gh(), '');
+  });
+
+  it('records what delivery did per proven fix for the Slack, Linear and Jira steps', () => {
+    const s = scenario();
+    const c = ctx(s);
+    const done = withPath(s.bin, () => quiet(() => deliverSecurityFixes(c)));
+    const rec = (over = {}) => deliveryRecord({ fixes: c.result.fixes, ...done, openPullRequest: true, baseRefusal: '', ...over });
+    assert.deepEqual(rec(), [{ class: 'PROTOTYPE_POLLUTION', language: 'javascript', outcome: 'opened', url: 'https://github.example/example/flat/pull/7' }]);
+    assert.equal(rec({ openPullRequest: false })[0].outcome, 'patch-only');
+    assert.equal(rec({ baseRefusal: 'merge commit' })[0].outcome, 'patch-only');
+    const a = c.result.fixes.attempts.find((x) => x.status === 'FIX_PROVEN');
+    assert.equal(rec({ broken: [{ attempt: a, why: 'x' }] })[0].outcome, 'not-offered');
+    assert.deepEqual(deliveryRecord({ fixes: fixture('broke').result.fixes, broken: [], delivery: new Map(), openPullRequest: true, baseRefusal: '' }), [], 'no FIX_PROVEN, no entry');
   });
 
   it('refuses a proven patch that touches .github/ before git runs', () => {

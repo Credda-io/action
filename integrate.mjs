@@ -64,7 +64,7 @@ const asCount = (v) => (Number.isInteger(Number.parseInt(v, 10)) && Number.parse
 
 try {
   const file = get('CREDDA_SECURITY_JSON');
-  const loaded = mode === 'security' && file !== '' ? readFindings(file) : null;
+  const loaded = mode === 'security' && file !== '' ? readFindings(file, get('CREDDA_FIX_DELIVERY')) : null;
 
   if (destination === 'slack') {
     const url = get('CREDDA_SLACK_WEBHOOK_URL');

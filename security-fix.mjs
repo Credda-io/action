@@ -188,6 +188,26 @@ export function fixesSummary({ fixes, usable, broken, delivery, openPullRequest,
 }
 
 /**
+ * What delivery did with each FIX_PROVEN attempt, for the Slack, Linear and Jira
+ * steps, which run after this step and cannot see its result. Only outcomes the
+ * delivery reported: `not-offered` (the attempt failed provenFixes), `patch-only`
+ * (no pull request was asked for, or the scanned ref has no branch), or the
+ * outcome and URL deliverPullRequest returned.
+ */
+export function deliveryRecord({ fixes, broken, delivery, openPullRequest, baseRefusal }) {
+  const attempts = Array.isArray(fixes?.attempts) ? fixes.attempts : [];
+  return attempts.filter((a) => a?.status === 'FIX_PROVEN').map((a) => {
+    const d = delivery.get(a);
+    const outcome = broken.some((b) => b.attempt === a)
+      ? 'not-offered'
+      : !openPullRequest || baseRefusal !== ''
+        ? 'patch-only'
+        : d === undefined ? 'not-attempted' : String(d.outcome);
+    return { class: String(a.class), language: String(a.language), outcome, url: outcome === 'opened' || outcome === 'already-proposed' ? String(d?.url ?? '') : '' };
+  });
+}
+
+/**
  * Writes the proven patches and their bodies to `patchDir`, and, when
  * `openPullRequest` is on and the run scanned a branch, opens one pull request
  * per proven fix through `deliverPullRequest`. Never exits the process.

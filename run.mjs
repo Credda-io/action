@@ -99,7 +99,7 @@ import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
 import { exploitLanguage, fenceFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
-import { deliverSecurityFixes, fixesSummary } from './security-fix.mjs';
+import { deliverSecurityFixes, deliveryRecord, fixesSummary } from './security-fix.mjs';
 import { sweep } from './sweep.mjs';
 
 function env(name, fallback = null) {
@@ -1058,6 +1058,7 @@ async function security() {
   writeSummary(securitySummary(findings, probes, fuzzed));
 
   let fixed = null;
+  let fixDelivery = '';
   if (fix) {
     // The scanned branch is the base a proposal goes to. A pull_request event
     // checks out a merge commit GitHub made, and a branch cut from it would
@@ -1074,6 +1075,9 @@ async function security() {
       result, outDir: out, patchDir, workspace, repository: env('GITHUB_REPOSITORY'), baseBranch, baseRefusal, openPullRequest, runUrl,
     });
     writeSummary(fixesSummary({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal }));
+    // What delivery did, for the Slack, Linear and Jira steps that run after this one.
+    fixDelivery = join(out, 'fix-delivery.json');
+    writeFileSync(fixDelivery, JSON.stringify(deliveryRecord({ fixes: result.fixes, ...fixed, openPullRequest, baseRefusal })), 'utf8');
     for (const b of fixed.broken) {
       console.log(`::error::The engine said FIX_PROVEN for ${String(b.attempt.class)} but ${b.why}. Nothing was proposed for it. This is a Credda failure.`);
     }
@@ -1094,6 +1098,7 @@ async function security() {
   output('fix-patches', fixed?.patchDir ?? '');
   // The proven findings in full, for the Slack, Linear and Jira steps.
   output('security-json-path', resultPath);
+  output('fix-delivery-path', fixDelivery);
 }
 
 /** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */

@@ -952,6 +952,7 @@ runs:
         CREDDA_NOTIFY_ON: ${{ inputs.notify-on }}
         CREDDA_MODE: ${{ inputs.mode }}
         CREDDA_SECURITY_JSON: ${{ steps.credda.outputs.security-json-path }}
+        CREDDA_FIX_DELIVERY: ${{ steps.credda.outputs.fix-delivery-path }}
         CREDDA_SECURITY_FINDINGS: ${{ steps.credda.outputs.security-findings }}
         CREDDA_OUTCOME: ${{ steps.credda.outputs.outcome }}
         CREDDA_STATED_FINDINGS: ${{ steps.credda.outputs.stated-findings }}
@@ -968,6 +969,7 @@ runs:
         CREDDA_MAX_ISSUES: ${{ inputs.max-issues }}
         CREDDA_MODE: ${{ inputs.mode }}
         CREDDA_SECURITY_JSON: ${{ steps.credda.outputs.security-json-path }}
+        CREDDA_FIX_DELIVERY: ${{ steps.credda.outputs.fix-delivery-path }}
       run: node "$GITHUB_ACTION_PATH/integrate.mjs" linear
 
     - name: File proven findings in Jira
@@ -983,4 +985,5 @@ runs:
         CREDDA_MAX_ISSUES: ${{ inputs.max-issues }}
         CREDDA_MODE: ${{ inputs.mode }}
         CREDDA_SECURITY_JSON: ${{ steps.credda.outputs.security-json-path }}
+        CREDDA_FIX_DELIVERY: ${{ steps.credda.outputs.fix-delivery-path }}
       run: node "$GITHUB_ACTION_PATH/integrate.mjs" jira

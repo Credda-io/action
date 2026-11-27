@@ -600,6 +600,94 @@ describe('checkUrl', () => {
   });
 });
 
+describe('fix outcomes, from engine-written security.json with a fixes key', () => {
+  const FIX = join(root, '.github/fixtures/security-fix');
+  const PR = 'https://github.com/acme/widgets/pull/7';
+  const record = (entries) => {
+    const path = join(mkdtempSync(join(tmpdir(), 'credda-fixrec-')), 'fix-delivery.json');
+    writeFileSync(path, JSON.stringify(entries));
+    return path;
+  };
+  const opened = (url = PR) => record([{ class: 'PROTOTYPE_POLLUTION', language: 'javascript', outcome: 'opened', url }]);
+  const byId = (got) => Object.fromEntries(got.proven.map((f) => [f.id, f.fix]));
+
+  it('a proven fix with an opened pull request carries the URL; a declined class says rejected', () => {
+    const fix = byId(readFindings(join(FIX, 'model/security.json'), opened()));
+    assert.deepEqual(fix.PROTOTYPE_POLLUTION, { text: 'Fix proven by the check-fix gates. Pull request opened:', url: PR });
+    assert.deepEqual(fix['PROTOTYPE_POLLUTION@fuzz:unflatten'], fix.PROTOTYPE_POLLUTION, 'both findings of the class share the attempt');
+    assert.deepEqual(fix['MEMORY_EXHAUSTION@fuzz:unflatten'], { text: 'Fix rejected (stopped at declined).', url: '' });
+  });
+
+  it('a proven fix with no pull request says so, and one this action refused says nothing was proposed', () => {
+    const only = byId(readFindings(join(FIX, 'model/security.json'), record([{ class: 'PROTOTYPE_POLLUTION', language: 'javascript', outcome: 'patch-only', url: '' }])));
+    assert.equal(only.PROTOTYPE_POLLUTION.text, 'Fix proven by the check-fix gates. No pull request was opened. The job summary says why.');
+    const off = byId(readFindings(join(FIX, 'model/security.json'), record([{ class: 'PROTOTYPE_POLLUTION', language: 'javascript', outcome: 'not-offered', url: '' }])));
+    assert.match(off.PROTOTYPE_POLLUTION.text, /^The engine reported a proven fix, but the patch failed this action's checks, so nothing was proposed\.$/);
+    const unknown = byId(readFindings(join(FIX, 'model/security.json')));
+    assert.deepEqual(unknown.PROTOTYPE_POLLUTION, { text: 'Fix proven by the check-fix gates.', url: '' }, 'no delivery record: no claim about a pull request');
+  });
+
+  it('a patch the gates rejected names the verdict, and a run with no model says not attempted', () => {
+    const broke = byId(readFindings(join(FIX, 'broke/security.json')));
+    assert.equal(broke.PROTOTYPE_POLLUTION.text, 'Fix rejected by the check-fix gates (BROKE_FEATURE).');
+    const heuristic = byId(readFindings(join(FIX, 'heuristic/security.json')));
+    assert.equal(heuristic.PROTOTYPE_POLLUTION.text, 'Fix not attempted. The provider is not model-backed.');
+    assert.equal(heuristic['MEMORY_EXHAUSTION@fuzz:unflatten'].text, 'Fix not attempted. The provider is not model-backed.');
+  });
+
+  it('with fix off there is no fix line anywhere', () => {
+    const got = readFindings(writeJson(realShaped()));
+    assert.ok(got.proven.every((f) => f.fix === null));
+    const m = slackMessage({ repository: REPO, mode: 'security', outcome: '', runUrl: RUN, findings: got.proven, unprovenCount: 0, statedFindings: 3 });
+    assert.doesNotMatch(JSON.stringify(m), /Fix /);
+    assert.doesNotMatch(linearDescription(got.proven[0], RUN, 'fp'), /Fix /);
+  });
+
+  it('a URL not shaped like a pull request is dropped, so it cannot become a link', () => {
+    for (const bad of ['https://evil.test/x|click>', 'javascript:alert(1)', 'http://github.com/a/b/pull/1', `${PR}\n::add-mask::x`, 'https://github.com/a/b/pull/1?x=<b>']) {
+      const fix = byId(readFindings(join(FIX, 'model/security.json'), opened(bad)));
+      assert.deepEqual(fix.PROTOTYPE_POLLUTION, { text: 'Fix proven by the check-fix gates. A pull request was opened.', url: '' }, bad);
+    }
+  });
+
+  it('Slack, Linear and Jira each say the outcome per finding and link the pull request', () => {
+    const got = readFindings(join(FIX, 'model/security.json'), opened());
+    const slack = JSON.stringify(slackMessage({ repository: REPO, mode: 'security', outcome: '', runUrl: RUN, findings: got.proven, unprovenCount: 0, statedFindings: 3 }).blocks);
+    assert.ok(slack.includes(`Fix proven by the check-fix gates. Pull request opened: <${PR}|${PR}>`));
+    assert.match(slack, /Fix rejected \(stopped at declined\)\./);
+    const [pp, , me] = got.proven;
+    const md = linearDescription(pp, RUN, 'fp');
+    assert.ok(md.includes(`Fix proven by the check\\-fix gates\\. Pull request opened\\: ${PR}`), md.slice(0, 600));
+    assert.match(linearDescription(me, RUN, 'fp'), /Fix rejected \\\(stopped at declined\\\)\\\./);
+    const adf = JSON.stringify(jiraDescription(pp, RUN, 'fp'));
+    assert.ok(adf.includes(`"href":"${PR}"`));
+    assert.match(adf, /Fix proven by the check-fix gates\. Pull request opened: /);
+    assert.match(JSON.stringify(jiraDescription(me, RUN, 'fp')), /Fix rejected \(stopped at declined\)\./);
+  });
+
+  it('integrate.mjs reads the delivery record the run step wrote', async () => {
+    const s = await make((req, res) => json(res, 200, {}));
+    const env = {
+      CREDDA_SLACK_WEBHOOK_URL: 'https://hooks.slack.com/services/T000/B000/FIXRUN1234',
+      CREDDA_NOTIFY_ON: 'findings',
+      CREDDA_MODE: 'security',
+      CREDDA_SECURITY_JSON: join(FIX, 'model/security.json'),
+      CREDDA_FIX_DELIVERY: opened(),
+    };
+    const summary = join(mkdtempSync(join(tmpdir(), 'credda-sum-')), 'summary.md');
+    writeFileSync(summary, '');
+    const code = await new Promise((resolve) => {
+      const c = spawn(process.execPath, ['--import', join(root, 'test/fake-fetch.mjs'), join(root, 'integrate.mjs'), 'slack'], {
+        env: { PATH: process.env.PATH, GITHUB_REPOSITORY: REPO, GITHUB_RUN_ID: '42', GITHUB_STEP_SUMMARY: summary, CREDDA_TEST_ORIGIN: s.url, ...env },
+      });
+      c.on('close', resolve);
+    });
+    assert.equal(code, 0);
+    assert.equal(s.seen.length, 1);
+    assert.ok(JSON.stringify(s.seen[0].body).includes(`<${PR}|${PR}>`));
+  });
+});
+
 describe('integrate.mjs, run as the action runs it', () => {
   const SLACK_HOOK = 'https://hooks.slack.com/services/T000/B000/SLACKSECRETXYZ';
   const LINEAR_KEY = 'lin_api_FAKESECRET777';

@@ -865,6 +865,14 @@ run link, then the exploit program in a fenced block.
 `jira-issue-type`) through Jira Cloud's REST v3, in Atlassian Document Format.
 Jira Server and Data Center do not have this API, so they are not supported.
 
+**With `fix`.** When `fix` is on, the Slack message and each Linear or Jira
+issue say what happened to the fix for that finding's class: fix proven by the
+check-fix gates, with the pull request URL when one was opened; fix rejected,
+with the engine's verdict or the step it stopped at; or not attempted. This
+comes from the engine's fix record in `security.json` and from what delivery
+reported. A model's own words are never sent. An issue that is already open is
+skipped, so it does not get the outcome of a later run.
+
 **De-duplication.** The fingerprint is a hash of the repository, the language
 and the engine's finding id. The id has no seed in it, so the same finding
 has the same fingerprint on every run. Before it files, each step searches for
@@ -1092,8 +1100,9 @@ run.mjs                    the runner: event in, report out. Dispatches the five
                            security-fix.mjs for security mode's fix input
 security-fix.mjs           security mode with fix on: writes the engine's fix
                            verdicts to the job summary and proposes each
-                           FIX_PROVEN patch through deliver-core.mjs. Imported by
-                           run.mjs; never a step of its own
+                           FIX_PROVEN patch through deliver-core.mjs, then records
+                           what delivery did for the Slack, Linear and Jira steps.
+                           Imported by run.mjs; never a step of its own
 sweep.mjs                  the sweep orchestration: discover, reproduce each
                            candidate up to max-candidates, and open a pull request
                            per verified fix through the shared delivery code.
@@ -1117,8 +1126,8 @@ deliver-pr.mjs             the single-investigate entry: reads this run's one
 notification.mjs           the decision, the body and the one bounded POST behind
                            notify-url, with fetch handed in so it can be tested
                            with no network. Imported by notify.mjs; never a step
-findings.mjs               how security.json is read: the counts, the site text and
-                           the exploit fence. Imported by run.mjs,
+findings.mjs               how security.json is read: the counts, the site text, the
+                           exploit fence and each finding's fix outcome. Imported by run.mjs,
                            integrations.mjs and security-fix.mjs, so the job
                            summary, a tracker issue and a fix pull request
                            describe a finding the same way
