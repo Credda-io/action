@@ -3,14 +3,16 @@
 // Reached only from a step in action.yml whose `if:` requires that destination's
 // inputs, so a default install runs none of this. Every path ends in exit 0: the
 // report was delivered by the steps before this one, and a tracker being down
-// must not redden a run that found something. See integrations.mjs.
+// must not redden a run that found something. Each result, delivered or not, is
+// one line in the log and one in the job summary. See integrations.mjs.
+
+import { appendFileSync } from 'node:fs';
 
 import {
-  allowedUrl,
+  checkUrl,
   decideSlack,
   deliverJira,
   deliverLinear,
-  LINEAR_API,
   readFindings,
   scrub,
   sendSlack,
@@ -26,13 +28,30 @@ const secretNames = {
   jira: ['CREDDA_JIRA_EMAIL', 'CREDDA_JIRA_API_TOKEN'],
 };
 const secrets = (secretNames[destination] ?? []).map(get).filter((v) => v !== '');
-// Masked first, before anything else can be printed.
-for (const s of secrets) console.log(`::add-mask::${s}`);
-if (destination === 'jira' && secrets.length === 2) {
-  console.log(`::add-mask::${Buffer.from(`${secrets[0]}:${secrets[1]}`).toString('base64')}`);
+// The webhook's path is its secret part, and the Basic header is the Jira pair in another form.
+if (destination === 'slack' && secrets.length === 1) {
+  try {
+    secrets.push(new URL(secrets[0]).pathname);
+  } catch {
+    // Not a URL: checkUrl says so below, and the value itself is already a secret.
+  }
 }
+if (destination === 'jira' && secrets.length === 2) secrets.push(Buffer.from(`${secrets[0]}:${secrets[1]}`).toString('base64'));
+// Masked first, before anything else can be printed.
+for (const s of secrets) if (s.length >= 4) console.log(`::add-mask::${s}`);
 
-const say = (line) => console.log(scrub(line, secrets));
+const names = { slack: 'Slack', linear: 'Linear', jira: 'Jira' };
+const say = (line) => {
+  const clean = scrub(line, secrets);
+  console.log(clean);
+  const summary = get('GITHUB_STEP_SUMMARY');
+  if (summary === '') return;
+  try {
+    appendFileSync(summary, `**Credda to ${names[destination] ?? 'an unknown destination'}:** ${clean}\n\n`, 'utf8');
+  } catch {
+    // The log line above is the record; a summary that cannot be written is not a failure.
+  }
+};
 
 const runId = get('GITHUB_RUN_ID');
 const repository = get('GITHUB_REPOSITORY');
@@ -49,8 +68,9 @@ try {
 
   if (destination === 'slack') {
     const url = get('CREDDA_SLACK_WEBHOOK_URL');
-    if (!allowedUrl(url)) {
-      say('Slack was not delivered: slack-webhook-url must be an https URL. This run is unaffected.');
+    const bad = checkUrl(url, 'slack-webhook-url');
+    if (bad !== null) {
+      say(`Slack was not delivered: ${bad}. This run is unaffected.`);
     } else {
       const findings = loaded?.proven ?? [];
       const provenFindings = mode === 'security' ? (loaded ? findings.length : asCount(get('CREDDA_SECURITY_FINDINGS'))) : 0;
@@ -73,6 +93,8 @@ try {
           findings,
           unprovenCount: loaded?.unproven ?? 0,
           statedFindings: mode === 'security' ? provenFindings : statedFindings,
+          probes: loaded?.probes ?? 0,
+          fuzzed: loaded?.fuzzed ?? 0,
         });
         say((await sendSlack({ webhookUrl: url, message, fetch: globalThis.fetch })).line);
       }
@@ -85,22 +107,21 @@ try {
     } else if (loaded.proven.length === 0) {
       say(`No ${destination} issues: no finding was proven.`);
     } else if (destination === 'linear') {
-      const override = get('CREDDA_LINEAR_API_URL');
-      const apiUrl = override !== '' && allowedUrl(override) && override.startsWith('http://') ? override : LINEAR_API;
       const r = await deliverLinear({
         apiKey: get('CREDDA_LINEAR_API_KEY'),
         teamId: get('CREDDA_LINEAR_TEAM_ID'),
+        repository,
         findings: loaded.proven,
         runUrl,
         max,
         fetch: globalThis.fetch,
-        apiUrl,
       });
       say(r.line);
     } else {
       const base = get('CREDDA_JIRA_BASE_URL');
-      if (!allowedUrl(base)) {
-        say('Jira was not delivered: jira-base-url must be an https URL. This run is unaffected.');
+      const bad = checkUrl(base, 'jira-base-url');
+      if (bad !== null) {
+        say(`Jira was not delivered: ${bad}. This run is unaffected.`);
       } else {
         const r = await deliverJira({
           baseUrl: base,
@@ -108,6 +129,7 @@ try {
           apiToken: get('CREDDA_JIRA_API_TOKEN'),
           projectKey: get('CREDDA_JIRA_PROJECT_KEY'),
           issueType: get('CREDDA_JIRA_ISSUE_TYPE') || 'Bug',
+          repository,
           findings: loaded.proven,
           runUrl,
           max,
