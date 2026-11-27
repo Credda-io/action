@@ -198,7 +198,7 @@ describe('Slack', () => {
     const all = JSON.stringify(blocks);
     assert.match(all, /2 more proven finding/);
     assert.match(all, /2 unproven pattern\(s\), not findings/);
-    assert.ok(all.includes(RUN), 'the run link is in the message');
+    assert.match(all, new RegExp(RUN.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')), 'the run link is in the message');
     assert.ok(!all.includes('exploit 1'), 'the exploit program is not sent to Slack');
   });
 
