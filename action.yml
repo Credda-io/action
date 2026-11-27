@@ -240,6 +240,23 @@ inputs:
       In security mode, upload proven findings to GitHub code scanning as SARIF.
       'false' keeps them on the job summary only. Ignored by the other modes.
     default: "true"
+  fix:
+    # Security mode only, and off by default. Passes --fix to `credda security`:
+    # for each class an exploit proved, your own model (anthropic-api-key, or
+    # model-api-key with model-base-url) is asked for one patch, the patch is
+    # applied to a temp copy and never to your checkout, and the check-fix gates
+    # judge it. Only a FIX_PROVEN patch is kept. Without a model key nothing is
+    # attempted, the summary says so, and the job ends exactly as it would
+    # without this input. A proven patch is attached as `fix-patches`; it becomes
+    # a pull request only with `open-pull-request: true` and the two write scopes,
+    # through the same delivery code investigate and sweep use. Needs engine
+    # v0.1.18 or later.
+    description: >-
+      In security mode, ask your own model for a patch per proven finding class
+      and keep only a patch the check-fix gates prove. Needs a model key. With
+      open-pull-request on, opens a pull request for each fix the gates proved.
+      Credda never merges. Ignored by the other modes.
+    default: "false"
   max-files:
     # Discover mode only. The walk is over a customer's whole checkout and a
     # monorepo can be very large, so there is a cap; the engine has its own
@@ -571,6 +588,17 @@ outputs:
   sarif-path:
     description: In security mode, absolute path of the SARIF file on the runner.
     value: ${{ steps.credda.outputs.sarif-path }}
+  security-fixes:
+    description: >-
+      In security mode with fix on, how many fixes the check-fix gates proved
+      (FIX_PROVEN). Empty when fix is off.
+    value: ${{ steps.credda.outputs.security-fixes }}
+  fix-patches:
+    description: >-
+      In security mode with fix on, absolute path of a directory on the runner
+      holding each proven patch and its pull request body, for
+      actions/upload-artifact. Empty when no fix was proven.
+    value: ${{ steps.credda.outputs.fix-patches }}
   engine-version:
     description: >-
       The engine version this run verified and executed, from engine.lock.json.
@@ -750,7 +778,8 @@ runs:
         CREDDA_SANDBOX: ${{ inputs.sandbox }}
         # Sweep opens its pull requests from THIS step, in-process, because a
         # composite action cannot loop the separate delivery step over an unknown
-        # number of candidates. `gh` reads this token from the environment; no
+        # number of candidates. Security mode with `fix` does the same for its
+        # proven fixes. `gh` reads this token from the environment; no
         # script reads it by name. The other modes ignore it (investigate's
         # single proposal is still opened by the dedicated delivery step below,
         # which sets its own GH_TOKEN). The branch is pushed with the credential
@@ -766,6 +795,9 @@ runs:
         # reads. The step re-derives no part of it, for the same reason the
         # posting step does not.
         CREDDA_OPEN_PULL_REQUEST: ${{ inputs.open-pull-request }}
+        # Security mode's --fix. Its proven fixes are proposed from this step,
+        # in-process, as sweep's are, through the same delivery code.
+        CREDDA_FIX: ${{ inputs.fix }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         # Your own OpenAI-compatible model. See the comment above model-base-url
         # for why any of the three names the provider outright.
