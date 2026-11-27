@@ -1,0 +1,3433 @@
+{
+  "schemaVersion": 1,
+  "tool": "credda security",
+  "engineVersion": "1.2.0",
+  "generatedAt": "2026-11-27T13:15:17.165Z",
+  "checkout": "/home/runner/work/_temp/zod",
+  "copy": {
+    "filesCopied": 740,
+    "skippedLarge": [
+      "logo/Logo White.jpg",
+      "packages/docs/public/logo/logo-white.jpg"
+    ],
+    "skippedLinks": 4
+  },
+  "installed": true,
+  "summary": {
+    "attempted": 154,
+    "proven": 0,
+    "clean": 106,
+    "abstained": 48,
+    "timedOut": 0,
+    "crashed": 0,
+    "notRun": 0
+  },
+  "probes": [
+    {
+      "id": "packages/zod/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/zod/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 83 class(es) and 694 function(s) were tried.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/zod/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: a rejection nobody was listening to arrived before the verdict (Cannot read properties of undefined (reading '_zod')).",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/zod/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 694 exported function(s) and 4 call shape(s) were tried.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/zod/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (14 calls accepted).",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/zod/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name).",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/zod/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256).",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/ZodError.ts:177",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/ZodError.ts",
+        "line": 177
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:594",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 594
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:595",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 595
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:596",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 596
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:599",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 599
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:600",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 600
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:601",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 601
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:603",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 603
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:617",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 617
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:627",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 627
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:629",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 629
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:634",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 634
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:636",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 636
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:639",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 639
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:642",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 642
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:705",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 705
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v3/types.ts:706",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v3/types.ts",
+        "line": 706
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/classic/from-json-schema.ts:128",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/classic/from-json-schema.ts",
+        "line": 128
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/classic/from-json-schema.ts:128",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/classic/from-json-schema.ts",
+        "line": 128
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/classic/from-json-schema.ts:389",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/classic/from-json-schema.ts",
+        "line": 389
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/errors.ts:520",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/errors.ts",
+        "line": 520
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:8",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 8
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:10",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 10
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:11",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 11
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:12",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 12
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:13",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 13
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:20",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 20
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:27",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 27
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:34",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 34
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:45",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 45
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:49",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 49
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:53",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 53
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:56",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 56
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:72",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 72
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:78",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 78
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:80",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 80
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:83",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 83
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:84",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 84
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:89",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 89
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:91",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 91
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:93",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 93
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:96",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 96
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:99",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 99
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:103",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 103
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:106",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 106
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:158",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 158
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:165",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 165
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:166",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 166
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:167",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 167
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:168",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 168
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:169",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 169
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:171",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 171
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:175",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 175
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:177",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 177
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:180",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 180
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:195",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 195
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:200",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 200
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:205",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 205
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:210",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 210
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/regexes.ts:215",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/regexes.ts",
+        "line": 215
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:551",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 551
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:567",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 567
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:910",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 910
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:1023",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 1023
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:1042",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 1042
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:1066",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 1066
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:1070",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 1070
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:1118",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 1118
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:4829",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 4829
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/schemas.ts:4830",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/schemas.ts",
+        "line": 4830
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/to-json-schema.ts:300",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/to-json-schema.ts",
+        "line": 300
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/to-json-schema.ts:300",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/to-json-schema.ts",
+        "line": 300
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:517",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 517
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:518",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 518
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:519",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 519
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:654",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 654
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:968",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 968
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:1037",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 1037
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:1134",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 1134
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:1134",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 1134
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/core/util.ts:1138",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/core/util.ts",
+        "line": 1138
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/locales/ar.ts:67",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/locales/ar.ts",
+        "line": 67
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/zod/REGEX_BLOWUP@src/v4/locales/ckb.ts:87",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/zod/src/v4/locales/ckb.ts",
+        "line": 87
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/zod"
+    },
+    {
+      "id": "packages/mini/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/mini/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/ind",
+      "package": "packages/mini"
+    },
+    {
+      "id": "packages/mini/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/mini/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported fro",
+      "package": "packages/mini"
+    },
+    {
+      "id": "packages/mini/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/mini/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/ind",
+      "package": "packages/mini"
+    },
+    {
+      "id": "packages/mini/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/mini/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/ind",
+      "package": "packages/mini"
+    },
+    {
+      "id": "packages/mini/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/mini/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/ind",
+      "package": "packages/mini"
+    },
+    {
+      "id": "packages/mini/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/mini/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/ind",
+      "package": "packages/mini"
+    },
+    {
+      "id": "packages/bench/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/bench/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts).",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/bench/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts). Install its ",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/bench/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts).",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/bench/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts).",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/bench/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts).",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/bench/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts).",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@compile-base64-inline-vs-hoist.ts:43",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/compile-base64-inline-vs-hoist.ts",
+        "line": 43
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@compile-matrix.ts:37",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/compile-matrix.ts",
+        "line": 37
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@datetime-regex.ts:9",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/datetime-regex.ts",
+        "line": 9
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@datetime-regex.ts:11",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/datetime-regex.ts",
+        "line": 11
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@datetime-regex.ts:13",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/datetime-regex.ts",
+        "line": 13
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:5",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 5
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:7",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 7
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:8",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 8
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:9",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 9
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:10",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 10
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:11",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 11
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:12",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 12
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:13",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 13
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@ipv4-regex.ts:15",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/ipv4-regex.ts",
+        "line": 15
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@memory/indent-leak.ts:33",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/memory/indent-leak.ts",
+        "line": 33
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@memory/indent-leak.ts:36",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/memory/indent-leak.ts",
+        "line": 36
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@memory/realworld.ts:15",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/memory/realworld.ts",
+        "line": 15
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/bench/REGEX_BLOWUP@memory/realworld.ts:36",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/bench/memory/realworld.ts",
+        "line": 36
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/bench"
+    },
+    {
+      "id": "packages/docs/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/docs/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/docs/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ director",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/docs/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/docs/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/docs/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/docs/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/REGEX_BLOWUP@components/blog-toc.tsx:31",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/docs/components/blog-toc.tsx",
+        "line": 31
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/docs/REGEX_BLOWUP@components/github-star-pill.tsx:24",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/docs/components/github-star-pill.tsx",
+        "line": 24
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/docs"
+    },
+    {
+      "id": "packages/integration/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/integration/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/integration"
+    },
+    {
+      "id": "packages/integration/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/integration/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ director",
+      "package": "packages/integration"
+    },
+    {
+      "id": "packages/integration/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/integration/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/integration"
+    },
+    {
+      "id": "packages/integration/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/integration/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/integration"
+    },
+    {
+      "id": "packages/integration/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/integration/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/integration"
+    },
+    {
+      "id": "packages/integration/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/integration/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/integration"
+    },
+    {
+      "id": "packages/resolution/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/resolution/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/in",
+      "package": "packages/resolution"
+    },
+    {
+      "id": "packages/resolution/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/resolution/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported fr",
+      "package": "packages/resolution"
+    },
+    {
+      "id": "packages/resolution/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/resolution/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/in",
+      "package": "packages/resolution"
+    },
+    {
+      "id": "packages/resolution/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/resolution/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/in",
+      "package": "packages/resolution"
+    },
+    {
+      "id": "packages/resolution/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/resolution/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/in",
+      "package": "packages/resolution"
+    },
+    {
+      "id": "packages/resolution/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/resolution/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/in",
+      "package": "packages/resolution"
+    },
+    {
+      "id": "packages/treeshake/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/treeshake/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/treeshake"
+    },
+    {
+      "id": "packages/treeshake/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/treeshake/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ director",
+      "package": "packages/treeshake"
+    },
+    {
+      "id": "packages/treeshake/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/treeshake/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/treeshake"
+    },
+    {
+      "id": "packages/treeshake/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/treeshake/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/treeshake"
+    },
+    {
+      "id": "packages/treeshake/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/treeshake/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/treeshake"
+    },
+    {
+      "id": "packages/treeshake/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/treeshake/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modul",
+      "package": "packages/treeshake"
+    },
+    {
+      "id": "packages/tsc/PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/tsc/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w/lib/index.js' imported from /w/credda-path-traversal-probe.cjs).",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "packages/tsc/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package entry point could not be loaded (Cannot find module '/w/lib/index.js' imported from /w/credda-prototype-pollution-probe.cjs). Install its dependencies and re-run.",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "packages/tsc/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w/lib/index.js' imported from /w/credda-archive-traversal-probe.cjs).",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "packages/tsc/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w/lib/index.js' imported from /w/credda-redirect-leak-probe.cjs).",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "packages/tsc/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w/lib/index.js' imported from /w/credda-signature-bypass-probe.cjs).",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "packages/tsc/package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the package could not be loaded (Cannot find module '/w/lib/index.js' imported from /w/credda-certificate-chain-probe.cjs).",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/REGEX_BLOWUP@bisect.ts:56",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/tsc/bisect.ts",
+        "line": 56
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/REGEX_BLOWUP@bisect.ts:57",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/tsc/bisect.ts",
+        "line": 57
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/tsc"
+    },
+    {
+      "id": "packages/tsc/REGEX_BLOWUP@bisect.ts:58",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "packages/tsc/bisect.ts",
+        "line": 58
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast.",
+      "package": "packages/tsc"
+    }
+  ],
+  "findings": [],
+  "fuzz": {
+    "fuzzer": "credda-seeded-fuzzer 2",
+    "seed": 1,
+    "budgetMs": 60000,
+    "iterationsPerTarget": null,
+    "elapsedMs": 61242,
+    "functions": 64,
+    "calls": 1350064,
+    "hits": 0,
+    "proven": 0,
+    "dropped": [],
+    "targets": [
+      {
+        "name": "packages/zod/ZodAny",
+        "iterations": 26277,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodArray",
+        "iterations": 27031,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodBase64",
+        "iterations": 19094,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodBase64URL",
+        "iterations": 16380,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodBigInt",
+        "iterations": 5399,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodBigIntFormat",
+        "iterations": 8573,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodBoolean",
+        "iterations": 13742,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCIDRv4",
+        "iterations": 3678,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCIDRv6",
+        "iterations": 11898,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCUID",
+        "iterations": 23562,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCUID2",
+        "iterations": 25009,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCatch",
+        "iterations": 27506,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCodec",
+        "iterations": 25503,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCompileAsyncError",
+        "iterations": 24195,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCompileUnsupportedError",
+        "iterations": 29287,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCreditCard",
+        "iterations": 27082,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCustom",
+        "iterations": 28317,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodCustomStringFormat",
+        "iterations": 28525,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodDate",
+        "iterations": 26933,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodDefault",
+        "iterations": 28271,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodDiscriminatedUnion",
+        "iterations": 29025,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodE164",
+        "iterations": 18876,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodEmail",
+        "iterations": 24822,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodEmoji",
+        "iterations": 28074,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodEnum",
+        "iterations": 25584,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodError",
+        "iterations": 28185,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodExactOptional",
+        "iterations": 20681,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodFile",
+        "iterations": 23999,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodFunction",
+        "iterations": 12053,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodGUID",
+        "iterations": 3199,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodIBAN",
+        "iterations": 25507,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodIPv4",
+        "iterations": 31235,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodIPv6",
+        "iterations": 18477,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodISODate",
+        "iterations": 30583,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodISODateTime",
+        "iterations": 31985,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodISODuration",
+        "iterations": 21066,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodISOTime",
+        "iterations": 18724,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodInstanceOf",
+        "iterations": 19147,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodIntersection",
+        "iterations": 20318,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodJWT",
+        "iterations": 28988,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodKSUID",
+        "iterations": 6662,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodLazy",
+        "iterations": 3360,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodLiteral",
+        "iterations": 3487,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodMAC",
+        "iterations": 5821,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodMap",
+        "iterations": 16284,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNaN",
+        "iterations": 23846,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNanoID",
+        "iterations": 29158,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNever",
+        "iterations": 22685,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNonOptional",
+        "iterations": 23182,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNull",
+        "iterations": 13280,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNullable",
+        "iterations": 19153,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNumber",
+        "iterations": 2131,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodNumberFormat",
+        "iterations": 6911,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodObject",
+        "iterations": 14995,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodOptional",
+        "iterations": 25729,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodPipe",
+        "iterations": 26593,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodPrefault",
+        "iterations": 27922,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodPreprocess",
+        "iterations": 27746,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodPromise",
+        "iterations": 27577,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodReadonly",
+        "iterations": 29105,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodRealError",
+        "iterations": 33090,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodRecord",
+        "iterations": 30022,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodSet",
+        "iterations": 20492,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "packages/zod/ZodString",
+        "iterations": 24043,
+        "stoppedBy": "time",
+        "found": []
+      }
+    ],
+    "note": "Fuzzing added up over 8 workspace packages; each had its own budget of 60.0 s. Each package's own record is under packages."
+  },
+  "unproven": [],
+  "timings": {
+    "probesMs": 66612,
+    "fuzzMs": 61242,
+    "totalMs": 130370
+  },
+  "untested": [
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/index.ts)",
+      "package": "packages/mini"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts",
+      "package": "packages/bench"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules",
+      "package": "packages/docs"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules",
+      "package": "packages/integration"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/index.ts); src/index.cts (Cannot use import statement outside a module); src/index.mts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mi",
+      "package": "packages/resolution"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules",
+      "package": "packages/treeshake"
+    },
+    {
+      "language": "javascript",
+      "reason": "the package could not be loaded for fuzzing: Cannot find module '/w/lib/index.js' imported from /fuzz/worker.cjs",
+      "package": "packages/tsc"
+    }
+  ],
+  "workspaceScan": {
+    "declaredBy": "package.json",
+    "patterns": [
+      "packages/*"
+    ],
+    "total": 8,
+    "cap": 10,
+    "considered": 8,
+    "scanned": 8,
+    "exercised": 1,
+    "notTested": [
+      "packages/mini",
+      "packages/bench",
+      "packages/docs",
+      "packages/integration",
+      "packages/resolution",
+      "packages/treeshake",
+      "packages/tsc"
+    ],
+    "overCap": [],
+    "root": {
+      "scanned": false,
+      "reason": "a workspace root with no code of its own: its package.json names no main, module, exports, bin or browser, and it has no Python manifest"
+    },
+    "fuzzBudgetPerPackageMs": 60000
+  },
+  "packages": [
+    {
+      "path": "packages/zod",
+      "name": "zod",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": true,
+      "installed": true,
+      "summary": {
+        "attempted": 89,
+        "proven": 0,
+        "clean": 83,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 60121,
+        "functions": 64,
+        "calls": 1350064,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [
+          {
+            "name": "ZodAny",
+            "iterations": 26277,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodArray",
+            "iterations": 27031,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodBase64",
+            "iterations": 19094,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodBase64URL",
+            "iterations": 16380,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodBigInt",
+            "iterations": 5399,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodBigIntFormat",
+            "iterations": 8573,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodBoolean",
+            "iterations": 13742,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCIDRv4",
+            "iterations": 3678,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCIDRv6",
+            "iterations": 11898,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCUID",
+            "iterations": 23562,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCUID2",
+            "iterations": 25009,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCatch",
+            "iterations": 27506,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCodec",
+            "iterations": 25503,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCompileAsyncError",
+            "iterations": 24195,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCompileUnsupportedError",
+            "iterations": 29287,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCreditCard",
+            "iterations": 27082,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCustom",
+            "iterations": 28317,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodCustomStringFormat",
+            "iterations": 28525,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodDate",
+            "iterations": 26933,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodDefault",
+            "iterations": 28271,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodDiscriminatedUnion",
+            "iterations": 29025,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodE164",
+            "iterations": 18876,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodEmail",
+            "iterations": 24822,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodEmoji",
+            "iterations": 28074,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodEnum",
+            "iterations": 25584,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodError",
+            "iterations": 28185,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodExactOptional",
+            "iterations": 20681,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodFile",
+            "iterations": 23999,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodFunction",
+            "iterations": 12053,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodGUID",
+            "iterations": 3199,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodIBAN",
+            "iterations": 25507,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodIPv4",
+            "iterations": 31235,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodIPv6",
+            "iterations": 18477,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodISODate",
+            "iterations": 30583,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodISODateTime",
+            "iterations": 31985,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodISODuration",
+            "iterations": 21066,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodISOTime",
+            "iterations": 18724,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodInstanceOf",
+            "iterations": 19147,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodIntersection",
+            "iterations": 20318,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodJWT",
+            "iterations": 28988,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodKSUID",
+            "iterations": 6662,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodLazy",
+            "iterations": 3360,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodLiteral",
+            "iterations": 3487,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodMAC",
+            "iterations": 5821,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodMap",
+            "iterations": 16284,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNaN",
+            "iterations": 23846,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNanoID",
+            "iterations": 29158,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNever",
+            "iterations": 22685,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNonOptional",
+            "iterations": 23182,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNull",
+            "iterations": 13280,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNullable",
+            "iterations": 19153,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNumber",
+            "iterations": 2131,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodNumberFormat",
+            "iterations": 6911,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodObject",
+            "iterations": 14995,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodOptional",
+            "iterations": 25729,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodPipe",
+            "iterations": 26593,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodPrefault",
+            "iterations": 27922,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodPreprocess",
+            "iterations": 27746,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodPromise",
+            "iterations": 27577,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodReadonly",
+            "iterations": 29105,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodRealError",
+            "iterations": 33090,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodRecord",
+            "iterations": 30022,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodSet",
+            "iterations": 20492,
+            "stoppedBy": "time",
+            "found": []
+          },
+          {
+            "name": "ZodString",
+            "iterations": 24043,
+            "stoppedBy": "time",
+            "found": []
+          }
+        ],
+        "reach": {
+          "from": "entry",
+          "imported": [
+            "src/index.ts"
+          ],
+          "failed": [],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 95,
+          "node": "v22.23.5"
+        }
+      },
+      "timings": {
+        "probesMs": 5875,
+        "fuzzMs": 60121
+      }
+    },
+    {
+      "path": "packages/mini",
+      "name": "@zod/mini",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/zod"
+      ],
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 163,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/index.ts)",
+        "reach": {
+          "from": "modules",
+          "imported": [],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/index.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/zod/mini/index.js' imported from /w/src/index.ts)"
+        }
+      ],
+      "timings": {
+        "probesMs": 1189,
+        "fuzzMs": 163
+      }
+    },
+    {
+      "path": "packages/bench",
+      "name": "@zod/benchmarks",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "summary": {
+        "attempted": 24,
+        "proven": 0,
+        "clean": 18,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 168,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts",
+        "reach": {
+          "from": "entry",
+          "imported": [],
+          "failed": [
+            {
+              "module": "index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 1,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: the source entry index.ts could not be loaded: ERR_MODULE_NOT_FOUND: Cannot find package 'execa' imported from /w/index.ts"
+        }
+      ],
+      "timings": {
+        "probesMs": 1034,
+        "fuzzMs": 168
+      }
+    },
+    {
+      "path": "packages/docs",
+      "name": "@zod/docs",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "summary": {
+        "attempted": 8,
+        "proven": 0,
+        "clean": 2,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 145,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules"
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules"
+        }
+      ],
+      "timings": {
+        "probesMs": 55009,
+        "fuzzMs": 145
+      }
+    },
+    {
+      "path": "packages/integration",
+      "name": "@zod/integration",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/mini",
+        "packages/zod"
+      ],
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 146,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules"
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules"
+        }
+      ],
+      "timings": {
+        "probesMs": 726,
+        "fuzzMs": 146
+      }
+    },
+    {
+      "path": "packages/resolution",
+      "name": "@zod/resolution",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "linked": [
+        "packages/mini",
+        "packages/zod"
+      ],
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 195,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/index.ts); src/index.cts (Cannot use import statement outside a module); src/index.mts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mi",
+        "reach": {
+          "from": "modules",
+          "imported": [],
+          "failed": [
+            {
+              "module": "src/index.ts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/index.ts"
+            },
+            {
+              "module": "src/index.cts",
+              "error": "Cannot use import statement outside a module"
+            },
+            {
+              "module": "src/index.mts",
+              "error": "ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/index.mts"
+            }
+          ],
+          "overCap": 0,
+          "cap": 32,
+          "filesLoaded": 3,
+          "node": "v22.23.5"
+        }
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: no source module could be loaded: src/index.ts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mini/index.js' imported from /w/src/index.ts); src/index.cts (Cannot use import statement outside a module); src/index.mts (ERR_MODULE_NOT_FOUND: Cannot find module '/w/node_modules/@zod/mi"
+        }
+      ],
+      "timings": {
+        "probesMs": 889,
+        "fuzzMs": 195
+      }
+    },
+    {
+      "path": "packages/treeshake",
+      "name": "@zod/treeshaking",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "summary": {
+        "attempted": 6,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 170,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules"
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: nothing to load: package.json names no main or exports file that exists, there is no index file, and there is no src/ or source/ directory with modules"
+        }
+      ],
+      "timings": {
+        "probesMs": 1169,
+        "fuzzMs": 170
+      }
+    },
+    {
+      "path": "packages/tsc",
+      "name": "@zod/tsc-perftest",
+      "scope": "full",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": true,
+      "summary": {
+        "attempted": 9,
+        "proven": 0,
+        "clean": 3,
+        "abstained": 6,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "fuzz": {
+        "fuzzer": "credda-seeded-fuzzer 2",
+        "seed": 1,
+        "budgetMs": 60000,
+        "iterationsPerTarget": null,
+        "elapsedMs": 134,
+        "functions": 0,
+        "calls": 0,
+        "hits": 0,
+        "proven": 0,
+        "dropped": [],
+        "targets": [],
+        "note": "the package could not be loaded for fuzzing: Cannot find module '/w/lib/index.js' imported from /fuzz/worker.cjs"
+      },
+      "untested": [
+        {
+          "language": "javascript",
+          "reason": "the package could not be loaded for fuzzing: Cannot find module '/w/lib/index.js' imported from /fuzz/worker.cjs"
+        }
+      ],
+      "timings": {
+        "probesMs": 721,
+        "fuzzMs": 134
+      }
+    },
+    {
+      "path": ".",
+      "scope": "regex-only",
+      "scopeReason": "a workspace root with no code of its own: its package.json names no main, module, exports, bin or browser, and it has no Python manifest",
+      "languages": [
+        "javascript"
+      ],
+      "exercised": false,
+      "installed": null,
+      "note": "no probe applies",
+      "summary": {
+        "attempted": 0,
+        "proven": 0,
+        "clean": 0,
+        "abstained": 0,
+        "timedOut": 0,
+        "crashed": 0,
+        "notRun": 0
+      },
+      "findings": [],
+      "unsupported": {
+        "reason": "there is no package.json and no pyproject.toml, setup.py or setup.cfg at the root",
+        "manifests": []
+      }
+    }
+  ]
+}

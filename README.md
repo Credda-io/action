@@ -188,6 +188,11 @@ engine wrote nothing for is left out.
 - *Timed out*, *crashed* and *not run* also say nothing about that class. A
   crash is Credda's failure.
 
+The section also lists what the engine marked *NOT TESTED*, with the engine's
+reason: a language whose package was never loaded (`untested`, engine v0.1.19
+or later), a checkout with nothing it could scan (`unsupported`), and a scan
+of a workspace root that scanned only the root (engine v0.1.19).
+
 When a run proved nothing and reached too little to mean anything, the summary
 opens with *Credda could not exercise this repository's code*, says why, and
 quotes the engine. The Slack message says the same. Reach is limited when no
@@ -200,25 +205,68 @@ finding was proven and any of these holds:
 4. the engine loaded the package from source and imported no module.
 5. no probe ran and no function was fuzzed.
 
+A workspace report has its own rule. See *Monorepos*.
+
 The same facts are in the `security-reach` output as one line of JSON:
 
 ```json
-{"limited":false,"functions":36,"probes":{"proven":0,"clean":18,"abstained":5,"timedOut":0,"crashed":0,"notRun":0},"sourceFiles":{"loaded":12,"failed":0}}
+{"limited":false,"functions":36,"probes":{"proven":0,"clean":18,"abstained":5,"timedOut":0,"crashed":0,"notRun":0},"sourceFiles":{"loaded":12,"failed":0},"partial":false,"packages":null}
 ```
 
-`limited` is the rule above. A field the engine did not write is `null`. The job
-does not fail on limited reach. To fail it yourself:
+- `limited` is the rule above: nothing proven, and the code could not be
+  exercised.
+- `partial` is true when part of what was in scope was not exercised. On a
+  workspace report: at least one package was not tested or was over the cap.
+  On a report of one package: the engine listed something as *NOT TESTED*. An
+  engine older than v0.1.19 writes no such list, so `partial` is `false` there.
+- `packages` is `null` on a report of one package. On a workspace report it
+  holds the package counts: `found`, `scanned`, `exercised`, `notTested` and
+  `overCap`.
+
+A field the engine did not write is `null`. The job does not fail on either
+boolean. To fail it yourself when anything was not exercised:
 
 ```yaml
       - uses: Credda-io/action@v1
         id: credda
         with:
           mode: security
-      - if: fromJSON(steps.credda.outputs.security-reach).limited
+      - if: fromJSON(steps.credda.outputs.security-reach).limited || fromJSON(steps.credda.outputs.security-reach).partial
         run: |
-          echo "::error::Credda could not exercise this repository's code. See the job summary."
+          echo "::error::Credda did not exercise all of this repository's code. See the job summary."
           exit 1
 ```
+
+Gate on `limited` alone to fail only when nothing was exercised.
+
+#### Monorepos
+
+The engine after v0.1.19 scans every package of a workspace: `workspaces` in
+package.json, `pnpm-workspace.yaml` or `lerna.json`. It installs, probes and
+fuzzes at most 10 packages. The rest are over the cap: only their regular
+expressions are read. v0.1.19 scans only the root, and the summary says so.
+
+On a workspace report the job summary opens with how many packages Credda
+exercised, such as *Credda exercised 3 of 30 packages*, and names the ones it
+did not, each with the engine's reason. It never reads as a clean pass while a
+package was not exercised. *What this run reached* counts the packages found,
+scanned, exercised, not tested and over the cap, then gives one line per
+exercised package and lists the rest with their reasons. Long lists are cut
+and say how many are not shown; `keep-report` keeps the full `security.json`.
+Each proven finding names its package. The engine starts a package's finding
+ids with the package path, and that prefix is what names it.
+
+On a workspace report, reach is limited only when no finding was proven and no
+package was exercised. `installed` is `false` there when any one package did
+not install, so it is not used. When some packages were exercised and some
+were not, `limited` is `false` and `partial` is `true`.
+
+**Fixes in a monorepo.** The engine attempts no fix on a workspace report. It
+records each proven class as not attempted, and the *Fixes* section says that
+once. Proposing fixes for one package of a monorepo is not supported through
+this action yet: it has no input that points it at a subdirectory, and it
+always scans the checkout root. The findings, with their exploits, are still
+reported for every package that was exercised.
 
 #### Keeping the report: `keep-report`
 
@@ -734,7 +782,7 @@ If you have pinned either input explicitly, nothing here affects you.
 | `security-fixes` | security | With `fix` on, how many fixes the check-fix gates proved (`FIX_PROVEN`). Empty when `fix` is off. |
 | `fix-patches` | security | With `fix` on, a directory on the runner holding each proven patch and its pull request body, for `actions/upload-artifact`. Empty when no fix was proven. |
 | `security-json-path` | security | Absolute path of `security.json` on the runner: the proven findings in full. |
-| `security-reach` | security | One line of JSON: `limited`, `functions`, `probes` by verdict and `sourceFiles`. `limited` is true when the run proved nothing and could not exercise the code. A field the engine did not write is `null`. See *What this run reached*. |
+| `security-reach` | security | One line of JSON: `limited`, `functions`, `probes` by verdict, `sourceFiles`, `partial` and `packages`. `limited` is true when the run proved nothing and could not exercise the code. `partial` is true when part of what was in scope was not exercised. `packages` holds a workspace's package counts, or `null`. A field the engine did not write is `null`. See *What this run reached* and *Monorepos*. |
 | `security-report-path` | security | With `keep-report` on, a directory on the runner holding `security.json`, `security.md` and the SARIF files, for `actions/upload-artifact`. Empty otherwise. |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
@@ -979,7 +1027,11 @@ skipped, so it does not get the outcome of a later run.
 
 **De-duplication.** The fingerprint is a hash of the repository, the language
 and the engine's finding id. The id has no seed in it, so the same finding
-has the same fingerprint on every run. Before it files, each step searches for
+has the same fingerprint on every run. On a workspace report the id starts with
+the package path, so the same finding in two packages gets two fingerprints,
+and a report of one package keeps the fingerprints it always had. On a
+workspace report the issue title and description also name the package, and
+the Slack message says how many packages were exercised. Before it files, each step searches for
 the fingerprint among open issues: Linear in the description, Jira in a label
 it also writes. A finding already open is skipped. A closed one is filed again
 if it comes back. A finding at a file and line gets a new fingerprint when its
@@ -1295,9 +1347,18 @@ test/fake-fetch.mjs        loaded only by that test with `--import`: sends each
                            security-reach output, keep-report and the Slack line,
                            on engine outputs and on hostile module names and notes.
                            No network; `node --test` runs it
+.github/security-workspace.test.mjs  node:test over workspace (monorepo) reports:
+                           the limited and partial rules, the summary lead and
+                           per-package reach, findings by package in the summary,
+                           Slack, Linear and Jira, fingerprints, the Fixes
+                           section, hostile paths and reasons, and every
+                           single-package summary held to what it was before.
+                           No network; `node --test` runs it
 .github/fixtures/security-fix/  those engine outputs, and where they came from
 .github/fixtures/security-reach/  real engine outputs for that test, and where they
                            came from
+.github/fixtures/security-workspace/  real workspace reports the engine wrote on
+                           three public monorepos, and where they came from
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong
 .github/PULL_REQUEST_TEMPLATE.md
