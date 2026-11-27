@@ -69,10 +69,11 @@ licence and is refused with a `402` at the fetch step until it has one. Your own
 Actions minutes are the other cost, and `investigate` spends more of them than
 `triage` does.
 
-## Four modes
+## Five modes
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
+| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package in a container, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts |
 | `discover` | **a push. Nobody has to file anything** | one download and one Node process, seconds | a job summary listing the defects Credda found in your code |
 | `sweep` | **a push. Nobody has to file anything** | a runner, Docker, and a reproduction per candidate, minutes | a job summary, and -- if you asked for it -- a pull request per verified fix |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
@@ -114,6 +115,58 @@ jobs:
         with:
           mode: discover
 ```
+
+### Security mode
+
+`mode: security` runs Credda's exploit probes against your repository's own
+code and reports a finding only when an exploit proved it. The probes cover
+prototype pollution, regular expressions that take super-linear time, archive
+and path traversal, credentials sent across a redirect, and signature or
+certificate-chain verification bypass. It also fuzzes the package's exported
+functions for about a minute, and keeps a fuzz finding only when a reproducer
+proves it again in a fresh container. The probes read JavaScript and
+TypeScript packages, and Python packages with a manifest at the repository
+root.
+
+Your package is installed in a container, and every probe runs in a second
+container with no network, a memory cap and a timeout. npm installs with
+install scripts off. pip has no such switch, so a Python package's build code
+runs in the install container. Your checkout is copied first, so nothing is
+written into it.
+
+Each finding on the job summary carries the exploit program that proved it, so
+anyone can run it again. Results that were not proven (clean, no verdict, or a
+probe of ours that crashed) stay in `security.json` on the runner and are never
+called findings.
+
+The findings are also uploaded as SARIF to GitHub code scanning and appear
+under the repository's Security tab. Credda stores none of them. Set
+`upload-sarif: 'false'` to keep them on the job summary only.
+
+```yaml
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Credda-io/action@v1
+        with:
+          mode: security
+```
+
+The job stays green whatever is found. The `security-findings` output counts
+only proven findings, so it is safe to gate a merge on. The job goes red only
+when the probes could not run, because a count of zero from a run that never
+happened would read exactly like a clean repository.
 
 ### Sweep mode
 
@@ -458,7 +511,8 @@ trigger.
 
 | Input | Default | What it does |
 | --- | --- | --- |
-| `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one; `discover` reads the repository and reports what nobody filed; `sweep` discovers, reproduces, and opens a pull request per verified fix. |
+| `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one; `discover` reads the repository and reports what nobody filed; `sweep` discovers, reproduces, and opens a pull request per verified fix; `security` runs exploit probes and reports only proven findings. |
+| `upload-sarif` | `'true'` | **Security mode only.** Uploads proven findings to GitHub code scanning. Needs `security-events: write`. A refused upload does not fail the job. |
 | `max-files` | `'4000'` | In `discover` and `sweep` mode, the most source files to read. Ignored by the other modes. |
 | `max-candidates` | `'3'` | **Sweep mode only.** The most discovered candidates one sweep reproduces and proposes -- a hard cap on the pull requests a single run can open. Never unbounded. |
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
@@ -511,6 +565,8 @@ If you have pinned either input explicitly, nothing here affects you.
 
 | Output | Mode | Value |
 | --- | --- | --- |
+| `security-findings` | security | How many findings an exploit proved. Only proven findings are counted. |
+| `sarif-path` | security | Absolute path of the SARIF file on the runner. |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
 | `candidates` | discover, sweep | How many candidates the run produced. In `sweep`, how many discovery wrote before the `max-candidates` cap. |

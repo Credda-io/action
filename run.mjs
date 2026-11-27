@@ -1003,6 +1003,117 @@ function discoverSummary(stated, proposed, finished) {
   return lines.join('\n');
 }
 
+/* -------------------------------- security -------------------------------- */
+
+/**
+ * Findings proven by exploit.
+ *
+ * `credda security` installs the repository's package with install scripts
+ * off, then runs each exploit probe in a container with no network. A finding
+ * is reported only when the probe's exploit ran and printed its own finding
+ * sentence. Every other result (clean, no verdict, a crash of ours) is kept in
+ * security.json and never called a finding.
+ *
+ * Like discover it posts nothing. The findings go to the job summary, and the
+ * SARIF file goes to code scanning through the upload step in action.yml.
+ *
+ * The job stays green whatever was found, so a team can gate on the
+ * `security-findings` output when it chooses to. It goes red only when the
+ * probes could not run, because "0 findings" from a run that never happened
+ * reads exactly like a clean repository.
+ */
+async function security() {
+  const out = join(work, 'security');
+  mkdirSync(out, { recursive: true });
+  const ran = credda(['security', workspace, '--out', out], 'inherit');
+
+  if (ran.error !== undefined || ran.status === null) {
+    die(`Credda could not be started: ${ran.error?.message ?? 'unknown error'}`);
+  }
+  const resultPath = join(out, 'security.json');
+  if (ran.status !== 0 || !existsSync(resultPath)) {
+    die(`Credda security did not finish (exit ${ran.status}), so nothing is being reported.`);
+  }
+
+  let result;
+  try {
+    result = JSON.parse(readFileSync(resultPath, 'utf8'));
+  } catch (error) {
+    die(`Credda security wrote a result that could not be read: ${error.message}`);
+  }
+  const findings = Array.isArray(result.findings) ? result.findings : [];
+  // A fuzz finding is also listed as a probe (id `CLASS@fuzz:fn`); count it under fuzzing instead.
+  const probes = Array.isArray(result.probes) ? result.probes.filter((p) => !String(p.id).includes('@fuzz:')) : [];
+  const fuzzed = (result.fuzz?.functions ?? 0) + (result.pythonFuzz?.functions ?? 0);
+  const sarif = join(out, 'security.sarif');
+
+  writeSummary(securitySummary(findings, probes.length, fuzzed));
+
+  output('skipped', 'false');
+  output('issue-number', '');
+  output('deliver', 'false');
+  output('patch-path', '');
+  output('should-post', 'false');
+  output('comment-path', '');
+  output('body-path', '');
+  output('security-findings', String(findings.length));
+  output('sarif-path', existsSync(sarif) ? sarif : '');
+}
+
+/** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
+const SUMMARY_EXPLOIT_BUDGET = 512 * 1024;
+
+/** The job summary: each proven finding with the exploit that proved it. */
+function securitySummary(findings, attempted, fuzzed) {
+  const lines = ['## Credda security', ''];
+  const fuzzText = fuzzed > 0 ? ` and fuzzed ${fuzzed} exported function${fuzzed === 1 ? '' : 's'}` : '';
+  lines.push(
+    `Ran ${attempted} exploit probe${attempted === 1 ? '' : 's'}${fuzzText} against this repository, ` +
+      'each in a container with no network. Only findings an exploit proved are listed.',
+    '',
+  );
+  let budget = SUMMARY_EXPLOIT_BUDGET;
+  if (findings.length === 0) {
+    lines.push(
+      'No exploit succeeded. That is not an audit: it says the probes Credda has did not prove a ' +
+        'finding in the code they reached.',
+      '',
+    );
+  } else {
+    lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
+    for (const one of findings) {
+      const site = one.site?.kind === 'package'
+        ? ` in the package (through \`${one.site.file}\`)`
+        : one.site?.file
+          ? ` at \`${one.site.file}${one.site.line ? `:${one.site.line}` : ''}\``
+          : '';
+      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${site}`);
+      if (one.sentence) lines.push(`  ${String(one.sentence).split('\n')[0].slice(0, 300)}`);
+      const program = one.program ? String(one.program) : '';
+      if (program && program.length <= budget) {
+        budget -= program.length;
+        // A fence longer than any backtick run in the program, so the program cannot close it.
+        const fence = '`'.repeat(Math.max(3, ...(program.match(/`+/g) ?? []).map((run) => run.length + 1)));
+        lines.push(
+          '',
+          '  <details><summary>The exploit that proved it</summary>',
+          '',
+          `  ${fence}${one.language === 'python' ? 'python' : 'js'}`,
+          ...program.split('\n').map((line) => `  ${line}`),
+          `  ${fence}`,
+          '',
+          '  </details>',
+        );
+      } else if (program) {
+        lines.push(`  The exploit is in the SARIF file (\`sarif-path\`), under this result's \`exploitProgram\`.`);
+      }
+      lines.push('');
+    }
+  }
+  lines.push(`[Action run](${runUrl()})`, '');
+  return lines.join('\n');
+}
+
 /* -------------------------------- dispatch -------------------------------- */
 
 if (mode === 'triage') {
@@ -1013,6 +1124,8 @@ if (mode === 'triage') {
   await investigate();
 } else if (mode === 'discover') {
   await discover();
+} else if (mode === 'security') {
+  await security();
 } else if (mode === 'sweep') {
   // discover + per-candidate investigate + open-a-PR-per-verified-fix. Runs on a
   // push like discover, so no issue event is required. The delivery gate is
@@ -1031,6 +1144,6 @@ if (mode === 'triage') {
     runUrl,
   });
 } else {
-  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage', 'discover' or 'sweep'.`);
+  console.error(`CREDDA_MODE is '${mode}'. It must be 'investigate', 'triage', 'discover', 'sweep' or 'security'.`);
   process.exit(1);
 }
