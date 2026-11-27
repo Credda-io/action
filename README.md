@@ -73,7 +73,7 @@ Actions minutes are the other cost, and `investigate` spends more of them than
 
 | `mode` | Fires on | Cost | What arrives |
 | --- | --- | --- | --- |
-| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package with install scripts off, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts |
+| `security` | **a push or a schedule. Nobody has to file anything** | a Linux runner, Docker, an install of your package in a container, minutes | a job summary of the findings an exploit proved, each with the exploit, and the same findings in your repository's code scanning alerts |
 | `discover` | **a push. Nobody has to file anything** | one download and one Node process, seconds | a job summary listing the defects Credda found in your code |
 | `sweep` | **a push. Nobody has to file anything** | a runner, Docker, and a reproduction per candidate, minutes | a job summary, and -- if you asked for it -- a pull request per verified fix |
 | `investigate` (default) | a label | a runner, Docker, an install of your repository, minutes | a reproduction report |
@@ -121,13 +121,18 @@ jobs:
 `mode: security` runs Credda's exploit probes against your repository's own
 code and reports a finding only when an exploit proved it. The probes cover
 prototype pollution, regular expressions that take super-linear time, archive
-path traversal, credentials sent across a redirect, and signature or
-certificate-chain verification bypass. Today they read JavaScript and
-TypeScript packages.
+and path traversal, credentials sent across a redirect, and signature or
+certificate-chain verification bypass. It also fuzzes the package's exported
+functions for about a minute, and keeps a fuzz finding only when a reproducer
+proves it again in a fresh container. The probes read JavaScript and
+TypeScript packages, and Python packages with a manifest at the repository
+root.
 
-Your package is installed in a container with install scripts off, and every
-probe runs in a second container with no network, a memory cap and a timeout.
-Your checkout is copied first, so nothing is written into it.
+Your package is installed in a container, and every probe runs in a second
+container with no network, a memory cap and a timeout. npm installs with
+install scripts off. pip has no such switch, so a Python package's build code
+runs in the install container. Your checkout is copied first, so nothing is
+written into it.
 
 Each finding on the job summary carries the exploit program that proved it, so
 anyone can run it again. Results that were not proven (clean, no verdict, or a

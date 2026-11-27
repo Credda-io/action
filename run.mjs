@@ -1042,10 +1042,12 @@ async function security() {
     die(`Credda security wrote a result that could not be read: ${error.message}`);
   }
   const findings = Array.isArray(result.findings) ? result.findings : [];
-  const attempted = Array.isArray(result.probes) ? result.probes.length : 0;
+  // A fuzz finding is also listed as a probe (id `CLASS@fuzz:fn`); count it under fuzzing instead.
+  const probes = Array.isArray(result.probes) ? result.probes.filter((p) => !String(p.id).includes('@fuzz:')) : [];
+  const fuzzed = (result.fuzz?.functions ?? 0) + (result.pythonFuzz?.functions ?? 0);
   const sarif = join(out, 'security.sarif');
 
-  writeSummary(securitySummary(findings, attempted));
+  writeSummary(securitySummary(findings, probes.length, fuzzed));
 
   output('skipped', 'false');
   output('issue-number', '');
@@ -1058,14 +1060,19 @@ async function security() {
   output('sarif-path', existsSync(sarif) ? sarif : '');
 }
 
+/** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
+const SUMMARY_EXPLOIT_BUDGET = 512 * 1024;
+
 /** The job summary: each proven finding with the exploit that proved it. */
-function securitySummary(findings, attempted) {
+function securitySummary(findings, attempted, fuzzed) {
   const lines = ['## Credda security', ''];
+  const fuzzText = fuzzed > 0 ? ` and fuzzed ${fuzzed} exported function${fuzzed === 1 ? '' : 's'}` : '';
   lines.push(
-    `Ran ${attempted} exploit probe${attempted === 1 ? '' : 's'} against this repository, ` +
+    `Ran ${attempted} exploit probe${attempted === 1 ? '' : 's'}${fuzzText} against this repository, ` +
       'each in a container with no network. Only findings an exploit proved are listed.',
     '',
   );
+  let budget = SUMMARY_EXPLOIT_BUDGET;
   if (findings.length === 0) {
     lines.push(
       'No exploit succeeded. That is not an audit: it says the probes Credda has did not prove a ' +
@@ -1075,23 +1082,30 @@ function securitySummary(findings, attempted) {
   } else {
     lines.push(`### ${findings.length} proven finding${findings.length === 1 ? '' : 's'}`, '');
     for (const one of findings) {
-      const site = one.site && typeof one.site === 'object'
-        ? `${one.site.file}${one.site.line ? `:${one.site.line}` : ''}`
-        : one.site;
-      const where = site ? ` at \`${site}\`` : '';
-      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${where}`);
+      const site = one.site?.kind === 'package'
+        ? ` in the package (through \`${one.site.file}\`)`
+        : one.site?.file
+          ? ` at \`${one.site.file}${one.site.line ? `:${one.site.line}` : ''}\``
+          : '';
+      lines.push(`- **${one.class}**${one.cwe ? ` (${one.cwe})` : ''}${site}`);
       if (one.sentence) lines.push(`  ${String(one.sentence).split('\n')[0].slice(0, 300)}`);
-      if (one.program) {
+      const program = one.program ? String(one.program) : '';
+      if (program && program.length <= budget) {
+        budget -= program.length;
+        // A fence longer than any backtick run in the program, so the program cannot close it.
+        const fence = '`'.repeat(Math.max(3, ...(program.match(/`+/g) ?? []).map((run) => run.length + 1)));
         lines.push(
           '',
           '  <details><summary>The exploit that proved it</summary>',
           '',
-          '  ```js',
-          ...String(one.program).split('\n').map((line) => `  ${line}`),
-          '  ```',
+          `  ${fence}${one.language === 'python' ? 'python' : 'js'}`,
+          ...program.split('\n').map((line) => `  ${line}`),
+          `  ${fence}`,
           '',
           '  </details>',
         );
+      } else if (program) {
+        lines.push(`  The exploit is in the SARIF file (\`sarif-path\`), under this result's \`exploitProgram\`.`);
       }
       lines.push('');
     }

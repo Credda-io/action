@@ -202,9 +202,11 @@ inputs:
     #
     # 'security' runs Credda's exploit probes against the repository's own code
     # and reports only what an exploit proved: prototype pollution, regex
-    # blow-up, archive path traversal, credentials sent across a redirect, and
-    # signature or certificate-chain bypass. The package is installed with
-    # install scripts off, and every probe runs in a container with no network.
+    # blow-up, archive and path traversal, credentials sent across a redirect,
+    # signature or certificate-chain bypass, and what a short fuzz of the
+    # exported functions proves again in a fresh container. The package is
+    # installed in a container (npm with install scripts off; pip has no such
+    # switch), and every probe runs in a container with no network.
     # Nothing is posted: findings go to the job summary and, unless
     # `upload-sarif` is 'false', to the repository's code scanning alerts. It
     # needs a Linux runner with Docker, and `security-events: write` for the
