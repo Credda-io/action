@@ -241,7 +241,7 @@ Gate on `limited` alone to fail only when nothing was exercised.
 
 #### Monorepos
 
-The engine after v0.1.19 scans every package of a workspace: `workspaces` in
+Engine v0.1.20 and later scan every package of a workspace: `workspaces` in
 package.json, `pnpm-workspace.yaml` or `lerna.json`. It installs, probes and
 fuzzes at most 10 packages. The rest are over the cap: only their regular
 expressions are read. v0.1.19 scans only the root, and the summary says so.
