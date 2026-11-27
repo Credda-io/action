@@ -88,3 +88,72 @@ export function fixFor(fixes, delivered, findingId) {
   const status = engineToken(a.status);
   return { text: `Fix status: ${status ?? 'not stated'}.`, url: '' };
 }
+
+/**
+ * The probe classes the engine keeps behind a flag, by the name `extra-probes`
+ * takes. Each env var is read by the engine and is off unless it is '1'. `since`
+ * is the first engine release that has the class.
+ */
+export const EXTRA_PROBES = {
+  injection: { cls: 'INJECTION_TO_EXECUTION', env: 'CREDDA_INJECTION_PROBE', since: '0.1.18' },
+  ssrf: { cls: 'SSRF', env: 'CREDDA_SSRF_PROBE', since: '0.1.18' },
+  xss: { cls: 'REFLECTED_XSS', env: 'CREDDA_XSS_PROBE', since: '0.1.19' },
+};
+
+/**
+ * `extra-probes` as names, or an error for the first name this action does not
+ * know. Empty means none. Items are trimmed; empty items are dropped.
+ */
+export function parseExtraProbes(raw) {
+  const names = [];
+  for (const item of String(raw ?? '').split(',').map((s) => s.trim()).filter((s) => s !== '')) {
+    if (!Object.hasOwn(EXTRA_PROBES, item)) {
+      return {
+        names: [],
+        error: `extra-probes names ${JSON.stringify(item.slice(0, 40))}, which is not a probe class this action knows. ` +
+          `Use a comma-separated list of ${Object.keys(EXTRA_PROBES).join(', ')}, or leave it empty.`,
+      };
+    }
+    if (!names.includes(item)) names.push(item);
+  }
+  return { names, error: null };
+}
+
+/** The environment for the `credda security` run: '1' for each named class, unset for the rest. */
+export function extraProbeEnv(names) {
+  return Object.fromEntries(Object.entries(EXTRA_PROBES).map(([name, p]) => [p.env, names.includes(name) ? '1' : undefined]));
+}
+
+/** -1, 0 or 1, or null when either is not a version. */
+function compareVersions(a, b) {
+  const pa = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(a ?? ''));
+  const pb = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(b ?? ''));
+  if (pa === null || pb === null) return null;
+  for (let i = 1; i <= 3; i += 1) {
+    if (Number(pa[i]) !== Number(pb[i])) return Number(pa[i]) < Number(pb[i]) ? -1 : 1;
+  }
+  return 0;
+}
+
+/**
+ * One summary line per requested class. security.json says which classes ran
+ * through `probes[].class`; it has no list of the classes an engine has, so a
+ * class with no probe is "not available in this engine" only when the engine's
+ * own version is older than the class.
+ */
+export function extraProbesLines(names, result) {
+  const probes = Array.isArray(result?.probes) ? result.probes : [];
+  const version = /^v?\d+\.\d+\.\d+/.test(String(result?.engineVersion ?? '')) ? String(result.engineVersion) : '';
+  return names.map((name) => {
+    const p = EXTRA_PROBES[name];
+    const head = `- \`${name}\` (${p.cls}):`;
+    const ran = probes.filter((x) => x?.class === p.cls).length;
+    if (ran > 0) return `${head} ${ran} probe${ran === 1 ? '' : 's'} ran. Only a finding an exploit proved is listed above.`;
+    const older = compareVersions(version, p.since);
+    if (older === -1) return `${head} not available in this engine (Credda ${version}). It needs v${p.since} or later. Nothing was probed for it.`;
+    if (older === null) {
+      return `${head} security.json lists no probe of this class. This engine may not have it (it needs v${p.since} or later), or nothing in this repository matched it.`;
+    }
+    return `${head} no probe of this class applied to this repository, so none ran.`;
+  });
+}

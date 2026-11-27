@@ -98,7 +98,17 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { decideDelivery } from './delivery.mjs';
-import { exploitLanguage, fenceFor, NOTHING_PROVEN, ranText, securityCounts, siteText } from './findings.mjs';
+import {
+  exploitLanguage,
+  extraProbeEnv,
+  extraProbesLines,
+  fenceFor,
+  NOTHING_PROVEN,
+  parseExtraProbes,
+  ranText,
+  securityCounts,
+  siteText,
+} from './findings.mjs';
 import { deliverSecurityFixes, deliveryRecord, fixesSummary } from './security-fix.mjs';
 import { sweep } from './sweep.mjs';
 
@@ -241,7 +251,7 @@ function requireIssueEvent() {
 const work = join(env('RUNNER_TEMP'), 'credda');
 const home = join(work, 'home');
 
-function credda(args, stdio) {
+function credda(args, stdio, extraEnv = {}) {
   // Plain `node`, no loader. `cwd` is the verified engine's own directory so
   // that a relative path the CLI resolves resolves under the engine and never
   // under the repository being investigated; every path this script passes is
@@ -252,6 +262,8 @@ function credda(args, stdio) {
     env: {
       ...process.env,
       CREDDA_HOME: home,
+      // A key set to undefined is left out of the child's environment.
+      ...extraEnv,
     },
     maxBuffer: 64 * 1024 * 1024,
   });
@@ -1025,6 +1037,10 @@ function discoverSummary(stated, proposed, finished) {
  * reads exactly like a clean repository.
  */
 async function security() {
+  // `extra-probes`: the engine's flagged classes, for this run only. A name this
+  // action does not know stops the job rather than probing less than was asked.
+  const extra = parseExtraProbes(env('CREDDA_EXTRA_PROBES', ''));
+  if (extra.error !== null) die(extra.error);
   const out = join(work, 'security');
   mkdirSync(out, { recursive: true });
   // `fix: true` adds --fix: the customer's own model writes a patch per proven
@@ -1035,7 +1051,7 @@ async function security() {
   // cannot issue workflow commands, exactly as investigate brackets its own.
   const guard = `credda-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
   console.log(`::stop-commands::${guard}`);
-  const ran = credda(['security', workspace, '--out', out, ...(fix ? ['--fix'] : [])], 'inherit');
+  const ran = credda(['security', workspace, '--out', out, ...(fix ? ['--fix'] : [])], 'inherit', extraProbeEnv(extra.names));
   console.log(`::${guard}::`);
 
   if (ran.error !== undefined || ran.status === null) {
@@ -1056,6 +1072,9 @@ async function security() {
   const sarif = join(out, 'security.sarif');
 
   writeSummary(securitySummary(findings, probes, fuzzed));
+  if (extra.names.length > 0) {
+    writeSummary(['### Extra probe classes', '', ...extraProbesLines(extra.names, result), '', ''].join('\n'));
+  }
 
   let fixed = null;
   let fixDelivery = '';

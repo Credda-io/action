@@ -171,6 +171,31 @@ only proven findings, so it is safe to gate a merge on. The job goes red only
 when the probes could not run, because a count of zero from a run that never
 happened would read exactly like a clean repository.
 
+#### Extra probe classes: `extra-probes`
+
+The engine keeps three newer probe classes behind flags, each off by default.
+`extra-probes` turns on the ones you name, for the `credda security` run only:
+
+| Name | Class | Languages | Engine |
+| --- | --- | --- | --- |
+| `injection` | injection to execution (CWE-94, CWE-77, CWE-78, CWE-1336) | JavaScript, Python | v0.1.18 or later |
+| `ssrf` | server-side request forgery (CWE-918) | JavaScript, Python | v0.1.18 or later |
+| `xss` | reflected cross-site scripting (CWE-79) | JavaScript | v0.1.19 or later |
+
+```yaml
+      - uses: Credda-io/action@v1
+        with:
+          mode: security
+          extra-probes: injection, ssrf
+```
+
+These classes are newer than the others. Each still reports only what an
+exploit proved. The job summary gets an *Extra probe classes* section with one
+line per name: how many of its probes ran, or that no probe of the class applied
+to this repository. When the engine is older than the class, the line says it is
+not available in this engine, so a missing class never reads as a clean result.
+An unknown name fails the job.
+
 #### Proposing fixes: `fix`
 
 `fix: 'true'` asks your own model for a patch for each class of finding an
@@ -571,6 +596,7 @@ trigger.
 | --- | --- | --- |
 | `mode` | `investigate` | `investigate` reproduces a labelled issue; `triage` reads a newly opened one; `discover` reads the repository and reports what nobody filed; `sweep` discovers, reproduces, and opens a pull request per verified fix; `security` runs exploit probes and reports only proven findings. |
 | `upload-sarif` | `'true'` | **Security mode only.** Uploads proven findings to GitHub code scanning. Needs `security-events: write`. A refused upload does not fail the job. |
+| `extra-probes` | `''` | **Security mode only, opt-in.** A comma-separated list of `injection`, `ssrf` and `xss`, the probe classes the engine keeps behind flags. An unknown name fails the job. See *Extra probe classes*. |
 | `fix` | `'false'` | **Security mode only, opt-in.** Asks your own model for a patch per proven finding class and keeps only a patch the check-fix gates prove. Needs a model key. With `open-pull-request` on, opens a pull request for each fix the gates proved. See *Proposing fixes*. |
 | `max-files` | `'4000'` | In `discover` and `sweep` mode, the most source files to read. Ignored by the other modes. |
 | `max-candidates` | `'3'` | **Sweep mode only.** The most discovered candidates one sweep reproduces and proposes -- a hard cap on the pull requests a single run can open. Never unbounded. |
@@ -1180,6 +1206,10 @@ test/fake-fetch.mjs        loaded only by that test with `--import`: sends each
                            refusals in delivery.mjs, with security.json files the
                            engine wrote, a local bare repository as origin and a
                            gh stub. No network; `node --test` runs it
+.github/extra-probes.test.mjs  node:test over the extra-probes names, the engine
+                           flags they set and the summary line per class, with
+                           run.mjs run against a stand-in engine. No network;
+                           `node --test` runs it
 .github/fixtures/security-fix/  those engine outputs, and where they came from
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong

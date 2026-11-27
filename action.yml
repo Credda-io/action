@@ -229,6 +229,23 @@ inputs:
       one run -- a hard cap on the pull requests a single sweep can open.
       Ignored by the other modes.
     default: "3"
+  extra-probes:
+    # Security mode only. The engine keeps three probe classes behind
+    # environment variables, each off unless set: CREDDA_INJECTION_PROBE,
+    # CREDDA_SSRF_PROBE and CREDDA_XSS_PROBE. This input sets the ones it names
+    # for the `credda security` run only, and unsets the others. An unknown name
+    # fails the job. A class the engine does not have is reported on the job
+    # summary as not available in this engine, never as a clean result.
+    description: >-
+      In security mode, a comma-separated list of extra probe classes to run:
+      injection (injection to execution, JavaScript and Python), ssrf
+      (server-side request forgery, JavaScript and Python) and xss (reflected
+      cross-site scripting, JavaScript). These classes are newer. Each still
+      reports only what an exploit proved. injection and ssrf need engine
+      v0.1.18 or later, and xss needs v0.1.19 or later; a class the engine does
+      not have is shown as not available in this engine. An unknown name fails
+      the job. Empty (the default) runs none of them. Ignored by the other modes.
+    default: ''
   upload-sarif:
     # Security mode only. The findings are uploaded as SARIF to GitHub code
     # scanning, so they appear under the repository's Security tab with GitHub's
@@ -851,6 +868,9 @@ runs:
         # Security mode's --fix. Its proven fixes are proposed from this step,
         # in-process, as sweep's are, through the same delivery code.
         CREDDA_FIX: ${{ inputs.fix }}
+        # Security mode's extra-probes; run.mjs checks each name and maps it to
+        # the engine's flag for the `credda security` run only.
+        CREDDA_EXTRA_PROBES: ${{ inputs.extra-probes }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         # Your own OpenAI-compatible model. See the comment above model-base-url
         # for why any of the three names the provider outright.
