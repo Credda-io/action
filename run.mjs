@@ -1095,7 +1095,11 @@ async function security() {
     // checks out a merge commit GitHub made, and a branch cut from it would
     // carry that merge, so a fix found there is attached and not proposed.
     const baseBranch = process.env['GITHUB_HEAD_REF'] ? '' : process.env['GITHUB_REF_TYPE'] === 'branch' ? (process.env['GITHUB_REF_NAME'] ?? '') : '';
-    const baseRefusal = process.env['GITHUB_HEAD_REF']
+    // A fix inside one package of a workspace is attached, not proposed: opening those pull requests has not been run on a real runner yet.
+    const packaged = Array.isArray(result?.fixes?.attempts) && result.fixes.attempts.some((a) => typeof a?.package === 'string');
+    const baseRefusal = packaged
+      ? 'this is a workspace (monorepo) report, and Credda does not open pull requests for fixes inside a workspace package yet.'
+      : process.env['GITHUB_HEAD_REF']
       ? 'this run scanned the merge commit of a pull request, so a branch cut from it would carry that merge. Run security on push to the branch to have fixes proposed.'
       : baseBranch === ''
         ? 'this run did not scan a branch, so there is no branch to propose against.'

@@ -340,6 +340,15 @@ describe('delivery through deliver-core.mjs', () => {
     assert.equal(spawnSync('git', ['ls-remote', '--heads', s.origin, 'credda/*'], { encoding: 'utf8' }).stdout, '');
   });
 
+  it('names a workspace package in its patch, so two packages fixing one class do not overwrite each other', () => {
+    const s = scenario();
+    const c = ctx(s, { openPullRequest: false });
+    const [one] = c.result.fixes.attempts.filter((x) => x.status === 'FIX_PROVEN');
+    c.result.fixes.attempts.push({ ...one, package: 'packages/core' }, { ...one, package: 'packages/@scope/ui kit' });
+    const done = withPath(s.bin, () => deliverSecurityFixes(c));
+    for (const f of ['fix-PROTOTYPE_POLLUTION.patch', 'fix-packages-core-PROTOTYPE_POLLUTION.patch', 'fix-packages-scope-ui-kit-PROTOTYPE_POLLUTION.patch']) assert.ok(existsSync(join(done.patchDir, f)), f);
+  });
+
   it('proposes nothing when the run scanned a pull request merge commit', () => {
     const s = scenario();
     const done = withPath(s.bin, () => deliverSecurityFixes(ctx(s, { baseBranch: '', baseRefusal: 'merge commit' })));
