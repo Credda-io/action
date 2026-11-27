@@ -134,6 +134,13 @@ describe('patchRefusal', () => {
     ['a symbolic link', ['diff --git a/link b/link', 'new file mode 120000', '--- /dev/null', '+++ b/link', '@@ -0,0 +1 @@', '+/etc', ''].join('\n'), /symbolic link/],
     ['a quoted path', 'diff --git "a/x\\ty" "b/x\\ty"\n', /quote/],
     ['an empty diff', '', /names no file/],
+    // git apply strips the first component of any name, so z/.github/... is .github/...
+    ['a header-less patch under another prefix', ['--- z/.github/workflows/ci.yml', '+++ z/.github/workflows/ci.yml', '@@ -1 +1 @@', '-a', '+b', ''].join('\n'), /CI or workflow/],
+    ['a header-less patch without a/ and b/', ['--- x/index.js', '+++ x/index.js', '@@ -1 +1 @@', '-a', '+b', ''].join('\n'), /without the a\/ and b\/ prefixes/],
+    ['a workflow named in another case', diffFor('.GitHub/workflows/ci.yml'), /CI or workflow/],
+    ['an empty path segment', diffFor('src//index.js'), /empty or `\.` segment/],
+    ['a submodule file', diffFor('.gitmodules'), /git's own configuration/],
+    ['a gitattributes file', diffFor('src/.gitattributes'), /git's own configuration/],
   ]) {
     it(`refuses ${what}`, () => assert.match(patchRefusal(diff) ?? '', said));
   }
@@ -320,6 +327,21 @@ describe('delivery through deliver-core.mjs', () => {
     const a = c.result.fixes.attempts.find((x) => x.status === 'FIX_PROVEN');
     assert.equal(rec({ broken: [{ attempt: a, why: 'x' }] })[0].outcome, 'not-offered');
     assert.deepEqual(deliveryRecord({ fixes: fixture('broke').result.fixes, broken: [], delivery: new Map(), openPullRequest: true, baseRefusal: '' }), [], 'no FIX_PROVEN, no entry');
+  });
+
+  it('refuses a header-less patch that git would apply to .github/ under another prefix', () => {
+    const s = scenario();
+    const c = ctx(s);
+    const a = c.result.fixes.attempts.find((x) => x.status === 'FIX_PROVEN');
+    const evil = ['--- z/.github/workflows/ci.yml', '+++ z/.github/workflows/ci.yml', '@@ -0,0 +1 @@', '+on: push', ''].join('\n');
+    writeFileSync(a.patchFile, evil);
+    a.patch = evil;
+    const done = withPath(s.bin, () => quiet(() => deliverSecurityFixes(c)));
+    const [decision] = [...done.delivery.values()];
+    assert.equal(decision.outcome, 'refused');
+    assert.match(decision.detail, /CI or workflow/);
+    assert.equal(s.gh(), '');
+    assert.equal(spawnSync('git', ['ls-remote', '--heads', s.origin, 'credda/*'], { encoding: 'utf8' }).stdout, '');
   });
 
   it('refuses a proven patch that touches .github/ before git runs', () => {

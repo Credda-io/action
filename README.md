@@ -814,8 +814,10 @@ applies each get their own named message rather than the API's.
 
 **What no patch may change, in any mode.** Before git sees a patch, Credda
 refuses it if it touches `.github/` or any other CI configuration, a registry
-file such as `.npmrc`, a path outside the repository, a symbolic link or a
-submodule, or adds a URL to a lockfile. Nothing is pushed and the summary names
+file such as `.npmrc`, `.gitmodules` or `.gitattributes`, a path outside the
+repository, a symbolic link or a submodule, or adds a URL to a lockfile. It also
+refuses a file named without the `a/` and `b/` prefixes git writes, because git
+would read that name as another path. Nothing is pushed and the summary names
 the path.
 
 **What has not been proven about this feature.** It has not been run against a

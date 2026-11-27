@@ -200,9 +200,11 @@ export function pullRequestTitleForSecurityFix(cls, cwe) {
 }
 
 /** Paths a proposal may never change: CI and workflow configuration. */
-const CI_PATH = /^(?:\.github\/|\.gitlab-ci\.ya?ml$|\.gitlab\/|\.circleci\/|\.buildkite\/|\.travis\.ya?ml$|azure-pipelines\.ya?ml$|\.azure-pipelines\/|Jenkinsfile$|bitbucket-pipelines\.yml$|\.drone\.ya?ml$|\.woodpecker\/|\.woodpecker\.ya?ml$|appveyor\.ya?ml$|\.appveyor\.ya?ml$|\.pre-commit-config\.ya?ml$|\.husky\/)/;
+const CI_PATH = /^(?:\.github\/|\.gitlab-ci\.ya?ml$|\.gitlab\/|\.circleci\/|\.buildkite\/|\.travis\.ya?ml$|azure-pipelines\.ya?ml$|\.azure-pipelines\/|Jenkinsfile$|bitbucket-pipelines\.yml$|\.drone\.ya?ml$|\.woodpecker\/|\.woodpecker\.ya?ml$|appveyor\.ya?ml$|\.appveyor\.ya?ml$|\.pre-commit-config\.ya?ml$|\.husky\/)/i;
 /** Files that choose where packages are downloaded from. Never changed by a proposal. */
-const REGISTRY_CONFIG = /(?:^|\/)(?:\.npmrc|\.yarnrc|\.yarnrc\.yml|\.pypirc|pip\.conf|pip\.ini|\.pnpmfile\.cjs)$/;
+const REGISTRY_CONFIG = /(?:^|\/)(?:\.npmrc|\.yarnrc|\.yarnrc\.yml|\.pypirc|pip\.conf|pip\.ini|\.pnpmfile\.cjs)$/i;
+/** Files that tell git how to fetch or show the tree: a submodule URL, or attributes that hide a diff in review. */
+const GIT_CONFIG = /(?:^|\/)\.git(?:modules|attributes)$|(?:^|\/)\.git(?:\/|$)/i;
 /** Lockfiles. A proposal may change one only if it adds no URL to it. */
 const LOCKFILE = /(?:^|\/)(?:package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|poetry\.lock|Pipfile\.lock|uv\.lock|pdm\.lock|requirements[^/]*\.txt)$/;
 
@@ -210,8 +212,11 @@ const LOCKFILE = /(?:^|\/)(?:package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.
  * Why a patch must not be committed, or null when it may be.
  *
  * Read from the diff text before git sees it. Every path a diff header names is
- * checked: nothing absolute, no `..` segment, nothing under `.github/` or any
- * other CI configuration, no registry configuration, no symbolic link or
+ * checked: nothing absolute, no `..`, `.` or empty segment, nothing under
+ * `.github/` or any other CI configuration (in any case), no registry
+ * configuration, no `.gitmodules` or `.gitattributes`, no name without the a/
+ * and b/ prefixes git writes (git apply strips the first component of any
+ * name, so `z/.github/x` is `.github/x` to it), no symbolic link or
  * submodule, and no lockfile line that adds a URL (a changed registry is how a
  * lockfile edit installs someone else's package). `git apply` already refuses a
  * path outside the checkout; this says so in a sentence before it is asked.
@@ -223,6 +228,7 @@ export function patchRefusal(diff) {
   const text = String(diff ?? '');
   const paths = new Map();
   let current = null;
+  let unprefixed = null;
   // Lines left in the current hunk, counted from its `@@` header the way git
   // apply counts them, so a header-shaped line inside a hunk is read as content
   // and a header after one is read as a header.
@@ -257,7 +263,10 @@ export function patchRefusal(diff) {
     } else if (/^(?:---|\+\+\+) /.test(line)) {
       const p = line.slice(4).replace(/\t.*$/, '');
       if (p !== '/dev/null') {
-        named = [p.replace(/^[ab]\//, '')];
+        // git apply strips the first component of any name, so a name without
+        // the a/ or b/ git writes is read here under the name git will use.
+        if (!/^[ab]\//.test(p) && !p.startsWith('/')) unprefixed = unprefixed ?? p;
+        named = [p.replace(/^[^/]*\//, (m) => (p.startsWith('/') ? m : ''))];
         if (line.startsWith('+++ ')) current = named[0];
       }
     } else if (/^(?:rename|copy) (?:from|to) /.test(line)) {
@@ -273,8 +282,15 @@ export function patchRefusal(diff) {
     if (p.startsWith('/') || /^[A-Za-z]:/.test(p) || p.split('/').includes('..') || p.includes('\\')) {
       return `the patch names \`${p}\`, which is outside the repository.`;
     }
+    if (p.split('/').some((seg) => seg === '' || seg === '.')) {
+      return 'the patch names a path with an empty or `.` segment, and a proposal only changes plainly named files.';
+    }
+    if (GIT_CONFIG.test(p)) return `the patch changes \`${p}\`, and a proposal never changes git's own configuration files.`;
     if (CI_PATH.test(p)) return `the patch changes \`${p}\`, and a proposal never changes CI or workflow configuration.`;
     if (REGISTRY_CONFIG.test(p)) return `the patch changes \`${p}\`, and a proposal never changes where packages come from.`;
+  }
+  if (unprefixed !== null) {
+    return 'the patch names a file without the a/ and b/ prefixes git writes, so git would read it under another name.';
   }
   return null;
 }
