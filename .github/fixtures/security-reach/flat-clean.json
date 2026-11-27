@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "tool": "credda security",
+  "engineVersion": "0.1.17",
+  "generatedAt": "2026-11-27T06:17:53.372Z",
+  "checkout": "/home/runner/work/_temp/targets/flat-5.0.2-clean",
+  "copy": {
+    "filesCopied": 7,
+    "skippedLarge": [],
+    "skippedLinks": 0
+  },
+  "installed": true,
+  "summary": {
+    "attempted": 6,
+    "proven": 0,
+    "clean": 1,
+    "abstained": 5,
+    "timedOut": 0,
+    "crashed": 0,
+    "notRun": 0
+  },
+  "probes": [
+    {
+      "id": "PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 3 function(s) were tried."
+    },
+    {
+      "id": "PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 3 exported functions and 29 call shapes."
+    },
+    {
+      "id": "ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 3 exported function(s) and 4 call shape(s) were tried."
+    },
+    {
+      "id": "REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (12 calls accepted)."
+    },
+    {
+      "id": "SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name)."
+    },
+    {
+      "id": "CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256)."
+    }
+  ],
+  "findings": [],
+  "fuzz": {
+    "fuzzer": "credda-seeded-fuzzer 1",
+    "seed": 1,
+    "budgetMs": 60000,
+    "iterationsPerTarget": null,
+    "elapsedMs": 60202,
+    "functions": 2,
+    "calls": 638010,
+    "hits": 0,
+    "proven": 0,
+    "dropped": [],
+    "targets": [
+      {
+        "name": "<default>",
+        "iterations": 323997,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "unflatten",
+        "iterations": 314013,
+        "stoppedBy": "time",
+        "found": []
+      }
+    ]
+  },
+  "unproven": [],
+  "timings": {
+    "probesMs": 1079,
+    "fuzzMs": 60202,
+    "totalMs": 61338
+  }
+}

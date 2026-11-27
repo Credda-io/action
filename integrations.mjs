@@ -21,7 +21,19 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 
-import { exploitLanguage, fenceFor, fixFor, markdownText, NOTHING_PROVEN, oneLine, ranText, securityCounts, siteText } from './findings.mjs';
+import {
+  exploitLanguage,
+  fenceFor,
+  fixFor,
+  markdownText,
+  NOTHING_PROVEN,
+  oneLine,
+  ranText,
+  reachSummaryText,
+  reachWarning,
+  securityCounts,
+  siteText,
+} from './findings.mjs';
 import { decideNotification } from './notification.mjs';
 
 const TIMEOUT_MS = 10_000;
@@ -126,7 +138,14 @@ export function readFindings(path, deliveryPath = '') {
     program: typeof f.program === 'string' ? f.program : '',
     fix: fixFor(parsed.fixes, delivered, f.id),
   }));
-  return { proven, unproven: Array.isArray(parsed.unproven) ? parsed.unproven.length : 0, probes, fuzzed };
+  return {
+    proven,
+    unproven: Array.isArray(parsed.unproven) ? parsed.unproven.length : 0,
+    probes,
+    fuzzed,
+    reach: reachSummaryText(parsed),
+    warning: reachWarning(parsed),
+  };
 }
 
 /**
@@ -179,14 +198,21 @@ const slackText = (raw, max) => {
   return out;
 };
 
-/** Block Kit message. At most 5 proven findings; unproven only as a labelled count. */
-export function slackMessage({ repository, mode, outcome, runUrl, findings, unprovenCount, statedFindings, probes = 0, fuzzed = 0 }) {
+/**
+ * Block Kit message. At most 5 proven findings; unproven only as a labelled count.
+ * `reach` is findings.mjs's one line of counts and `warning` its reachWarning, so
+ * a run that could not exercise the code never posts as "No exploit succeeded".
+ */
+export function slackMessage({ repository, mode, outcome, runUrl, findings, unprovenCount, statedFindings, probes = 0, fuzzed = 0, reach = '', warning = null }) {
   const security = mode === 'security';
   const count = security ? findings.length : statedFindings;
+  const limited = security && count === 0 && warning !== null;
   const headline = security
     ? count > 0
       ? `Credda proved ${count} finding${count === 1 ? '' : 's'} in ${repository}`
-      : `No exploit succeeded in ${repository}`
+      : limited
+        ? `Credda could not exercise the code in ${repository}`
+        : `No exploit succeeded in ${repository}`
     : `Credda ${outcome === '' ? 'ran' : `reached ${outcome}`} in ${repository}`;
   const blocks = [
     { type: 'header', text: { type: 'plain_text', text: cap(headline, 150, '...') } },
@@ -194,11 +220,16 @@ export function slackMessage({ repository, mode, outcome, runUrl, findings, unpr
       type: 'section',
       fields: [
         { type: 'mrkdwn', text: `*Repository*\n${slackText(repository, 1900)}` },
-        { type: 'mrkdwn', text: `*Outcome*\n${slackText(security ? (count > 0 ? 'findings proven by exploit' : 'nothing proven') : outcome || 'established a result', 1900)}` },
+        { type: 'mrkdwn', text: `*Outcome*\n${slackText(security ? (count > 0 ? 'findings proven by exploit' : limited ? 'could not exercise the code' : 'nothing proven') : outcome || 'established a result', 1900)}` },
         { type: 'mrkdwn', text: `*${security ? 'Proven findings' : 'Stated findings'}*\n${count}` },
       ],
     },
   ];
+  if (limited) {
+    // The engine's words are the repository's text, escaped by slackText like every other field.
+    const said = warning.said ? ` The engine said: ${warning.said}` : '';
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: slackText(`${warning.lead} ${warning.why}${said}`, SLACK_TEXT_LIMIT) } });
+  }
   if (security && count === 0) {
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: slackText(`${ranText(probes, fuzzed)}. ${NOTHING_PROVEN}`, SLACK_TEXT_LIMIT) } });
   }
@@ -212,6 +243,9 @@ export function slackMessage({ repository, mode, outcome, runUrl, findings, unpr
   }
   if (findings.length > 5) {
     blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `${findings.length - 5} more proven finding(s) on the job summary.` }] });
+  }
+  if (security && reach) {
+    blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: slackText(reach, SLACK_TEXT_LIMIT) }] });
   }
   if (security && unprovenCount > 0) {
     blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `${unprovenCount} unproven pattern(s), not findings: no exploit ran for them.` }] });

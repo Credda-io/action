@@ -274,6 +274,18 @@ inputs:
       open-pull-request on, opens a pull request for each fix the gates proved.
       Credda never merges. Ignored by the other modes.
     default: "false"
+  keep-report:
+    # Security mode only, and off by default. Copies the engine's own report
+    # files to a directory of their own and names it in `security-report-path`,
+    # for the caller's actions/upload-artifact step. This action does not upload
+    # anything itself: pinning a third-party action inside this composite is a
+    # supply-chain choice left to the workflow that uses it.
+    description: >-
+      In security mode, copy security.json, security.md and the SARIF files to
+      a directory named in the security-report-path output, so your workflow can
+      upload them with actions/upload-artifact. They hold the exploit programs.
+      Ignored by the other modes.
+    default: "false"
   max-files:
     # Discover mode only. The walk is over a customer's whole checkout and a
     # monorepo can be very large, so there is a cap; the engine has its own
@@ -669,6 +681,20 @@ outputs:
   security-json-path:
     description: In security mode, absolute path of security.json on the runner, holding the proven findings in full.
     value: ${{ steps.credda.outputs.security-json-path }}
+  security-reach:
+    description: >-
+      In security mode, one line of JSON: limited (true when the run proved
+      nothing and could not exercise the code), functions (exported functions
+      fuzzed), probes (counts by verdict) and sourceFiles (loaded and failed, when
+      the engine loaded the package from source). A field the engine did not
+      write is null. The job never fails on it; gate on it yourself.
+    value: ${{ steps.credda.outputs.security-reach }}
+  security-report-path:
+    description: >-
+      In security mode with keep-report on, absolute path of a directory on the
+      runner holding security.json, security.md and the SARIF files, for
+      actions/upload-artifact. They hold the exploit programs. Empty otherwise.
+    value: ${{ steps.credda.outputs.security-report-path }}
   engine-version:
     description: >-
       The engine version this run verified and executed, from engine.lock.json.
@@ -871,6 +897,9 @@ runs:
         # Security mode's extra-probes; run.mjs checks each name and maps it to
         # the engine's flag for the `credda security` run only.
         CREDDA_EXTRA_PROBES: ${{ inputs.extra-probes }}
+        # Security mode's keep-report; run.mjs copies the report files and names
+        # the directory in security-report-path.
+        CREDDA_KEEP_REPORT: ${{ inputs.keep-report }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         # Your own OpenAI-compatible model. See the comment above model-base-url
         # for why any of the three names the provider outright.

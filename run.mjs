@@ -93,7 +93,7 @@
 // written against, and this is the caller refusing to be the hole in it.
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -110,6 +110,9 @@ import {
   parseExtraProbes,
   plain,
   ranText,
+  reachRecord,
+  reachSection,
+  reachWarning,
   securityCounts,
   siteText,
 } from './findings.mjs';
@@ -1075,7 +1078,7 @@ async function security() {
   const { findings, probes, fuzzed } = securityCounts(result);
   const sarif = join(out, 'security.sarif');
 
-  writeSummary(securitySummary(findings, probes, fuzzed));
+  writeSummary(securitySummary(findings, probes, fuzzed, result));
   if (extra.names.length > 0) {
     writeSummary(['### Extra probe classes', '', ...extraProbesLines(extra.names, result), '', ''].join('\n'));
   }
@@ -1123,14 +1126,33 @@ async function security() {
   // The proven findings in full, for the Slack, Linear and Jira steps.
   output('security-json-path', resultPath);
   output('fix-delivery-path', fixDelivery);
+  // Numbers and one boolean only, so the value is one line with no repository text.
+  output('security-reach', JSON.stringify(reachRecord(result)));
+  // `keep-report`: the engine's own files in a directory of their own, for the
+  // caller's actions/upload-artifact step. Nothing is uploaded from here.
+  let kept = '';
+  if (env('CREDDA_KEEP_REPORT', 'false').trim() === 'true') {
+    kept = join(work, 'security-report');
+    mkdirSync(kept, { recursive: true });
+    for (const name of ['security.json', 'security.md', 'security.sarif', 'unproven.sarif']) {
+      if (existsSync(join(out, name))) copyFileSync(join(out, name), join(kept, name));
+    }
+  }
+  output('security-report-path', kept);
 }
 
 /** The most exploit text the summary embeds; GitHub refuses a step summary over 1 MiB. */
 const SUMMARY_EXPLOIT_BUDGET = 512 * 1024;
 
-/** The job summary: each proven finding with the exploit that proved it. */
-function securitySummary(findings, attempted, fuzzed) {
+/** The job summary: each proven finding with the exploit that proved it, then what the run reached. */
+function securitySummary(findings, attempted, fuzzed, result) {
   const lines = ['## Credda security', ''];
+  // A run that proved nothing and reached little says so first, so "No exploit
+  // succeeded" below cannot be read as a pass. The rule is limitedReach in findings.mjs.
+  const warning = reachWarning(result);
+  if (warning !== null) {
+    lines.push(`**${warning.lead}** ${warning.why}${warning.said ? ` The engine said: ${plain(warning.said, 300)}` : ''}`, '');
+  }
   lines.push(
     `${ranText(attempted, fuzzed)} against this repository, ` +
       'each in a container with no network. Only findings an exploit proved are listed.',
@@ -1171,6 +1193,7 @@ function securitySummary(findings, attempted, fuzzed) {
       lines.push('');
     }
   }
+  lines.push(...reachSection(result));
   lines.push(`[Action run](${runUrl()})`, '');
   return lines.join('\n');
 }

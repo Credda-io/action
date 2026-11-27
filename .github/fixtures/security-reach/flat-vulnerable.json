@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "tool": "credda security",
+  "engineVersion": "0.1.17",
+  "generatedAt": "2026-11-27T06:16:51.305Z",
+  "checkout": "/home/runner/work/_temp/targets/flat-unguarded",
+  "copy": {
+    "filesCopied": 7,
+    "skippedLarge": [],
+    "skippedLinks": 0
+  },
+  "installed": true,
+  "summary": {
+    "attempted": 8,
+    "proven": 3,
+    "clean": 0,
+    "abstained": 5,
+    "timedOut": 0,
+    "crashed": 0,
+    "notRun": 0
+  },
+  "probes": [
+    {
+      "id": "PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 0 class(es) and 3 function(s) were tried."
+    },
+    {
+      "id": "PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "PROVEN",
+      "said": "Error: Calling this package's own exports leaves a property on Object.prototype, where it is visible to every object in the process. 2 of 87 probed calls did it. First: unflatten fn(payload). The payload is ordinary JSON with a `__proto__` key, which is what arrives from a request body or a config file."
+    },
+    {
+      "id": "ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 3 exported function(s) and 4 call shape(s) were tried."
+    },
+    {
+      "id": "REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (12 calls accepted)."
+    },
+    {
+      "id": "SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name)."
+    },
+    {
+      "id": "CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256)."
+    },
+    {
+      "id": "PROTOTYPE_POLLUTION@fuzz:unflatten",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "PROVEN",
+      "said": "Credda fuzz finding (PROTOTYPE_POLLUTION): calling unflatten({\"a\": {\"b\": {\"__proto__\": {\"credda_fuzz_polluted\": \"polluted\"}}}}) leaves a property on Object.prototype.credda_fuzz_polluted that the input named. Export: unflatten Seed: 1 Input: ({\"a\": {\"b\": {\"__proto__\": {\"credda_fuzz_polluted\": \"polluted\"}}}})"
+    },
+    {
+      "id": "MEMORY_EXHAUSTION@fuzz:unflatten",
+      "language": "javascript",
+      "class": "MEMORY_EXHAUSTION",
+      "cwe": "CWE-770",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "PROVEN",
+      "said": "Credda fuzz finding (MEMORY_EXHAUSTION): a 90-byte input exhausts a 256 MB heap and the process dies (FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory). Export: unflatten Seed: 1 Input: ({\"0\": {\"__proto__\": [\"__proto__\", \"credda_fuzz_polluted\"], \"1\": 4096, \"hasOwnProperty\": 4096}})"
+    }
+  ],
+  "findings": [
+    {
+      "id": "PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "sentence": "Error: Calling this package's own exports leaves a property on Object.prototype, where it is visible to every object in the process. 2 of 87 probed calls did it. First: unflatten fn(payload). The payload is ordinary JSON with a `__proto__` key, which is what arrives from a request body or a config file.",
+      "program": "[the exploit program, 17428 characters, removed from this fixture]",
+      "programFile": "credda-prototype-pollution-probe.cjs"
+    },
+    {
+      "id": "PROTOTYPE_POLLUTION@fuzz:unflatten",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "sentence": "Credda fuzz finding (PROTOTYPE_POLLUTION): calling unflatten({\"a\": {\"b\": {\"__proto__\": {\"credda_fuzz_polluted\": \"polluted\"}}}}) leaves a property on Object.prototype.credda_fuzz_polluted that the input named. Export: unflatten Seed: 1 Input: ({\"a\": {\"b\": {\"__proto__\": {\"credda_fuzz_polluted\": \"polluted\"}}}})",
+      "program": "[the exploit program, 21594 characters, removed from this fixture]",
+      "programFile": "credda-fuzz-repro-0.cjs",
+      "fuzz": {
+        "function": "unflatten",
+        "fuzzer": "credda-seeded-fuzzer 1",
+        "seed": 1,
+        "iteration": 21,
+        "input": "({\"a\": {\"b\": {\"__proto__\": {\"credda_fuzz_polluted\": \"polluted\"}}}})"
+      }
+    },
+    {
+      "id": "MEMORY_EXHAUSTION@fuzz:unflatten",
+      "language": "javascript",
+      "class": "MEMORY_EXHAUSTION",
+      "cwe": "CWE-770",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "sentence": "Credda fuzz finding (MEMORY_EXHAUSTION): a 90-byte input exhausts a 256 MB heap and the process dies (FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory). Export: unflatten Seed: 1 Input: ({\"0\": {\"__proto__\": [\"__proto__\", \"credda_fuzz_polluted\"], \"1\": 4096, \"hasOwnProperty\": 4096}})",
+      "program": "[the exploit program, 21672 characters, removed from this fixture]",
+      "programFile": "credda-fuzz-repro-1.cjs",
+      "fuzz": {
+        "function": "unflatten",
+        "fuzzer": "credda-seeded-fuzzer 1",
+        "seed": 1,
+        "iteration": 1190,
+        "input": "({\"0\": {\"__proto__\": [\"__proto__\", \"credda_fuzz_polluted\"], \"1\": 4096, \"hasOwnProperty\": 4096}})"
+      }
+    }
+  ],
+  "fuzz": {
+    "fuzzer": "credda-seeded-fuzzer 1",
+    "seed": 1,
+    "budgetMs": 60000,
+    "iterationsPerTarget": null,
+    "elapsedMs": 91508,
+    "functions": 2,
+    "calls": 585774,
+    "hits": 3,
+    "proven": 2,
+    "dropped": [
+      {
+        "kind": "slow",
+        "target": "unflatten",
+        "iteration": 115,
+        "reason": "the minimisation budget (at most 30 s) ran out before its regex share was measured"
+      }
+    ],
+    "targets": [
+      {
+        "name": "<default>",
+        "iterations": 468432,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "unflatten",
+        "iterations": 117342,
+        "stoppedBy": "time",
+        "found": [
+          "pollution",
+          "slow",
+          "oom"
+        ]
+      }
+    ]
+  },
+  "unproven": [],
+  "timings": {
+    "probesMs": 1285,
+    "fuzzMs": 91508,
+    "totalMs": 92872
+  }
+}

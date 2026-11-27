@@ -103,6 +103,8 @@ try {
           statedFindings: mode === 'security' ? provenFindings : statedFindings,
           probes: loaded?.probes ?? 0,
           fuzzed: loaded?.fuzzed ?? 0,
+          reach: loaded?.reach ?? '',
+          warning: loaded?.warning ?? null,
         });
         say((await sendSlack({ webhookUrl: url, message, fetch: globalThis.fetch })).line);
       }

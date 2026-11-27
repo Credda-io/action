@@ -95,4 +95,4 @@ jobs:
         with:
           node-version: '24'
       - name: notify-url says what it sends and never fails a job
-        run: node --test .github/notify.test.mjs .github/security-fix.test.mjs .github/security-mode.test.mjs test/integrations.test.mjs
+        run: node --test .github/notify.test.mjs .github/security-fix.test.mjs .github/security-mode.test.mjs .github/security-reach.test.mjs test/integrations.test.mjs

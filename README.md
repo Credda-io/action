@@ -136,8 +136,9 @@ written into it.
 
 Each finding on the job summary carries the exploit program that proved it, so
 anyone can run it again. Results that were not proven (clean, no verdict, or a
-probe of ours that crashed) stay in `security.json` on the runner and are never
-called findings.
+probe of ours that crashed) are never called findings. Their counts are on the
+job summary under *What this run reached*, and the rest stays in
+`security.json` on the runner.
 
 The proven findings are also uploaded as SARIF to GitHub code scanning and
 appear under the repository's Security tab. Credda stores none of them. The
@@ -170,6 +171,77 @@ The job stays green whatever is found. The `security-findings` output counts
 only proven findings, so it is safe to gate a merge on. The job goes red only
 when the probes could not run, because a count of zero from a run that never
 happened would read exactly like a clean repository.
+
+#### What this run reached
+
+Under the findings, the job summary has a *What this run reached* section. It is
+built only from what the engine wrote in `security.json`: the probes and how
+each ended, the functions fuzzed and the calls made, how the package was loaded
+from source and which modules failed and why (engine v0.1.19 or later), the
+engine's notes, and any temp directory Credda could not delete. A line the
+engine wrote nothing for is left out.
+
+- *Clean* means the probe ran against code it could drive and no exploit
+  succeeded.
+- *Abstained* means the probe had nothing it could drive or measure, so it says
+  nothing about that class.
+- *Timed out*, *crashed* and *not run* also say nothing about that class. A
+  crash is Credda's failure.
+
+When a run proved nothing and reached too little to mean anything, the summary
+opens with *Credda could not exercise this repository's code*, says why, and
+quotes the engine. The Slack message says the same. Reach is limited when no
+finding was proven and any of these holds:
+
+1. `installed` is `false`: the package did not install.
+2. there is a fuzz record and it fuzzed 0 functions.
+3. at least one probe calls the package's exports (`site.kind` is `package`)
+   and none of them ended clean.
+4. the engine loaded the package from source and imported no module.
+5. no probe ran and no function was fuzzed.
+
+The same facts are in the `security-reach` output as one line of JSON:
+
+```json
+{"limited":false,"functions":36,"probes":{"proven":0,"clean":18,"abstained":5,"timedOut":0,"crashed":0,"notRun":0},"sourceFiles":{"loaded":12,"failed":0}}
+```
+
+`limited` is the rule above. A field the engine did not write is `null`. The job
+does not fail on limited reach. To fail it yourself:
+
+```yaml
+      - uses: Credda-io/action@v1
+        id: credda
+        with:
+          mode: security
+      - if: fromJSON(steps.credda.outputs.security-reach).limited
+        run: |
+          echo "::error::Credda could not exercise this repository's code. See the job summary."
+          exit 1
+```
+
+#### Keeping the report: `keep-report`
+
+`security.json` and the rest of the engine's report are deleted with the job.
+`keep-report: 'true'` copies `security.json`, `security.md`, `security.sarif` and
+`unproven.sarif` (when written) to a directory named in the
+`security-report-path` output. This action uploads nothing itself; add the step
+to your workflow:
+
+```yaml
+      - uses: Credda-io/action@v1
+        id: credda
+        with:
+          mode: security
+          keep-report: 'true'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: credda-security-report
+          path: ${{ steps.credda.outputs.security-report-path }}
+```
+
+These files hold the exploit programs that proved each finding. Anyone who can
+download the run's artifacts can read and run them.
 
 #### Extra probe classes: `extra-probes`
 
@@ -598,6 +670,7 @@ trigger.
 | `upload-sarif` | `'true'` | **Security mode only.** Uploads proven findings to GitHub code scanning. Needs `security-events: write`. A refused upload does not fail the job. |
 | `extra-probes` | `''` | **Security mode only, opt-in.** A comma-separated list of `injection`, `ssrf` and `xss`, the probe classes the engine keeps behind flags. An unknown name fails the job. See *Extra probe classes*. |
 | `fix` | `'false'` | **Security mode only, opt-in.** Asks your own model for a patch per proven finding class and keeps only a patch the check-fix gates prove. Needs a model key. With `open-pull-request` on, opens a pull request for each fix the gates proved. See *Proposing fixes*. |
+| `keep-report` | `'false'` | **Security mode only, opt-in.** Copies `security.json`, `security.md` and the SARIF files to the directory in `security-report-path`, for your own `actions/upload-artifact` step. They hold the exploit programs. See *Keeping the report*. |
 | `max-files` | `'4000'` | In `discover` and `sweep` mode, the most source files to read. Ignored by the other modes. |
 | `max-candidates` | `'3'` | **Sweep mode only.** The most discovered candidates one sweep reproduces and proposes -- a hard cap on the pull requests a single run can open. Never unbounded. |
 | `label` | `credda,codereef` | Comma-separated list of labels that trigger an investigation (`*` accepts any). The default carries both names through the CodeReef -> Credda rename; `credda` is the one Credda names when it invites a maintainer to apply a label. In triage mode, the labels Credda stays quiet for. |
@@ -661,6 +734,8 @@ If you have pinned either input explicitly, nothing here affects you.
 | `security-fixes` | security | With `fix` on, how many fixes the check-fix gates proved (`FIX_PROVEN`). Empty when `fix` is off. |
 | `fix-patches` | security | With `fix` on, a directory on the runner holding each proven patch and its pull request body, for `actions/upload-artifact`. Empty when no fix was proven. |
 | `security-json-path` | security | Absolute path of `security.json` on the runner: the proven findings in full. |
+| `security-reach` | security | One line of JSON: `limited`, `functions`, `probes` by verdict and `sourceFiles`. `limited` is true when the run proved nothing and could not exercise the code. A field the engine did not write is `null`. See *What this run reached*. |
+| `security-report-path` | security | With `keep-report` on, a directory on the runner holding `security.json`, `security.md` and the SARIF files, for `actions/upload-artifact`. Empty otherwise. |
 | `engine-version` | either | The engine version this run verified and executed, from `engine.lock.json`. The same number as the action's own release. |
 | `should-post` | either | Whether a comment was posted. One predicate, computed in `run.mjs`, read by the posting step. `false` in `discover` and `sweep`, which run on a push and have no issue to comment on. |
 | `candidates` | discover, sweep | How many candidates the run produced. In `sweep`, how many discovery wrote before the `max-candidates` cap. |
@@ -1155,7 +1230,8 @@ notification.mjs           the decision, the body and the one bounded POST behin
                            notify-url, with fetch handed in so it can be tested
                            with no network. Imported by notify.mjs; never a step
 findings.mjs               how security.json is read: the counts, the site text, the
-                           exploit fence and each finding's fix outcome. Imported by run.mjs,
+                           exploit fence, each finding's fix outcome, and what the
+                           run reached with the limited-reach rule. Imported by run.mjs,
                            integrations.mjs and security-fix.mjs, so the job
                            summary, a tracker issue and a fix pull request
                            describe a finding the same way
@@ -1213,7 +1289,14 @@ test/fake-fetch.mjs        loaded only by that test with `--import`: sends each
                            summary line per class, and hostile text in
                            security.json, with run.mjs run against a stand-in
                            engine. No network; `node --test` runs it
+.github/security-reach.test.mjs  node:test over what a security run reached: the
+                           summary section, the limited-reach rule, the
+                           security-reach output, keep-report and the Slack line,
+                           on engine outputs and on hostile module names and notes.
+                           No network; `node --test` runs it
 .github/fixtures/security-fix/  those engine outputs, and where they came from
+.github/fixtures/security-reach/  real engine outputs for that test, and where they
+                           came from
 .github/ISSUE_TEMPLATE/    the two reports worth having: an install that failed,
                            and a run whose report was wrong
 .github/PULL_REQUEST_TEMPLATE.md

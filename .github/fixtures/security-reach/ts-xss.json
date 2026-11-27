@@ -1,0 +1,598 @@
+{
+  "schemaVersion": 1,
+  "tool": "credda security",
+  "engineVersion": "1.2.0",
+  "generatedAt": "2026-11-27T07:51:17.555Z",
+  "checkout": "/home/runner/work/_temp/ts2",
+  "copy": {
+    "filesCopied": 77,
+    "skippedLarge": [],
+    "skippedLinks": 0
+  },
+  "installed": true,
+  "summary": {
+    "attempted": 24,
+    "proven": 1,
+    "clean": 18,
+    "abstained": 5,
+    "timedOut": 0,
+    "crashed": 0,
+    "notRun": 0
+  },
+  "probes": [
+    {
+      "id": "PATH_TRAVERSAL",
+      "language": "javascript",
+      "class": "PATH_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no exported store or path function read the in-base control, so nothing confined a path for this probe to escape. 1 class(es) and 36 function(s) were tried."
+    },
+    {
+      "id": "PROTOTYPE_POLLUTION",
+      "language": "javascript",
+      "class": "PROTOTYPE_POLLUTION",
+      "cwe": "CWE-1321",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "CLEAN",
+      "said": "No prototype pollution or prototype replacement observed over 40 exported functions and 29 call shapes."
+    },
+    {
+      "id": "ARCHIVE_TRAVERSAL",
+      "language": "javascript",
+      "class": "ARCHIVE_TRAVERSAL",
+      "cwe": "CWE-22",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the benign control entry never extracted, so nothing here drove an extractor. 36 exported function(s) and 4 call shape(s) were tried."
+    },
+    {
+      "id": "REDIRECT_CREDENTIAL_LEAK",
+      "language": "javascript",
+      "class": "REDIRECT_CREDENTIAL_LEAK",
+      "cwe": "CWE-200",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: the redirect was never followed, so nothing here drove a client (17 calls accepted)."
+    },
+    {
+      "id": "SIGNATURE_VERIFICATION_BYPASS",
+      "language": "javascript",
+      "class": "SIGNATURE_VERIFICATION_BYPASS",
+      "cwe": "CWE-347",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no export behaved as a signature verifier (accepting a genuine token and rejecting one signed with a different key), so nothing here could be tested (0 candidates by name)."
+    },
+    {
+      "id": "CERTIFICATE_CHAIN_BYPASS",
+      "language": "javascript",
+      "class": "CERTIFICATE_CHAIN_BYPASS",
+      "cwe": "CWE-295",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "ABSTAINED",
+      "said": "Nothing measured: no certificate-chain verifier of a shape this probe can drive (pki.createCertificate, createCaStore, verifyCertificateChain and md.sha256)."
+    },
+    {
+      "id": "REFLECTED_XSS",
+      "language": "javascript",
+      "class": "REFLECTED_XSS",
+      "cwe": "CWE-79",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "verdict": "PROVEN",
+      "said": "FINDING\nReflected input became EXECUTABLE markup: export \"renderSearchPage\", argument #0 (the others as []), element context (<img src=x onerror>): the output parses it as an onerror handler on <img src>. Each output was HTML when called with a benign value, echoed that value, and the HTML tokenizer found the payload's own nonce-named call where a browser runs it."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-repro-red.mjs:93",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-repro-red.mjs",
+        "line": 93
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:56",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 56
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:75",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 75
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:88",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 88
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:121",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 121
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:156",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 156
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:172",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 172
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:174",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 174
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:177",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 177
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:222",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 222
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:223",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 223
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@scripts/check-seeded.mjs:224",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "scripts/check-seeded.mjs",
+        "line": 224
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/csv.ts:17",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/csv.ts",
+        "line": 17
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/csv.ts:50",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/csv.ts",
+        "line": 50
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/csv.ts:50",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/csv.ts",
+        "line": 50
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/dates.ts:10",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/dates.ts",
+        "line": 10
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    },
+    {
+      "id": "REGEX_BLOWUP@src/portal.ts:121",
+      "language": "javascript",
+      "class": "REGEX_BLOWUP",
+      "cwe": "CWE-1333",
+      "site": {
+        "kind": "source",
+        "file": "src/portal.ts",
+        "line": 121
+      },
+      "verdict": "CLEAN",
+      "said": "No blow-up observed: every pumped input up to 4000 characters stayed fast."
+    }
+  ],
+  "findings": [
+    {
+      "id": "REFLECTED_XSS",
+      "language": "javascript",
+      "class": "REFLECTED_XSS",
+      "cwe": "CWE-79",
+      "site": {
+        "kind": "package",
+        "file": "package.json"
+      },
+      "sentence": "Reflected input became EXECUTABLE markup: export \"renderSearchPage\", argument #0 (the others as []), element context (<img src=x onerror>): the output parses it as an onerror handler on <img src>. Each output was HTML when called with a benign value, echoed that value, and the HTML tokenizer found the payload's own nonce-named call where a browser runs it.",
+      "program": "[the exploit program, 30281 characters, removed from this fixture]",
+      "programFile": "credda-xss-reflection-probe.cjs"
+    }
+  ],
+  "fuzz": {
+    "fuzzer": "credda-seeded-fuzzer 2",
+    "seed": 1,
+    "budgetMs": 60000,
+    "iterationsPerTarget": null,
+    "elapsedMs": 60238,
+    "functions": 36,
+    "calls": 926949,
+    "hits": 1,
+    "proven": 0,
+    "dropped": [
+      {
+        "kind": "slow",
+        "target": "lateFee",
+        "iteration": 32,
+        "reason": "the input has no repeated part to scale, so its growth cannot be measured"
+      }
+    ],
+    "targets": [
+      {
+        "name": "ToolshedError",
+        "iterations": 26964,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "addDays",
+        "iterations": 30797,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "averageLoanDays",
+        "iterations": 22638,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "balanceFor",
+        "iterations": 26202,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "checkout",
+        "iterations": 21841,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "copyCountsDescending",
+        "iterations": 33565,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "createItem",
+        "iterations": 28893,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "daysBetween",
+        "iterations": 33930,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "exportInventory",
+        "iterations": 30642,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "feeForLoan",
+        "iterations": 35726,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "filterByTagPattern",
+        "iterations": 32417,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "findAvailable",
+        "iterations": 34918,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "formatInZone",
+        "iterations": 21173,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "handleMyLoans",
+        "iterations": 33348,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "handleQueuePosition",
+        "iterations": 19045,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "isBorrowingBlocked",
+        "iterations": 18027,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "lateFee",
+        "iterations": 33,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "loanCounts",
+        "iterations": 21297,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "memorySink",
+        "iterations": 23548,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "overdueLoans",
+        "iterations": 24092,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "parseInventory",
+        "iterations": 27908,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "placeHold",
+        "iterations": 28240,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "positionOf",
+        "iterations": 27160,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "queueFor",
+        "iterations": 33026,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "releaseHold",
+        "iterations": 28587,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "renderSearchPage",
+        "iterations": 25703,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "renew",
+        "iterations": 28451,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "requireItem",
+        "iterations": 23047,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "resetLoanIds",
+        "iterations": 32926,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "returnLoan",
+        "iterations": 34868,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "search",
+        "iterations": 30532,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "sendReminders",
+        "iterations": 21555,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "signedInMember",
+        "iterations": 28414,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "startOfDayInZone",
+        "iterations": 12688,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "stillOut",
+        "iterations": 14823,
+        "stoppedBy": "time",
+        "found": []
+      },
+      {
+        "name": "tagItem",
+        "iterations": 9925,
+        "stoppedBy": "time",
+        "found": []
+      }
+    ],
+    "reach": {
+      "from": "entry",
+      "imported": [
+        "src/index.ts"
+      ],
+      "failed": [],
+      "overCap": 0,
+      "cap": 32,
+      "filesLoaded": 12,
+      "node": "v22.23.5"
+    }
+  },
+  "unproven": [],
+  "timings": {
+    "probesMs": 2030,
+    "fuzzMs": 60239,
+    "totalMs": 62317
+  }
+}
