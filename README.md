@@ -261,12 +261,13 @@ package was exercised. `installed` is `false` there when any one package did
 not install, so it is not used. When some packages were exercised and some
 were not, `limited` is `false` and `partial` is `true`.
 
-**Fixes in a monorepo.** The engine attempts no fix on a workspace report. It
-records each proven class as not attempted, and the *Fixes* section says that
-once. Proposing fixes for one package of a monorepo is not supported through
-this action yet: it has no input that points it at a subdirectory, and it
-always scans the checkout root. The findings, with their exploits, are still
-reported for every package that was exercised.
+**Fixes in a monorepo.** Engine v0.1.21 and later attempt one fix per package
+and class, with the patch written as a diff from the repository root. A
+finding in the workspace root's own code is recorded as not attempted. This
+action attaches each proven patch in `fix-patches`, with the package in the
+file name. It does not open pull requests for fixes inside a workspace
+package yet, even with `open-pull-request: 'true'`, and the *Fixes* section
+says so. This path has been run with a stand-in model only.
 
 #### Keeping the report: `keep-report`
 

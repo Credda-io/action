@@ -325,9 +325,12 @@ export const packageWords = (pkg, name = (s) => s) => (pkg === '' ? '' : pkg ===
  * tested or was over the cap. On a report of one package: the engine listed a
  * language as NOT TESTED (`untested`, v0.1.19 and later), found nothing it
  * could scan (`unsupported`), or scanned only the root of a workspace
- * (`workspace`, v0.1.19). A field that is absent is not evidence either way.
+ * (`workspace`, v0.1.19). On either: the engine named a directory with its
+ * own manifest that no scan read (`notScanned`, v0.1.21). A field that is
+ * absent is not evidence either way.
  */
 export function partialReach(result) {
+  if ((whole(result?.notScanned?.total) ?? 0) > 0) return true;
   const w = workspaceReach(result);
   if (w !== null) return (w.notTested?.length ?? 0) + (w.overCap?.length ?? 0) > 0;
   return (Array.isArray(result?.untested) && result.untested.length > 0) ||
@@ -451,7 +454,9 @@ function sourceLine(r, name, text) {
   if (r.from === 'entry') {
     what = imported.length > 0 ? `the entry ${name(oneLine(imported[0]).slice(0, 200))}` : 'its entry';
   } else {
-    what = 'the modules under src/';
+    // The top-level directories the modules came from: src/, or lib/ and app/ in an app with no src/ (v0.1.21).
+    const roots = [...new Set([...imported, ...failed.map((f) => f?.module)].filter((m) => typeof m === 'string' && m.includes('/')).map((m) => m.split('/')[0]))].slice(0, 4);
+    what = `the modules under ${roots.length > 0 && roots.join() !== 'src' ? roots.map((d) => name(`${oneLine(d).slice(0, 60)}/`)).join(', ') : 'src/'}`;
     counts.push(`${imported.length} imported`);
   }
   if (files !== null) counts.push(`${files} source file${files === 1 ? '' : 's'} loaded`);
@@ -459,6 +464,10 @@ function sourceLine(r, name, text) {
   const over = whole(r.overCap);
   if (r.from !== 'entry' && cap !== null) counts.push(`cap ${cap}`);
   if (over) counts.push(`${over} over the cap not imported`);
+  const compiled = whole(r.compiled);
+  if (compiled) counts.push(`${compiled} JSX or decorator file${compiled === 1 ? '' : 's'} compiled with TypeScript first`);
+  const components = whole(r.components);
+  if (components) counts.push(`${components} React component${components === 1 ? '' : 's'} set aside and not called`);
   counts.push(failedText(failed, name, text));
   return `Loaded from source: no build output, so ${node ? `Node ${node}` : 'Node'} type stripping loaded ${what}. ${counts.join(', ')}.`;
 }
@@ -574,6 +583,16 @@ function notTestedItems(result, name, text) {
   return items;
 }
 
+/** Directories with a manifest of their own that no scan read (`notScanned`, engine v0.1.21). Paths are the repository's: code spans. */
+function notScannedSentence(n, name) {
+  const total = whole(n?.total);
+  if (!total) return null;
+  const listed = (Array.isArray(n.listed) ? n.listed : []).filter((d) => typeof d?.path === 'string').slice(0, MAX_FAILED);
+  const names = listed.map((d) => name(oneLine(d.path).slice(0, 200))).join(', ');
+  const more = total - listed.length;
+  return `**Not scanned:** ${total} director${total === 1 ? 'y has' : 'ies have'} a manifest of ${total === 1 ? 'its' : 'their'} own that this run did not read${names ? `: ${names}${more > 0 ? ` and ${more} more` : ''}` : ''}. This run says nothing about that code.`;
+}
+
 /**
  * The job summary's "What this run reached" section, built only from fields the
  * engine wrote. Every path, module name, error and note is the scanned
@@ -589,6 +608,8 @@ export function reachSection(result) {
   const w = workspaceReach(result);
   if (w !== null) items.push(packagesSentence(w));
   else items.push(...notTestedItems(result, name, text));
+  const skipped = notScannedSentence(result?.notScanned, name);
+  if (skipped) items.push(skipped);
   const probes = probesSentence(v);
   if (probes) items.push(probes);
   for (const [label, z] of fuzzRecords(result)) {

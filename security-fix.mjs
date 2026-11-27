@@ -236,7 +236,9 @@ export function deliverSecurityFixes({ result, outDir, patchDir, workspace, repo
   mkdirSync(patchDir, { recursive: true });
   const { findings } = securityCounts(result);
   const prepared = usable.map((attempt) => {
-    const name = `fix-${String(attempt.class).replace(/[^A-Za-z0-9_]/g, '')}${attempt.language === 'python' ? '-python' : ''}`;
+    // A workspace attempt (engine v0.1.21) is per package and class, so the package is in the name: two packages can fix the same class.
+    const pkg = typeof attempt.package === 'string' ? `${attempt.package.replace(/[^A-Za-z0-9_]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)}-` : '';
+    const name = `fix-${pkg}${String(attempt.class).replace(/[^A-Za-z0-9_]/g, '')}${attempt.language === 'python' ? '-python' : ''}`;
     const patchPath = join(patchDir, `${name}.patch`);
     const bodyPath = join(patchDir, `${name}.md`);
     copyFileSync(attempt.patchFile, patchPath);
