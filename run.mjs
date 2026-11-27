@@ -1171,7 +1171,8 @@ function securitySummary(findings, attempted, fuzzed, result) {
       const cls = /^[A-Z][A-Z0-9_]{0,63}$/.test(String(one.class)) ? one.class : 'UNNAMED_CLASS';
       const cwe = /^CWE-[0-9]{1,5}$/.test(String(one.cwe)) ? one.cwe : '';
       lines.push(`- **${cls}**${cwe ? ` (${cwe})` : ''}${site ? ` ${site}` : ''}`);
-      if (one.sentence) lines.push(`  ${plain(one.sentence, 300)}`);
+      // The whole sentence: it is the finding. A thrown probe error arrives with an `Error: ` prefix that says nothing.
+      if (one.sentence) lines.push(`  ${plain(String(one.sentence).replace(/^Error: /, ''), 1200)}`);
       const program = one.program ? String(one.program) : '';
       if (program && program.length <= budget) {
         budget -= program.length;
