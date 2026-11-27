@@ -1,6 +1,7 @@
 // How security.json (engine v0.1.17) is read, in one place. run.mjs writes the job
-// summary from these and integrations.mjs fills Slack, Linear and Jira from them,
-// so the summary and a tracker issue cannot describe one finding two ways.
+// summary from these, integrations.mjs fills Slack, Linear and Jira from them and
+// security-fix.mjs writes the fix pull request body from them, so the summary, a
+// tracker issue and a pull request cannot describe one finding two ways.
 
 /** What a clean run says, on the job summary and in Slack. */
 export const NOTHING_PROVEN =

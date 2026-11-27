@@ -1118,8 +1118,9 @@ notification.mjs           the decision, the body and the one bounded POST behin
                            notify-url, with fetch handed in so it can be tested
                            with no network. Imported by notify.mjs; never a step
 findings.mjs               how security.json is read: the counts, the site text and
-                           the exploit fence. Imported by run.mjs and
-                           integrations.mjs, so the job summary and a tracker issue
+                           the exploit fence. Imported by run.mjs,
+                           integrations.mjs and security-fix.mjs, so the job
+                           summary, a tracker issue and a fix pull request
                            describe a finding the same way
 integrations.mjs           the Slack message, the Linear and Jira issue bodies, the
                            de-duplication searches and the bounded requests, with

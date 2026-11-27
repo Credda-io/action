@@ -25,6 +25,7 @@ import { isAbsolute, join, relative, sep } from 'node:path';
 
 import { deliverPullRequest } from './deliver-core.mjs';
 import { branchNameForSecurityFix, pullRequestTitleForSecurityFix } from './delivery.mjs';
+import { securityCounts, siteText } from './findings.mjs';
 
 /** One line of untrusted text, short and with nothing markdown or HTML can act on. */
 export function plain(text, max = 300) {
@@ -100,8 +101,8 @@ export function securityFixBody({ attempt, findings, engineVersion, baseBranch, 
     '',
   ];
   for (const f of own) {
-    const site = f.site?.kind === 'package' ? `the package, through ${String(f.site.file)}` : `${String(f.site?.file ?? '?')}:${String(f.site?.line ?? '?')}`;
-    lines.push(`- ${plain(f.id, 120)} (${plain(f.cwe, 20)}) at ${plain(site, 200)}`, '', ...fenced(String(f.sentence ?? '')), '');
+    const site = siteText(f.site) || 'at a site the engine did not state';
+    lines.push(`- ${plain(f.id, 120)} (${plain(f.cwe, 20)}) ${plain(site, 200)}`, '', ...fenced(String(f.sentence ?? '')), '');
   }
   lines.push(
     'The exploit fired on the code before this patch; that is how the finding was proven. On the patched ' +
@@ -201,7 +202,7 @@ export function deliverSecurityFixes({ result, outDir, patchDir, workspace, repo
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: workspace, encoding: 'utf8' });
   const baseSha = head.status === 0 ? String(head.stdout).trim() : '';
   mkdirSync(patchDir, { recursive: true });
-  const findings = Array.isArray(result.findings) ? result.findings : [];
+  const { findings } = securityCounts(result);
   const prepared = usable.map((attempt) => {
     const name = `fix-${String(attempt.class).replace(/[^A-Za-z0-9_]/g, '')}${attempt.language === 'python' ? '-python' : ''}`;
     const patchPath = join(patchDir, `${name}.patch`);
