@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { limitedReach, partialReach, reachRecord, reachSection, reachSummaryText, reachWarning } from '../findings.mjs';
+import { limitedReach, partialReach, ranText, reachRecord, reachSection, reachSummaryText, reachWarning, securityCounts } from '../findings.mjs';
 import { readFindings, slackMessage } from '../integrations.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -263,5 +263,14 @@ describe('engine v0.1.21 fields', () => {
     const reach = { from: 'modules', imported: ['lib/a.ts', 'app/api/x/route.ts'], failed: [{ module: 'app/page.tsx', error: 'css' }], overCap: 0, cap: 32, filesLoaded: 3, node: 'v22.1.0', compiled: 1, components: 2 };
     const line = reachSection({ findings: [], fuzz: { functions: 1, reach } }).find((l) => l.startsWith('- Loaded from source'));
     assert.match(line, /loaded the modules under `lib\/`, `app\/`\. 2 imported, 3 source files loaded, cap 32, 1 JSX or decorator file compiled with TypeScript first, 2 React components set aside and not called, /);
+  });
+
+  it('a fuzz record that listed functions and made no call is not said to have fuzzed them', () => {
+    const result = { findings: [], probes: [{ id: 'A', verdict: 'CLEAN' }], pythonFuzz: { functions: 10, calls: 0, hits: 0, proven: 0, dropped: [] } };
+    const { probes, fuzzed } = securityCounts(result);
+    assert.equal(ranText(probes, fuzzed), 'Ran 1 exploit probe');
+    assert.ok(reachSection(result).some((l) => l.includes('Python fuzzing: 10 exported functions found, none called, so nothing was fuzzed.')));
+    assert.match(reachSummaryText(result), /10 Python exported functions found, none called/);
+    assert.equal(securityCounts({ fuzz: { functions: 2, calls: 5 }, pythonFuzz: { functions: 3 } }).fuzzed, 5);
   });
 });
