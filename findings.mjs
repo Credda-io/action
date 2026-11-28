@@ -42,7 +42,9 @@ export const NOTHING_PROVEN =
 export function securityCounts(result) {
   const findings = Array.isArray(result?.findings) ? result.findings : [];
   const probes = Array.isArray(result?.probes) ? result.probes.filter((p) => !String(p.id).includes('@fuzz:')) : [];
-  const fuzzed = (result?.fuzz?.functions ?? 0) + (result?.pythonFuzz?.functions ?? 0);
+  // A record that listed functions and made 0 calls fuzzed nothing (gdown, engine v0.1.23: "10 exported functions, 0 calls").
+  const called = (z) => (z?.calls === 0 ? 0 : (z?.functions ?? 0));
+  const fuzzed = called(result?.fuzz) + called(result?.pythonFuzz);
   return { findings, probes: probes.length, fuzzed };
 }
 
@@ -482,6 +484,7 @@ function fuzzSentence(label, z) {
   const dropped = Array.isArray(z.dropped) ? z.dropped.length : null;
   const tail = [hits !== null ? `${hits} oracle hit${hits === 1 ? '' : 's'}` : '', proven !== null ? `${proven} proven` : '', dropped !== null ? `${dropped} dropped` : '']
     .filter((s) => s !== '');
+  if (fns > 0 && calls === 0) return `${label}: ${fns} exported function${fns === 1 ? '' : 's'} found, none called, so nothing was fuzzed.`;
   return `${label}: ${fns} exported function${fns === 1 ? '' : 's'}${calls !== null ? `, ${calls} call${calls === 1 ? '' : 's'}` : ''}.${tail.length > 0 ? ` ${tail.join(', ')}.` : ''}`;
 }
 
@@ -652,7 +655,8 @@ export function reachSummaryText(result) {
   for (const [label, z] of fuzzRecords(result)) {
     const fns = whole(z.functions);
     const calls = whole(z.calls);
-    if (fns !== null) parts.push(`${fns} ${label === 'Fuzzing' ? '' : 'Python '}exported function${fns === 1 ? '' : 's'} fuzzed${calls !== null ? `, ${calls} call${calls === 1 ? '' : 's'}` : ''}`);
+    if (fns !== null && fns > 0 && calls === 0) parts.push(`${fns} ${label === 'Fuzzing' ? '' : 'Python '}exported function${fns === 1 ? '' : 's'} found, none called`);
+    else if (fns !== null) parts.push(`${fns} ${label === 'Fuzzing' ? '' : 'Python '}exported function${fns === 1 ? '' : 's'} fuzzed${calls !== null ? `, ${calls} call${calls === 1 ? '' : 's'}` : ''}`);
   }
   const r = result?.fuzz?.reach;
   const files = whole(r?.filesLoaded);
